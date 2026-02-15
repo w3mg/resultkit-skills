@@ -174,7 +174,7 @@ verify item no longer on plan. Verify item still exists in system.
   - Show date in header: "Plan for 2026-02-13"
   - 404 → "No plan exists for {date}."
 - [x] T013 Validate constitution compliance for all 9 principles against `skills/rkit/today/SKILL.md`
-- [ ] T014 Run quickstart.md walkthrough end-to-end at `specs/002-today/quickstart.md` (manual — requires live token) ⏳ DEFERRED
+- [x] T014 Run quickstart.md walkthrough end-to-end at `specs/002-today/quickstart.md` (manual — requires live token)
 - [x] T015 [P] Verify edge cases from spec:
   - No config → prompt `/rkit:setup`
   - Item ID doesn't exist → 404 error
