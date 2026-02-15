@@ -28,3 +28,10 @@ All skills use the `rkit:` prefix: `/rkit:setup`, `/rkit:today`, `/rkit:board`, 
 
 - Be concise. No filler.
 - Questions get answers, not actions.
+
+## Active Technologies
+- Bash 5.x (api.sh, helper scripts), Markdown + Claude Code runtime, curl, jq (001-setup)
+- JSON file at `~/.config/resultkit/config.json` (001-setup)
+
+## Recent Changes
+- 001-setup: Added Bash 5.x (api.sh, helper scripts), Markdown + Claude Code runtime, curl, jq

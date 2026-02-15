@@ -1,91 +1,157 @@
 # Feature Specification: rkit:setup
 
+**Feature Branch**: `001-setup`
 **Created**: 2026-02-14
 **Status**: Draft
-**Skill**: `/rkit:setup`
+**Input**: First-run configuration skill for the rkit skill suite
 
-## Overview
+## User Scenarios & Testing *(mandatory)*
 
-First-run configuration skill. Creates `~/.config/resultkit/config.json` with API token, default team, and API base URL. All other rkit skills depend on this config existing.
+### User Story 1 - First-Time Setup (Priority: P1)
 
-## User Scenarios
+A user has never used any rkit skill before. They invoke `/rkit:setup`
+and walk through guided configuration so that all other rkit skills
+can function.
 
-### US1 — First-Time Setup (P1)
+**Why this priority**: Every other rkit skill depends on configuration
+existing. Without setup, nothing works.
 
-User has never used rkit before. They invoke `/rkit:setup` and walk through initial configuration.
+**Independent Test**: Invoke `/rkit:setup` with no prior config file.
+User should end with a valid config and see their account details.
 
-**Flow**:
-1. Skill checks if `~/.config/resultkit/config.json` exists
-2. If not, creates `~/.config/resultkit/` directory
-3. Asks user for their API token (or reads from `$RESULTKIT_TOKEN` env var)
-4. Calls `GET /users/me` to verify token
-5. On success, displays user info (name, email)
-6. Calls `GET /users/{id}/teams` to list user's teams
-7. Displays teams in a numbered list
-8. Asks user to pick a default team
-9. Writes config file
-10. Confirms setup complete
+**Acceptance Scenarios**:
 
-**Acceptance**:
-- **Given** no config exists, **When** user runs `/rkit:setup`, **Then** config file is created with valid token and default_team_id
-- **Given** invalid token provided, **When** API returns 401, **Then** skill reports error and asks for correct token
-- **Given** user has multiple teams, **When** teams are listed, **Then** each shows ID, name, and framework
+1. **Given** no config file exists, **When** user runs `/rkit:setup`,
+   **Then** user is guided through providing a token, selecting a
+   default team, and a config file is created.
+2. **Given** an invalid token is provided, **When** token verification
+   fails, **Then** user sees a clear error and is asked to provide a
+   correct token.
+3. **Given** user has multiple teams, **When** teams are listed,
+   **Then** each team shows its ID, name, and management framework.
+4. **Given** token is valid and team is selected, **When** setup
+   completes, **Then** user sees their name, email, and chosen team
+   as confirmation.
 
-### US2 — Reconfigure Existing Setup (P2)
+---
 
-User already has config but wants to change token or default team.
+### User Story 2 - Reconfigure Existing Setup (Priority: P2)
 
-**Flow**:
-1. Skill detects existing config
-2. Shows current config summary (token masked, team name, API base)
-3. Asks what to update: token, default team, or API base
-4. Performs the selected update
-5. Re-verifies if token changed
+A user already has a working config but wants to change their token,
+default team, or API base URL.
 
-**Acceptance**:
-- **Given** config exists, **When** user runs `/rkit:setup`, **Then** current settings are displayed with token masked (e.g., `rm_...xxxx`)
-- **Given** user changes token, **When** new token is saved, **Then** `GET /users/me` is called to verify before writing
+**Why this priority**: Users rotate tokens and switch teams. They
+MUST NOT have to delete their config and start over.
 
-### US3 — Environment Variable Fallback (P3)
+**Independent Test**: Invoke `/rkit:setup` with an existing config.
+User should see current settings and be able to update selectively.
 
-User has `$RESULTKIT_TOKEN` env var set. Setup detects it automatically.
+**Acceptance Scenarios**:
 
-**Acceptance**:
-- **Given** `$RESULTKIT_TOKEN` is set and no config exists, **When** user runs `/rkit:setup`, **Then** skill offers to use the env var token instead of asking for manual input
+1. **Given** a config file exists, **When** user runs `/rkit:setup`,
+   **Then** current settings are displayed with the token masked
+   (e.g., `rm_...xxxx`).
+2. **Given** user chooses to update their token, **When** a new token
+   is provided, **Then** the token is verified before saving.
+3. **Given** user chooses to update their default team, **When** teams
+   are listed, **Then** current default team is highlighted and user
+   can pick a different one.
 
-## Requirements
+---
 
-- **FR-001**: Config file location MUST be `~/.config/resultkit/config.json`
-- **FR-002**: Config MUST contain: `api_token`, `default_team_id`, `api_base`
-- **FR-003**: Token MUST be verified via `GET /users/me` before saving
-- **FR-004**: Token MUST be stored in plaintext (same pattern as rm-api-v2's token storage)
-- **FR-005**: API base MUST default to `https://api.resultmaps.com` if not specified
-- **FR-006**: Setup MUST NOT overwrite existing config without user confirmation
+### User Story 3 - Environment Variable Fallback (Priority: P3)
 
-## Shared Infrastructure
+A user has a `RESULTKIT_TOKEN` environment variable set. Setup detects
+it automatically and offers to use it instead of manual entry.
 
-This spec also covers the shared `api.sh` script used by all rkit skills:
+**Why this priority**: Power users and CI-like environments benefit
+from env var support, but manual entry covers the common case.
 
-```
-scripts/api.sh METHOD PATH [BODY]
-```
+**Independent Test**: Set `RESULTKIT_TOKEN` env var, run `/rkit:setup`
+with no existing config. User should be offered the env var token.
 
-- Reads token and api_base from `~/.config/resultkit/config.json`
-- Executes curl with Bearer auth header
-- Returns JSON: `{ "status": <int>, "body": <object> }` or `{ "status": 0, "error": "NO_CONFIG" }`
+**Acceptance Scenarios**:
 
-## Config Schema
+1. **Given** `RESULTKIT_TOKEN` is set and no config exists, **When**
+   user runs `/rkit:setup`, **Then** skill offers to use the env var
+   token instead of prompting for manual input.
+2. **Given** `RESULTKIT_TOKEN` is set and config exists, **When** user
+   runs `/rkit:setup`, **Then** env var is NOT silently used — user
+   still sees current config and chooses what to update.
 
-```json
-{
-  "api_token": "string (required)",
-  "default_team_id": "integer (required)",
-  "api_base": "string (default: https://api.resultmaps.com)"
-}
-```
+---
 
-## Edge Cases
+### Edge Cases
 
-- What if user has no teams? → Display message, skip team selection, set `default_team_id` to `null`
-- What if config directory can't be created? → Report filesystem error
-- What if token works but teams endpoint fails? → Save token, warn about teams, allow retry
+- User has no teams → display a message explaining they need at least
+  one team, skip team selection, set default team to empty.
+- Config directory cannot be created → report filesystem error with
+  the path that failed.
+- Token works but team listing fails → save the token, warn about the
+  team fetch failure, allow retry.
+- Config file exists but is corrupted/malformed → treat as missing
+  config and offer to recreate it (with confirmation).
+
+## Requirements *(mandatory)*
+
+### Functional Requirements
+
+- **FR-001**: Config file MUST be stored at
+  `~/.config/resultkit/config.json`.
+- **FR-002**: Config MUST contain three fields: API token, default
+  team ID, and API base URL.
+- **FR-003**: Token MUST be verified against the API before saving.
+- **FR-004**: API base URL MUST default to
+  `https://api.resultmaps.com` if not specified by the user.
+- **FR-005**: Existing config MUST NOT be overwritten without user
+  confirmation.
+- **FR-006**: Token MUST be displayed in masked form when showing
+  existing configuration (e.g., first 3 + last 4 characters).
+- **FR-007**: Setup MUST create the config directory if it does not
+  exist.
+
+### Shared Infrastructure
+
+This feature also covers the shared API caller used by all rkit skills:
+
+- **FR-008**: A shared script MUST exist that all skills use to make
+  authenticated API calls.
+- **FR-009**: The shared script MUST read credentials from the config
+  file.
+- **FR-010**: The shared script MUST return structured output with
+  HTTP status and response body.
+- **FR-011**: If config is missing, the shared script MUST return a
+  clear "no config" indicator rather than failing silently.
+
+### Key Entities
+
+- **Config**: Stores authentication token, default team preference,
+  and API base URL. One per user, persisted to disk.
+- **User Account**: The authenticated identity returned by token
+  verification. Has name, email, and team memberships.
+- **Team**: An organizational unit the user belongs to. Has ID, name,
+  and management framework type.
+
+## Success Criteria *(mandatory)*
+
+### Measurable Outcomes
+
+- **SC-001**: A new user can complete first-time setup in under
+  2 minutes with a valid token.
+- **SC-002**: After setup completes, any other rkit skill can execute
+  without additional configuration.
+- **SC-003**: An invalid token is rejected with a clear error message
+  within 5 seconds.
+- **SC-004**: Reconfiguration preserves unchanged settings — only the
+  field the user chose to update is modified.
+- **SC-005**: The shared API caller is reusable by all rkit skills
+  without skill-specific configuration.
+
+## Assumptions
+
+- Users obtain their API token from the ResultMaps web application
+  independently (setup does not handle account creation).
+- The config file is stored in plaintext, consistent with the
+  project's existing token storage pattern.
+- Only one config profile per user is needed (no multi-profile
+  support).
