@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-setup`
 **Created**: 2026-02-14
-**Status**: Draft
+**Status**: Complete
 **Input**: First-run configuration skill for the rkit skill suite
 
 ## User Scenarios & Testing *(mandatory)*
@@ -83,8 +83,6 @@ with no existing config. User should be offered the env var token.
 
 ### Edge Cases
 
-- User has no teams → display a message explaining they need at least
-  one team, skip team selection, set default team to empty.
 - Config directory cannot be created → report filesystem error with
   the path that failed.
 - Token works but team listing fails → save the token, warn about the

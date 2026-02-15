@@ -82,15 +82,15 @@ written.
   - If exists → branch to reconfigure flow (US2, placeholder for now)
 - [x] T007 [US1] Implement token input and verification in `skills/rkit/setup/SKILL.md`:
   - Ask user for API token
-  - Call `GET /users/me` via `scripts/api.sh`
+  - Call `GET /users/me` via direct curl (no config exists yet)
   - On 200: extract `id`, `name`, `email` from response
   - On 401: display error, ask for correct token
   - On network error: display actionable error message
 - [x] T008 [US1] Implement team listing and selection in `skills/rkit/setup/SKILL.md`:
-  - Call `GET /users/{id}/teams` via `scripts/api.sh`
+  - Call `GET /teams` via direct curl (no config exists yet)
   - Display teams as table: `| # | ID | Name | Framework |`
   - Ask user to pick a team by number
-  - Handle empty teams: display message, set `default_team_id` to null
+  - Users always have at least one team
 - [x] T009 [US1] Implement config writing in `skills/rkit/setup/SKILL.md`:
   - Create `~/.config/resultkit/` directory if needed (FR-007)
   - Write `config.json` with `api_token`, `default_team_id`, `api_base`
@@ -128,7 +128,7 @@ only that field changed.
   - Verify via `GET /users/me` before saving (FR-003)
   - On success: update only `api_token` in config
 - [x] T014 [US2] Implement team re-selection in `skills/rkit/setup/SKILL.md`:
-  - Fetch teams via `GET /users/{id}/teams`
+  - Fetch teams via `GET /teams`
   - Highlight current default team in list
   - On selection: update only `default_team_id` in config
 
