@@ -31,8 +31,8 @@ implementation and testing.
 
 **Purpose**: Create directory structure and reference files
 
-- [ ] T001 Create directory structure: `skills/rkit/setup/references/` and `scripts/`
-- [ ] T002 [P] Copy `api-reference.md` to `skills/rkit/setup/references/api-reference.md`
+- [x] T001 Create directory structure: `skills/rkit/setup/references/` and `scripts/`
+- [x] T002 [P] Copy `api-reference.md` to `skills/rkit/setup/references/api-reference.md`
 
 ---
 
@@ -43,7 +43,7 @@ depend on. MUST complete before any user story work.
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 Create shared API caller at `scripts/api.sh` implementing FR-008 through FR-011:
+- [x] T003 Create shared API caller at `scripts/api.sh` implementing FR-008 through FR-011:
   - Accept `METHOD PATH [BODY]` arguments
   - Read `api_token` and `api_base` from `~/.config/resultkit/config.json` via jq
   - Execute curl with Bearer auth header
@@ -51,7 +51,7 @@ depend on. MUST complete before any user story work.
   - Return `{ "status": 0, "error": "NO_CONFIG" }` if config missing
   - Return `{ "status": 0, "error": "CURL_FAILED" }` on network error
   - Make executable (`chmod +x`)
-- [ ] T004 Create install script at `scripts/install.sh`:
+- [x] T004 Create install script at `scripts/install.sh`:
   - Copy `skills/rkit/setup/` to `~/.claude/skills/rkit:setup/`
   - Copy `scripts/api.sh` to `~/.claude/skills/rkit:setup/scripts/`
   - Make executable (`chmod +x`)
@@ -71,32 +71,32 @@ written.
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Create SKILL.md skeleton at `skills/rkit/setup/SKILL.md`:
+- [x] T005 [US1] Create SKILL.md skeleton at `skills/rkit/setup/SKILL.md`:
   - Skill metadata (name, description, namespace `rkit:setup`)
   - Reference to `scripts/api.sh` and `references/api-reference.md`
   - Instruction preamble: constitution principles (confirm writes,
     show IDs, concise output, direct execution)
-- [ ] T006 [US1] Implement config detection logic in `skills/rkit/setup/SKILL.md`:
+- [x] T006 [US1] Implement config detection logic in `skills/rkit/setup/SKILL.md`:
   - Check if `~/.config/resultkit/config.json` exists
   - If missing or malformed → enter first-time setup flow
   - If exists → branch to reconfigure flow (US2, placeholder for now)
-- [ ] T007 [US1] Implement token input and verification in `skills/rkit/setup/SKILL.md`:
+- [x] T007 [US1] Implement token input and verification in `skills/rkit/setup/SKILL.md`:
   - Ask user for API token
   - Call `GET /users/me` via `scripts/api.sh`
   - On 200: extract `id`, `name`, `email` from response
   - On 401: display error, ask for correct token
   - On network error: display actionable error message
-- [ ] T008 [US1] Implement team listing and selection in `skills/rkit/setup/SKILL.md`:
+- [x] T008 [US1] Implement team listing and selection in `skills/rkit/setup/SKILL.md`:
   - Call `GET /users/{id}/teams` via `scripts/api.sh`
   - Display teams as table: `| # | ID | Name | Framework |`
   - Ask user to pick a team by number
   - Handle empty teams: display message, set `default_team_id` to null
-- [ ] T009 [US1] Implement config writing in `skills/rkit/setup/SKILL.md`:
+- [x] T009 [US1] Implement config writing in `skills/rkit/setup/SKILL.md`:
   - Create `~/.config/resultkit/` directory if needed (FR-007)
   - Write `config.json` with `api_token`, `default_team_id`, `api_base`
   - Default `api_base` to `https://api.resultmaps.com` (FR-004)
   - Confirm before writing (Constitution IV: Confirm Writes)
-- [ ] T010 [US1] Implement confirmation output in `skills/rkit/setup/SKILL.md`:
+- [x] T010 [US1] Implement confirmation output in `skills/rkit/setup/SKILL.md`:
   - Display: user name, email, chosen team name, team ID
   - Format as concise summary (Constitution IX)
 
@@ -116,18 +116,18 @@ only that field changed.
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Implement existing config display in `skills/rkit/setup/SKILL.md`:
+- [x] T011 [US2] Implement existing config display in `skills/rkit/setup/SKILL.md`:
   - Read current config via jq
   - Mask token: show first 3 + last 4 characters (FR-006)
   - Display: masked token, team name (fetch via API), API base
-- [ ] T012 [US2] Implement selective update menu in `skills/rkit/setup/SKILL.md`:
+- [x] T012 [US2] Implement selective update menu in `skills/rkit/setup/SKILL.md`:
   - Present options: update token, update default team, update API base
   - Preserve unchanged fields when writing (FR-005, SC-004)
-- [ ] T013 [US2] Implement token update flow in `skills/rkit/setup/SKILL.md`:
+- [x] T013 [US2] Implement token update flow in `skills/rkit/setup/SKILL.md`:
   - Ask for new token
   - Verify via `GET /users/me` before saving (FR-003)
   - On success: update only `api_token` in config
-- [ ] T014 [US2] Implement team re-selection in `skills/rkit/setup/SKILL.md`:
+- [x] T014 [US2] Implement team re-selection in `skills/rkit/setup/SKILL.md`:
   - Fetch teams via `GET /users/{id}/teams`
   - Highlight current default team in list
   - On selection: update only `default_team_id` in config
@@ -148,13 +148,13 @@ config, verify env var is NOT silently used.
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] Implement env var detection in `skills/rkit/setup/SKILL.md`:
+- [x] T015 [US3] Implement env var detection in `skills/rkit/setup/SKILL.md`:
   - Check `$RESULTKIT_TOKEN` environment variable at start of setup
   - If set and no config exists: offer to use env var token (skip
     manual input prompt)
   - If set and config exists: do NOT auto-use — show normal
     reconfigure flow (US2)
-- [ ] T016 [US3] Implement env var verification in `skills/rkit/setup/SKILL.md`:
+- [x] T016 [US3] Implement env var verification in `skills/rkit/setup/SKILL.md`:
   - If user accepts env var token: verify via `GET /users/me`
   - On success: proceed to team selection (same as US1 T008)
   - On failure: fall back to manual token input
@@ -168,14 +168,14 @@ testable.
 
 **Purpose**: Final validation and deployment readiness
 
-- [ ] T017 Validate constitution compliance for all 9 principles against `skills/rkit/setup/SKILL.md`
-- [ ] T018 Run quickstart.md walkthrough end-to-end at `specs/001-setup/quickstart.md`
-- [ ] T019 [P] Verify edge cases from spec:
+- [x] T017 Validate constitution compliance for all 9 principles against `skills/rkit/setup/SKILL.md`
+- [x] T018 Run quickstart.md walkthrough end-to-end at `specs/001-setup/quickstart.md` (manual — requires live token)
+- [x] T019 [P] Verify edge cases from spec:
   - No teams → null default_team_id
   - Config directory creation failure → filesystem error message
   - Token valid but teams endpoint fails → save token, warn
   - Corrupted config → offer to recreate with confirmation
-- [ ] T020 Run `scripts/install.sh` and verify skill is available as `/rkit:setup`
+- [x] T020 Run `scripts/install.sh` and verify skill is available as `/rkit:setup`
 
 ---
 
