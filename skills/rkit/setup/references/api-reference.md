@@ -82,12 +82,15 @@ Auth: Bearer token in `Authorization` header or `token` query param.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/users/me` | Authenticated user (includes api_token) |
+| GET | `/users/me` | Authenticated user (includes api_token, default_team, current_team). Response wrapped in `{ data: { ... } }`. |
 | GET | `/users/{id}` | User profile (no api_token) |
 | GET | `/users/{id}/items` | User's items (requires same-team membership, paginated) |
 
 User fields: `id`, `login`, `email`, `first_name`, `last_name`,
-`api_token` (only on `/users/me`).
+`api_token` (only on `/users/me`), `default_team` (TeamSummary | null),
+`current_team` (TeamSummary | null).
+
+TeamSummary: `{ id: integer, name: string }`.
 
 ## Day Plans
 

@@ -62,7 +62,7 @@ echo "$RESP_BODY"
 
 Replace `TOKEN_HERE` with the actual token.
 
-- **200**: Extract `id`, `first_name`, `last_name`, `email`. Display:
+- **200**: Response is wrapped in `{ "data": { ... } }`. Extract `data.id`, `data.first_name`, `data.last_name`, `data.email`, `data.default_team`, `data.current_team`. Display:
   > Verified: **{first_name} {last_name}** ({email})
   Proceed to Step 4.
 
@@ -100,11 +100,7 @@ has `is_default` — the default team appears first.
 
   Otherwise ask: "Enter the number of your default team:"
 
-- **No teams** (empty array):
-  > You don't have any teams yet. Default team will be set to none.
-  Set `default_team_id` to `null`. Continue.
-
-- **API error**: Show error. Offer to save config without team, retry later.
+- **API error**: Show error. Offer to retry.
 
 ### Step 5: Confirm and write config
 
@@ -130,7 +126,7 @@ cat > "$HOME/.config/resultkit/config.json" << 'JSONEOF'
 JSONEOF
 ```
 
-Replace placeholders. Use `null` (no quotes) for `default_team_id` if no team.
+Replace placeholders with actual values.
 
 ### Step 6: Done
 
@@ -204,9 +200,8 @@ Confirm the change.
 ## Edge Cases
 
 - **Corrupted config**: File exists but invalid JSON → treat as missing, offer to recreate with confirmation.
-- **No teams**: Set `default_team_id` to `null`. Setup completes successfully.
 - **Config dir fails**: Display filesystem error with path.
-- **Token OK but teams fail**: Save token + api_base, set `default_team_id` to `null`, suggest retry later.
+- **Token OK but teams fail**: Save token + api_base, suggest retry later.
 
 ## References
 

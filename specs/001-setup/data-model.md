@@ -18,7 +18,7 @@ Persisted to `~/.config/resultkit/config.json`.
 **Validation rules**:
 - `api_token` MUST be non-empty and pass `GET /users/me` verification.
 - `default_team_id` MUST be an integer matching a team the user
-  belongs to (or null if user has no teams).
+  belongs to.
 - `api_base` MUST be a valid URL with no trailing slash.
 
 **State transitions**: None — config is a static document, not a
@@ -26,17 +26,28 @@ stateful entity.
 
 ### User Account (API response, not persisted)
 
-Returned by `GET /users/me`.
+Returned by `GET /users/me`. Response wrapped in `{ data: { ... } }`.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| id | integer | User ID (used to fetch teams) |
-| name | string | Display name |
+| id | integer | User ID |
+| first_name | string | First name |
+| last_name | string | Last name |
 | email | string | Email address |
+| api_token | string | Bearer token (only on `/users/me`) |
+| default_team | TeamSummary \| null | User's preferred/home team |
+| current_team | TeamSummary \| null | User's active team context (falls back to default_team) |
+
+### TeamSummary (embedded in User Account)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | integer | Team ID |
+| name | string | Team name |
 
 ### Team (API response, not persisted)
 
-Returned by `GET /users/{id}/teams`.
+Returned by `GET /teams`.
 
 | Field | Type | Description |
 |-------|------|-------------|
