@@ -62,8 +62,8 @@ echo "$RESP_BODY"
 
 Replace `TOKEN_HERE` with the actual token.
 
-- **200**: Extract `id`, `name`, `email`. Display:
-  > Verified: **{name}** ({email})
+- **200**: Extract `id`, `first_name`, `last_name`, `email`. Display:
+  > Verified: **{first_name} {last_name}** ({email})
   Proceed to Step 4.
 
 - **401**: Display error, go back to Step 2.
@@ -72,29 +72,35 @@ Replace `TOKEN_HERE` with the actual token.
 
 ### Step 4: List user's teams
 
-Call `GET /users/{id}/teams` using the `id` from Step 3:
+Call `GET /teams` (returns authenticated user's teams as a flat array — no pagination):
 
 ```bash
 RESPONSE=$(curl -s -w '\n%{http_code}' \
   -H "Authorization: Bearer TOKEN_HERE" \
   -H "Accept: application/json" \
-  "https://api.resultmaps.com/users/USER_ID/teams")
+  "https://api.resultmaps.com/teams")
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 RESP_BODY=$(echo "$RESPONSE" | sed '$d')
 echo "Status: $HTTP_CODE"
 echo "$RESP_BODY"
 ```
 
+The response is a flat JSON array (not wrapped in `data`). Each team
+has `is_default` — the default team appears first.
+
 - **Teams found**: Display as table:
 
-  | # | ID | Name | Framework |
-  |---|----|------|-----------|
-  | 1 | 1 | Engineering | EOS |
-  | 2 | 2 | Product | OKR |
+  | # | ID | Name | Framework | Default |
+  |---|----|------|-----------|---------|
+  | 1 | 1 | Engineering | EOS | yes |
+  | 2 | 2 | Product | OKR | |
 
-  Ask: "Enter the number of your default team:"
+  If a team has `is_default: true`, pre-select it and ask:
+  > "Your default team is **{name}** (ID: {id}). Use this, or pick a different one?"
 
-- **No teams** (empty `data` array):
+  Otherwise ask: "Enter the number of your default team:"
+
+- **No teams** (empty array):
   > You don't have any teams yet. Default team will be set to none.
   Set `default_team_id` to `null`. Continue.
 
@@ -129,7 +135,7 @@ Replace placeholders. Use `null` (no quotes) for `default_team_id` if no team.
 ### Step 6: Done
 
 > **Setup complete!**
-> - User: {name} ({email})
+> - User: {first_name} {last_name} ({email})
 > - Team: {team_name} (ID: {team_id})
 > - Config: ~/.config/resultkit/config.json
 >
@@ -167,7 +173,7 @@ Confirm the change.
 
 #### Option 2: Update default team
 
-Use current token → `GET /users/me` → get user ID → `GET /users/{id}/teams` → display table (same as Step 4). Mark current default with `(current)`.
+Use current token → call `GET /teams` → display table (same as Step 4). Mark current default with `(current)`.
 
 On selection:
 

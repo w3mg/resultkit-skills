@@ -17,15 +17,16 @@ No query parameters. No request body.
 ```json
 {
   "id": 42,
-  "name": "Scott Levy",
+  "login": "scottlevy",
   "email": "scott@example.com",
+  "first_name": "Scott",
+  "last_name": "Levy",
   "api_token": "rm_abc123..."
 }
 ```
 
 **Fields used by setup**:
-- `id` → passed to `GET /users/{id}/teams`
-- `name` → displayed in setup confirmation
+- `first_name`, `last_name` → displayed in setup confirmation
 - `email` → displayed in setup confirmation
 
 ## Response — 401 Unauthorized
