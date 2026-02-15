@@ -69,7 +69,7 @@ MUST NOT be hardcoded. Structure:
 {
   "api_token": "<bearer-token>",
   "default_team_id": "<int>",
-  "api_base": "https://app.resultmaps.com/api/v2"
+  "api_base": "https://api.resultmaps.com/api/v2"
 }
 ```
 
@@ -113,7 +113,7 @@ Show what matters: names, statuses, IDs, dates.
 
 ## API Constraints
 
-- **Base URL**: `https://app.resultmaps.com/api/v2` (configurable via
+- **Base URL**: `https://api.resultmaps.com/api/v2` (configurable via
   `api_base` in config).
 - **Auth**: Bearer token in `Authorization` header.
 - **Pagination**: All list endpoints return

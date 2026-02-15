@@ -94,7 +94,7 @@ written.
 - [x] T009 [US1] Implement config writing in `skills/rkit/setup/SKILL.md`:
   - Create `~/.config/resultkit/` directory if needed (FR-007)
   - Write `config.json` with `api_token`, `default_team_id`, `api_base`
-  - Default `api_base` to `https://app.resultmaps.com/api/v2` (FR-004)
+  - Default `api_base` to `https://api.resultmaps.com/api/v2` (FR-004)
   - Confirm before writing (Constitution IV: Confirm Writes)
 - [x] T010 [US1] Implement confirmation output in `skills/rkit/setup/SKILL.md`:
   - Display: user name, email, chosen team name, team ID

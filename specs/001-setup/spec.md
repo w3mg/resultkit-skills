@@ -102,7 +102,7 @@ with no existing config. User should be offered the env var token.
   team ID, and API base URL.
 - **FR-003**: Token MUST be verified against the API before saving.
 - **FR-004**: API base URL MUST default to
-  `https://app.resultmaps.com/api/v2` if not specified by the user.
+  `https://api.resultmaps.com/api/v2` if not specified by the user.
 - **FR-005**: Existing config MUST NOT be overwritten without user
   confirmation.
 - **FR-006**: Token MUST be displayed in masked form when showing

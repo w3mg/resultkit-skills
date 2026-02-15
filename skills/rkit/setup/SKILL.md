@@ -53,7 +53,7 @@ Call `GET /users/me` with the token. Use curl directly (config doesn't exist yet
 RESPONSE=$(curl -s -w '\n%{http_code}' \
   -H "Authorization: Bearer TOKEN_HERE" \
   -H "Accept: application/json" \
-  "https://app.resultmaps.com/api/v2/users/me")
+  "https://api.resultmaps.com/api/v2/users/me")
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 RESP_BODY=$(echo "$RESPONSE" | sed '$d')
 echo "Status: $HTTP_CODE"
@@ -78,7 +78,7 @@ Call `GET /teams` (returns authenticated user's teams as a flat array — no pag
 RESPONSE=$(curl -s -w '\n%{http_code}' \
   -H "Authorization: Bearer TOKEN_HERE" \
   -H "Accept: application/json" \
-  "https://app.resultmaps.com/api/v2/teams")
+  "https://api.resultmaps.com/api/v2/teams")
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 RESP_BODY=$(echo "$RESPONSE" | sed '$d')
 echo "Status: $HTTP_CODE"
@@ -113,7 +113,7 @@ Present summary for confirmation:
 > **Ready to save configuration:**
 > - Token: {first 3}...{last 4}
 > - Default team: {team_name} (ID: {team_id})
-> - API base: https://app.resultmaps.com/api/v2
+> - API base: https://api.resultmaps.com/api/v2
 >
 > Save this configuration?
 
@@ -125,7 +125,7 @@ cat > "$HOME/.config/resultkit/config.json" << 'JSONEOF'
 {
   "api_token": "ACTUAL_TOKEN",
   "default_team_id": ACTUAL_TEAM_ID,
-  "api_base": "https://app.resultmaps.com/api/v2"
+  "api_base": "https://api.resultmaps.com/api/v2"
 }
 JSONEOF
 ```
@@ -186,7 +186,7 @@ Confirm the change.
 
 #### Option 3: Update API base URL
 
-Ask for new URL. Default: `https://app.resultmaps.com/api/v2`.
+Ask for new URL. Default: `https://api.resultmaps.com/api/v2`.
 
 ```bash
 CONFIG_FILE="$HOME/.config/resultkit/config.json"

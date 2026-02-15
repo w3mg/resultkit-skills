@@ -44,7 +44,7 @@ Run `/rkit:setup` again. It detects the existing config and shows:
 Current config:
   Token: rm_...xxxx
   Team: Engineering (ID: 1)
-  API: https://app.resultmaps.com/api/v2
+  API: https://api.resultmaps.com/api/v2
 
 What would you like to update?
 ```
