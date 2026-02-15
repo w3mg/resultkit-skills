@@ -23,7 +23,7 @@ Auth and defaults live in `~/.config/resultkit/config.json`. Never hardcoded. St
 {
   "api_token": "<bearer-token>",
   "default_team_id": "<int>",
-  "api_base": "https://api.resultmaps.com"
+  "api_base": "https://app.resultmaps.com/api/v2"
 }
 ```
 

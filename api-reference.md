@@ -1,6 +1,6 @@
 # ResultMaps V2 API Reference
 
-Base URL: `https://api.resultmaps.com`
+Base URL: `https://app.resultmaps.com/api/v2`
 Auth: Bearer token in `Authorization` header or `token` query param.
 
 ## Items

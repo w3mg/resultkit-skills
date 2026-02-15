@@ -28,7 +28,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
 fi
 
 API_TOKEN=$(jq -r '.api_token // empty' "$CONFIG_FILE" 2>/dev/null)
-API_BASE=$(jq -r '.api_base // "https://api.resultmaps.com"' "$CONFIG_FILE" 2>/dev/null)
+API_BASE=$(jq -r '.api_base // "https://app.resultmaps.com/api/v2"' "$CONFIG_FILE" 2>/dev/null)
 
 if [ -z "$API_TOKEN" ]; then
   echo '{"status":0,"error":"NO_TOKEN"}'

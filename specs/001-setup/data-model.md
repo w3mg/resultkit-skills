@@ -13,7 +13,7 @@ Persisted to `~/.config/resultkit/config.json`.
 |-------|------|----------|---------|-------------|
 | api_token | string | yes | — | Bearer token for API auth |
 | default_team_id | integer | yes | — | User's chosen default team |
-| api_base | string | no | `https://api.resultmaps.com` | API base URL |
+| api_base | string | no | `https://app.resultmaps.com/api/v2` | API base URL |
 
 **Validation rules**:
 - `api_token` MUST be non-empty and pass `GET /users/me` verification.
