@@ -1,84 +1,90 @@
 # Feature Specification: rkit:board
 
-**Created**: 2026-02-14
+**Created**: 2026-02-15
 **Status**: Draft
 **Skill**: `/rkit:board`
 
 ## Overview
 
-View and manage the team weekly board. The board has four columns: **next**, **done**, **issues**, **parked**. This skill shows the board state and moves items between columns.
+View an item's immediate children as a board. Each child becomes a column header, and that child's children are the items listed under it. This gives a board-style view of any item's two-level hierarchy.
+
+Example: Item 10 "Q1 Goals" has children "Engineering", "Sales", "Marketing". Running `/rkit:board 10` shows three columns — Engineering, Sales, Marketing — with each column listing its own children.
 
 ## User Scenarios
 
-### US1 — View Board (P1)
+### US1 — View Item as Board (P1)
 
-User wants to see their team's weekly board.
+User wants to see an item's children rendered as a board.
 
 **Flow**:
-1. Read `default_team_id` from config
-2. Call `GET /teams/{id}/items/next`, `GET /teams/{id}/items/done`, `GET /teams/{id}/items/issues`, `GET /teams/{id}/items/parked` (in parallel if possible, or sequentially)
-3. Display as four grouped sections with item name, owner, ID
+1. Call `GET /items/{id}/children` to get the item's immediate children (these are the columns)
+2. For each child, call `GET /items/{child_id}/children` to get that column's items
+3. Display as columns: each child's name is the column header, its children are the items listed below
 
-**Invocation**: `/rkit:board` (no args)
+**Invocation**: `/rkit:board {id}`
 
 **Acceptance**:
-- **Given** team has items in next and issues columns, **When** `/rkit:board`, **Then** all columns shown with items grouped
-- **Given** a column is empty, **Then** show column header with "(empty)"
+- **Given** item 10 has children "Engineering", "Sales", "Marketing", each with their own children, **When** `/rkit:board 10`, **Then** three columns shown with items grouped under each
+- **Given** a child has no children of its own, **Then** show column header with "(empty)"
+- **Given** item has no children, **Then** show "No children found for item {id}."
 
 ### US2 — View Single Column (P2)
 
-User wants to see just one column.
+User wants to see just one column (one child and its children).
 
-**Invocation**:
-- `/rkit:board next`
-- `/rkit:board done`
-- `/rkit:board issues`
-- `/rkit:board parked`
+**Invocation**: `/rkit:board {id} {column_name_or_child_id}`
 
 **Acceptance**:
-- **Given** `/rkit:board issues`, **Then** only issues column items are shown
+- **Given** `/rkit:board 10 Engineering`, **Then** only the Engineering column is shown with its items
+- **Given** `/rkit:board 10 42`, **Then** shows child item 42's children as a single column
 
 ### US3 — Move Item Between Columns (P2)
 
-User wants to move an item to a different column.
+User wants to move an item from one column to another (re-parent it).
 
 **Flow**:
-1. Call `PUT /teams/{id}/items/{column}/{item_id}` where column is next/done/issues/parked
-2. Confirm the move
+1. Validate the item exists and the target column (parent) exists
+2. Describe the move and confirm with user
+3. Call `PUT /items/{item_id}/move` with `{ "parent_id": {new_parent_id} }` to re-parent
+4. Show confirmation
 
-**Invocation**:
-- `/rkit:board move 42 done` → move item 42 to done
-- `/rkit:board move 42 issues` → move item 42 to issues
+**Invocation**: `/rkit:board move {item_id} {target_column_id}`
 
 **Acceptance**:
-- **Given** item 42 is in next column, **When** `/rkit:board move 42 done`, **Then** item moves to done and confirmation shown
-- **Given** item 42 is not on the board, **When** move attempted, **Then** appropriate error
+- **Given** item 55 is under "Engineering" (child of item 10), **When** `/rkit:board move 55 43` (where 43 is "Sales"), **Then** item 55 moves under Sales
+- **Given** item 55 is already under target column, **Then** warn and skip
 
-### US4 — Add/Remove Item from Board (P3)
+### US4 — Add Item to Column (P3)
 
-**Flow (add)**:
-1. Call `PUT /teams/{id}/items/{item_id}` to add item to board
-2. Confirm addition
+User wants to add a new item under a specific column.
 
-**Flow (remove)**:
-1. Call `DELETE /teams/{id}/items/{item_id}` to remove from weekly
-2. Confirm removal (item still exists)
+**Flow**:
+1. If column not specified, list the columns and prompt user to pick
+2. Describe the action and confirm with user
+3. Call `POST /items` with `{ "name": "...", "parent_id": {column_id} }` to create under that column
+4. Show confirmation with new item ID
 
 **Invocation**:
-- `/rkit:board add 42`
-- `/rkit:board remove 42`
+- `/rkit:board add {board_id} "item name"` → prompt for column
+- `/rkit:board add {board_id} {column_id} "item name"` → add directly
+
+**Acceptance**:
+- **Given** `/rkit:board add 10 42 "New task"`, **Then** new item created under column 42, confirmation shown with ID
 
 ## Requirements
 
-- **FR-001**: Default invocation MUST show all four columns
-- **FR-002**: Column names MUST map to API paths: next, done, issues, parked
-- **FR-003**: Move MUST use PUT on the target column endpoint
-- **FR-004**: MUST use `default_team_id` unless team is specified as argument
-- **FR-005**: Framework terminology in output (see constitution principle V)
+- **FR-001**: Board view MUST show item's children as columns and grandchildren as items
+- **FR-002**: Each column header MUST show the child item's name and ID
+- **FR-003**: Each item in a column MUST show name, ID, status, and due date
+- **FR-004**: Move MUST use `PUT /items/{id}/move` with `parent_id`
+- **FR-005**: MUST use config for auth (token from `~/.config/resultkit/config.json`)
+- **FR-006**: Pagination MUST use `per_page=50` for children lists; show "(N more...)" if more exist
+- **FR-007**: Adding without a column MUST prompt user to choose from available columns
 
 ## Edge Cases
 
-- No default team → list teams and ask
-- Different team → `/rkit:board --team 7` override
-- Board is completely empty → show all four column headers with "(empty)"
-- Item not owned by user → still show it (board is team-level)
+- Item has no children → "No children found for item {id}."
+- Column (child) has no children → show column header with "(empty)"
+- Item not found → "Item {id} not found (404)."
+- No config → prompt `/rkit:setup`
+- Column has >50 items → show first 50 with "(N more...)" count

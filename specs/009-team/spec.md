@@ -4,9 +4,13 @@
 **Status**: Draft
 **Skill**: `/rkit:team`
 
+## TODO
+
+**RE-EVALUATE after 003-board and 004-weekly are complete.** References to "board" should distinguish between "board" (item children as columns) and "team weekly" (team weekly columns via `/rkit:weekly`).
+
 ## Overview
 
-List user's teams and switch the default team stored in config. Many rkit skills (board, status, add) need a team context — this skill manages which team is active.
+List user's teams and switch the default team stored in config. Many rkit skills (weekly, board, status, add) need a team context — this skill manages which team is active.
 
 ## User Scenarios
 
