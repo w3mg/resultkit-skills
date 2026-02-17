@@ -20,9 +20,8 @@ User wants to see all their teams.
 
 **Flow**:
 1. Read config for token
-2. Call `GET /users/me` to get user ID
-3. Call `GET /users/{id}/teams` to list teams
-4. Display table: ID, name, framework, and mark which is the current default
+2. Call `GET /teams` (returns authenticated user's teams as a flat array)
+3. Display table: ID, name, framework, and mark which is the current default
 
 **Acceptance**:
 - **Given** user has 3 teams, **When** `/rkit:team` is invoked with no args, **Then** all 3 teams are displayed with the default marked

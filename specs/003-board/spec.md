@@ -16,7 +16,9 @@ Example: Item 10 "Q1 Goals" has children "Engineering", "Sales", "Marketing". Ru
 
 - Q: Should there be a max number of columns displayed? → A: Cap at 10 columns; show "(N more columns not shown)" if exceeded.
 - Q: Does `/rkit:board` always require an explicit item ID? → A: Support `default_board_id` in config with an "ask to confirm" option. Always confirm before writes.
-- Q: What if two children have the same name when filtering by column name? → A: List matching children with IDs and ask user to pick. If user is an editor, suggest renaming one to avoid future ambiguity.
+- Q: What if two children have the same name when filtering by column name? → A: List matching children with IDs and ask user to pick. Suggest renaming one to avoid future ambiguity.
+- Q: Should `/rkit:board` support removing/archiving items from a column? → A: Support remove (option B). Board gets `/rkit:board remove {item_id}` calling the API directly (same pattern as move). Archive is out of scope — deferred to future `rkit:archive` skill.
+- Q: What should remove do with the item? → A: Prompt the user with options: (1) Remove from all projects (orphan via API), and if so, offer to add to their day plan; (2) Move to another project; (3) Move to a one-on-one or other source. The orphan mechanic is hidden behind the API — user sees "remove from all projects", not "orphan".
 
 ## User Scenarios
 
@@ -81,6 +83,28 @@ User wants to add a new item under a specific column.
 **Acceptance**:
 - **Given** `/rkit:board add 10 42 "New task"`, **Then** new item created under column 42, confirmation shown with ID
 
+### US5 — Remove Item from Column (P2)
+
+User wants to remove an item from a board column.
+
+**Flow**:
+1. Resolve board ID via Board ID Resolution (default_board_id, "ask", or prompt). Validate the item exists and its parent is a column on the resolved board
+2. Prompt user with options:
+   - **Remove from all projects** — orphan the item (remove parent). If chosen, ask if they want it added to their day plan.
+   - **Move to another project** — prompt for target project/parent ID
+   - **Move to a one-on-one or other source** — prompt for target parent ID
+3. Confirm the action with the user
+4. Execute: orphan via API (`PUT /items/{id}/move` with no parent) or re-parent to chosen target
+5. Show confirmation
+
+**Invocation**: `/rkit:board remove {item_id}` (board context resolved via Board ID Resolution — default_board_id or prompt)
+
+**Acceptance**:
+- **Given** `/rkit:board remove 55`, **Then** user is prompted with removal options
+- **Given** user picks "remove from all projects", **Then** item is orphaned and user is asked if they want it on their day plan
+- **Given** user picks "move to another project", **Then** prompted for target, item is re-parented
+- **Given** item is not under any column on the current board, **Then** warn "Item {id} is not on this board."
+
 ## Requirements
 
 - **FR-001**: Board view MUST show item's children as columns and grandchildren as items
@@ -93,6 +117,9 @@ User wants to add a new item under a specific column.
 - **FR-006**: Pagination MUST use `per_page=50` for children lists; show "(N more...)" if more exist
 - **FR-007**: Adding without a column MUST prompt user to choose from available columns
 - **FR-008**: Board MUST cap at 10 columns; if item has more children, show first 10 and "(N more columns not shown)"
+- **FR-011**: Remove MUST prompt user with options: remove from all projects (orphan), move to another project, or move to a one-on-one/other source
+- **FR-012**: If user orphans an item, MUST offer to add it to their day plan
+- **FR-013**: Orphan mechanic MUST be hidden from user — present as "remove from all projects", not "orphan"
 
 ## Edge Cases
 
@@ -101,4 +128,5 @@ User wants to add a new item under a specific column.
 - Item not found → "Item {id} not found (404)."
 - No config → prompt `/rkit:setup`
 - Column has >50 items → show first 50 with "(N more...)" count
-- Duplicate column names → list matches with IDs, ask user to pick; if user is an editor, suggest renaming one
+- Column name/ID not found → "No column matching '{input}' on board {id}." with list of available columns
+- Duplicate column names → list matches with IDs, ask user to pick; suggest renaming one to avoid future ambiguity

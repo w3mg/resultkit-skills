@@ -4,7 +4,7 @@
 
 ## Active
 
-- [ ] **003-board**: `/speckit.clarify` in progress. 3 of 5 questions answered. **Next step**: Answer Q4 — should board support removing/archiving items from a column, or defer to `rkit:item`? Options were: (A) out of scope, (B) add remove flow (re-parent out of column), (C) add both remove and archive. Then continue with remaining clarification questions, then plan → tasks → implement.
+- [ ] **003-board**: `/speckit.clarify` complete (5/5). Spec updated with US5 (remove). **Next step**: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`.
 - [ ] **004-weekly**: Full spec + plan + research ready in `specs/004-weekly/`. Needs tasks → implement after 003 is done
 
 ## Clarifications Completed (003-board, session 2026-02-16)
@@ -12,6 +12,8 @@
 1. Max columns: Cap at 10; show "(N more columns not shown)" if exceeded
 2. Default board ID: Support `default_board_id` in config with "ask to confirm" option. Always confirm before writes. If not set, prompt user.
 3. Duplicate column names: List matches with IDs, ask user to pick. If user is an editor, suggest renaming one.
+4. Remove/archive: Board supports remove (re-parent/orphan). Archive deferred to future `rkit:archive` skill.
+5. Remove flow: Prompt user — remove from all projects (orphan + offer day plan), move to another project, or move to a one-on-one/other source. Orphan mechanic hidden behind friendly language.
 
 ## Pending Re-evaluation
 

@@ -34,6 +34,7 @@ All skills use the `rkit:` prefix: `/rkit:setup`, `/rkit:today`, `/rkit:board`, 
 - JSON file at `~/.config/resultkit/config.json` (001-setup)
 - Bash 5.x (api.sh), Markdown + Claude Code runtime + curl, jq, shared `scripts/api.sh` (002-today)
 - N/A — reads from ResultMaps API; config at `~/.config/resultkit/config.json` (002-today)
+- `~/.config/resultkit/config.json` (auth + `default_board_id`) (003-board)
 
 ## Recent Changes
 - 001-setup: Added Bash 5.x (api.sh, helper scripts), Markdown + Claude Code runtime, curl, jq

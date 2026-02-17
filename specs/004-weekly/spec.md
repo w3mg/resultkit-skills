@@ -1,8 +1,8 @@
 # Feature Specification: rkit:weekly
 
 **Created**: 2026-02-14
-**Revised**: 2026-02-15
-**Status**: Draft
+**Revised**: 2026-02-16
+**Status**: Implemented
 **Skill**: `/rkit:weekly` (synonym: `/rkit:level10`)
 
 ## Overview
@@ -20,6 +20,12 @@ View and manage the team weekly. The team weekly has four columns: **next**, **d
 - Q: When moving an item to the column it's already in, what should happen? → A: Detect and warn "Item {id} is already in {column}" — skip the API call.
 - Q: Adding an item already on the weekly? → A: Warn "Item {id} is already on the weekly in {column}" and ask if user wants to move it.
 
+### Session 2026-02-16
+
+- Discovery: `GET /teams/{id}/items` returns ALL team items (6,041 for team 345) regardless of status. This endpoint is misleading for board views — it includes archived, done, parked, and active items in one undifferentiated list.
+- Decision: The weekly skill MUST use the status-specific endpoints (`/items/next`, `/items/done`, `/items/issues`, `/items/parked`) instead of the generic `/teams/{id}/items`. Each returns a focused, meaningful list with clear context.
+- Dropped: "Ask user if they want truncated descriptions" step — keeps output concise by default. Descriptions available via `/rkit:board` or direct item fetch.
+
 ## User Scenarios
 
 ### US1 — View Team Weekly (P1)
@@ -30,9 +36,9 @@ User wants to see their team's weekly.
 1. Read `default_team_id` from config
 2. Fetch team detail (`GET /teams/{id}`) to obtain the `framework` field for column header terminology
 3. Call `GET /teams/{id}/items/next?per_page=50`, `GET /teams/{id}/items/done?per_page=50`, `GET /teams/{id}/items/issues?per_page=50`, `GET /teams/{id}/items/parked?per_page=50` (in parallel if possible, or sequentially)
-4. Ask user if they want truncated descriptions included
-5. Display as four grouped sections with framework-appropriate column headers; each item shows name, owner, ID, due date (and truncated description if requested)
-6. If a column has more than 50 items, append "(N more...)" after the listed items
+4. Display as four grouped sections with framework-appropriate column headers; each item shows name, owner, ID, due date
+5. Each column header shows item count from `meta.total`
+6. If a column has more than 50 items, show "Showing 50 of {total} — more items exist" after the table
 
 **Invocation**: `/rkit:weekly` (no args)
 

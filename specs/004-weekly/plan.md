@@ -1,7 +1,8 @@
 # Implementation Plan: rkit:weekly
 
-**Branch**: `004-weekly` | **Date**: 2026-02-15 | **Spec**: [spec.md](./spec.md)
+**Branch**: `003-board` | **Date**: 2026-02-16 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/004-weekly/spec.md`
+**Status**: Implemented — SKILL.md created and installed
 
 ## Summary
 
@@ -54,6 +55,16 @@ skills/rkit/weekly/
 **Structure Decision**: Same pattern as `rkit:setup` and `rkit:today` — SKILL.md
 with references directory. The install script will create `rkit:weekly`. A
 separate duplicate at install creates the `rkit:level10` synonym.
+
+## Implementation Notes
+
+### 2026-02-16
+
+- SKILL.md created at `skills/rkit/weekly/SKILL.md` with all 5 flows (view weekly, view single column, move, add, remove)
+- Installed to `~/.claude/skills/rkit:weekly` via `scripts/install.sh`
+- Key design decision: Use status-specific endpoints (`/items/next`, `/items/done`, `/items/issues`, `/items/parked`) NOT the generic `/teams/{id}/items` which returns all 6,041+ items undifferentiated
+- Dropped "ask about descriptions" interactive step from US1 — keeps output concise by default
+- Level 10 synonym (`rkit:level10`) not yet installed — requires duplicate directory in install script
 
 ## Complexity Tracking
 
