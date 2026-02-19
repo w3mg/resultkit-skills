@@ -4,9 +4,13 @@
 **Status**: Draft
 **Skill**: `/rkit:team`
 
+## TODO
+
+**RE-EVALUATE after 003-board and 004-weekly are complete.** References to "board" should distinguish between "board" (item children as columns) and "team weekly" (team weekly columns via `/rkit:weekly`).
+
 ## Overview
 
-List user's teams and switch the default team stored in config. Many rkit skills (board, status, add) need a team context — this skill manages which team is active.
+List user's teams and switch the default team stored in config. Many rkit skills (weekly, board, status, add) need a team context — this skill manages which team is active.
 
 ## User Scenarios
 
@@ -16,9 +20,8 @@ User wants to see all their teams.
 
 **Flow**:
 1. Read config for token
-2. Call `GET /users/me` to get user ID
-3. Call `GET /users/{id}/teams` to list teams
-4. Display table: ID, name, framework, and mark which is the current default
+2. Call `GET /teams` (returns authenticated user's teams as a flat array)
+3. Display table: ID, name, framework, and mark which is the current default
 
 **Acceptance**:
 - **Given** user has 3 teams, **When** `/rkit:team` is invoked with no args, **Then** all 3 teams are displayed with the default marked

@@ -1,6 +1,9 @@
 # ResultMaps V2 API Reference
 
+**Source**: https://api.resultmaps.com/api-docs/v1 — refresh from here when endpoints change or docs seem stale.
+
 Base URL: `https://api.resultmaps.com/api/v2`
+Auth: Bearer token in `Authorization` header or `token` query param. Find your token in your profile settings at https://app.resultmaps.com/customize.
 Interactive docs: <https://api.resultmaps.com/api-docs/v2>
 Auth: Bearer token in `Authorization` header or `token` query param.
 

@@ -63,17 +63,15 @@ Plaintext token storage matches existing project patterns.
 profile including name, email, and ID needed for team listing.
 
 **Rationale**: This is the standard identity endpoint. A successful
-200 confirms the token is valid. The returned user ID feeds directly
-into `GET /users/{id}/teams` for team selection.
+200 confirms the token is valid.
 
 ### D5: Team Listing Endpoint
 
-**Decision**: Use `GET /users/{id}/teams` (not `GET /teams`) to list
-only teams the authenticated user belongs to.
+**Decision**: Use `GET /teams` to list the authenticated user's teams.
+Returns a flat array (no pagination), default team first.
 
-**Rationale**: `GET /teams` may return all teams in the organization.
-`GET /users/{id}/teams` scopes to the user's memberships, which is
-the correct set for default team selection.
+**Rationale**: `GET /teams` is scoped to the authenticated user's
+memberships. No user ID parameter needed.
 
 ## No Unresolved Items
 

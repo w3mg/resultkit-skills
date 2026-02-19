@@ -4,6 +4,10 @@
 **Status**: Draft
 **Skill**: `/rkit:add`
 
+## TODO
+
+**RE-EVALUATE after 003-board and 004-weekly are complete.** This spec conflates "board" (item children as columns) with "team weekly" (team weekly columns: next/done/issues/parked). References to "board" and `--board` likely mean "team weekly" and should use `/rkit:weekly` terminology instead.
+
 ## Overview
 
 Quick-capture skill for creating items with minimal friction. Optionally attach the new item to today's plan, a team board, or a meeting in one step.

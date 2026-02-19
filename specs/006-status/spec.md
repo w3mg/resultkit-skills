@@ -4,6 +4,10 @@
 **Status**: Draft
 **Skill**: `/rkit:status`
 
+## TODO
+
+**RE-EVALUATE after 003-board and 004-weekly are complete.** This spec uses "board" when it means "team weekly." All references to "board" should be updated to use correct terminology: "team weekly" = `/rkit:weekly`, "board" = item children as columns via `/rkit:board`.
+
 ## Overview
 
 Aggregate standup-style summary across today's plan and the team board. Answers: "What did I do? What's blocked? What's next?"
