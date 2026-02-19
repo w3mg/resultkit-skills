@@ -32,10 +32,10 @@ Match the user's message against the **Triggers** column. Pick the first matchin
 
 | Triggers | Intent | Tool/Flow |
 |---|---|---|
-| "show my day", "what's on today", "daily plan", "day plan", "what do I have today", "show today", "my plan", "today's items", "what's planned", "show {date}" | View day plan items with completion status | `get_day_plan` |
-| "add to today", "create a task", "new item", "add to my plan", "plan this for", "add to tomorrow", "put on my day", "add a to-do", "create to-do" | Create a new item on a day plan | `create_new_item` |
+| "show my day", "what's on today", "daily plan", "day plan", "what do I have today", "show today", "my plan", "today's items", "what's planned", "show {date}", "prioritizer", "tasks for today" | View day plan items with completion status | `get_day_plan` |
+| "add to today", "create a task", "new item", "add to my plan", "add to plan", "plan this for", "add to tomorrow", "put on my day", "add a to-do", "create to-do" | Create a new item on a day plan | `create_new_item` |
 | "attach to today", "put {id} on today", "add item {id}", "attach {id}", "move {id} to today", "add existing", "put {id} on my plan" | Attach an existing item to a day plan by ID | `attach_existing_item` |
-| "mark done", "check off", "complete", "finish {id}", "done {id}" | Mark a day plan item as complete | `mark_item_complete` |
+| "mark done", "check off", "complete", "finish {id}", "done {id}", "mark done for today", "complete for today" | Mark a day plan item as complete | `mark_item_complete` |
 | "undo {id}", "uncheck", "mark incomplete", "uncomplete" | Undo a completed day plan item | `mark_item_incomplete` |
 | "remove from today", "take off my plan", "remove {id}", "don't need this today", "skip this", "drop from plan", "remove from tomorrow" | Remove an item from a day plan | `remove_from_day_plan` |
 
@@ -44,8 +44,6 @@ Match the user's message against the **Triggers** column. Pick the first matchin
 ## Tool/Flow
 
 ### get_day_plan
-
-**Trigger**: No args, or a date argument like `2026-02-13`
 
 Determine the date path segment:
 - No args → use `today`
@@ -101,8 +99,6 @@ Extract `body.data` array (the items) and `body.meta` (pagination info).
 
 ### mark_item_complete
 
-**Trigger**: `done {id}`, "mark done", "check off", "complete", "finish {id}"
-
 #### Step 1: Confirm
 
 Extract the item ID from args. Display:
@@ -128,8 +124,6 @@ echo "$RESPONSE"
 
 ### mark_item_incomplete
 
-**Trigger**: `undo {id}`, "uncheck", "mark incomplete", "uncomplete"
-
 #### Step 1: Confirm
 
 Extract the item ID from args. Display:
@@ -154,8 +148,6 @@ echo "$RESPONSE"
 ---
 
 ### create_new_item
-
-**Trigger**: `add "text"` or `add text`, "create a task", "new item", "add to my plan"
 
 #### Step 1: Confirm
 
@@ -187,8 +179,6 @@ Escape any double quotes in ITEM_NAME.
 
 ### attach_existing_item
 
-**Trigger**: `attach {id}`, "put {id} on today", "add item {id}", "move {id} to today"
-
 #### Step 1: Confirm
 
 Extract the item ID from args. Display:
@@ -216,8 +206,6 @@ echo "$RESPONSE"
 ---
 
 ### remove_from_day_plan
-
-**Trigger**: `remove {id}`, "remove from today", "take off my plan", "skip this"
 
 #### Step 1: Confirm
 
