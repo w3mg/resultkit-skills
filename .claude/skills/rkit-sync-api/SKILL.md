@@ -24,8 +24,8 @@ Fetch three live sources from ResultMaps, compare against `api-reference.md`, up
 | Source | URL | Purpose |
 |--------|-----|---------|
 | OpenAPI spec | `https://api.resultmaps.com/openapi-v2.json` | Endpoint paths, methods, params, schemas |
-| Glossary | `https://api.resultmaps.com/api-docs/v2/public/glossary.md` | Term mappings, framework terminology, status aliases |
-| User Guide | `https://api.resultmaps.com/api-docs/v2/public/user-guide.md` | Endpoint details, request/response examples, field descriptions |
+| Glossary | `~/projects/resultmaps-api2/docs/v2/api-terminology-glossary.md` | Term mappings, framework terminology, status aliases |
+| User Guide | `~/projects/resultmaps-api2/docs/v2/api-user-guide.md` | Endpoint details, request/response examples, field descriptions |
 
 ## Workflow
 
@@ -33,18 +33,16 @@ Fetch three live sources from ResultMaps, compare against `api-reference.md`, up
 
 ```bash
 bash scripts/fetch-openapi.sh > /tmp/openapi-v2.json
-curl -s https://api.resultmaps.com/api-docs/v2/public/glossary.md > /tmp/rm-glossary.md
-curl -s https://api.resultmaps.com/api-docs/v2/public/user-guide.md > /tmp/rm-user-guide.md
 ```
 
-Verify all three fetched successfully (non-empty, valid content).
+Verify the OpenAPI spec fetched successfully (non-empty, valid content).
 
-### Step 2: Read fetched sources into context
+### Step 2: Read sources into context
 
 Read all three files:
 - `/tmp/openapi-v2.json` — for endpoint diffing
-- `/tmp/rm-glossary.md` — for term mappings and phrase enrichment
-- `/tmp/rm-user-guide.md` — for endpoint detail updates (params, bodies, responses)
+- `~/projects/resultmaps-api2/docs/v2/api-terminology-glossary.md` — for term mappings and phrase enrichment
+- `~/projects/resultmaps-api2/docs/v2/api-user-guide.md` — for endpoint detail updates (params, bodies, responses)
 
 Also read the current `api-reference.md` from the project root.
 
