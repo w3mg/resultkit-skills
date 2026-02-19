@@ -1,5 +1,5 @@
 ---
-name: rkit-sync-api
+name: rkit-sync-api-doc
 description: >
   Sync the ResultKit api-reference.md with the live ResultMaps OpenAPI spec,
   glossary, and user guide, then deploy updates to all rkit skills. Enriches
@@ -12,7 +12,7 @@ description: >
 
 # Sync API Reference
 
-Fetch three live sources from ResultMaps, compare against `api-reference.md`, update the reference doc with endpoint changes and user-phrase enrichment, and deploy to all rkit skills.
+The live OpenAPI spec (`openapi-v2.json`) is the **source of truth** for all endpoints. This skill reconciles `api-reference.md` against the spec, enriches entries with user phrases from the glossary and user guide, and deploys to all rkit skills.
 
 ## Prerequisites
 
@@ -46,19 +46,26 @@ Read all three files:
 
 Also read the current `api-reference.md` from the project root.
 
-### Step 3: Compare endpoints
+### Step 3: Reconcile endpoints (OpenAPI is source of truth)
 
-Run the comparison script to identify new/removed endpoints:
+The live OpenAPI spec is the **single source of truth** for which endpoints exist. Every non-excluded endpoint in the spec MUST appear in `api-reference.md`, and any endpoint documented but absent from the spec MUST be removed.
+
+Run the comparison script:
 
 ```bash
-bash ~/.claude/skills/rkit-sync-api/scripts/compare-endpoints.sh /tmp/openapi-v2.json api-reference.md
+bash ~/.claude/skills/rkit-sync-api-doc/scripts/compare-endpoints.sh /tmp/openapi-v2.json api-reference.md
 ```
 
-This outputs new endpoints, removed endpoints, excluded endpoints, and a summary.
+This outputs:
+- **New in live spec** — endpoints that MUST be added to `api-reference.md`
+- **Removed from live spec** — endpoints that MUST be removed from `api-reference.md`
+- **Excluded** — skipped by project decision (see Excluded Endpoints below)
+
+If there are new or removed endpoints, present the full list to the user before proceeding. Do NOT skip any — every non-excluded endpoint from the spec must be documented.
 
 ### Step 4: Inspect changes from all sources
 
-For each difference found, gather details from all three sources:
+For each new or changed endpoint, gather details from all three sources:
 
 **From OpenAPI spec** (endpoint structure):
 ```bash
@@ -79,7 +86,7 @@ Present all findings to the user as a summary before editing.
 
 ### Step 5: Update api-reference.md
 
-After user confirms changes, edit `api-reference.md` in the project root.
+After user confirms changes, edit `api-reference.md` in the project root. The OpenAPI spec dictates the endpoint list — add all new endpoints and remove any that no longer exist in the spec (except excluded ones).
 
 #### Table format
 
