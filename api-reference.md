@@ -23,12 +23,12 @@ Endpoints that support `q` are noted below.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/items` | List authenticated user's items (params: page, per_page, q, status, team_id) | "show my tasks", "list items", "what's on my plate", "my to-dos" | — |
-| POST | `/items` | Create item (body: name*, description, due, status, on_weekly, team_id, parent_id, context) | "add task", "create item", "new to-do", "add action item" | `/items/{id}` |
+| GET | `/items` | List authenticated user's items (params: page, per_page, q, status, team_id, include_archived) | "show my tasks", "list items", "what's on my plate", "my to-dos" | — |
+| POST | `/items` | Create item (body: name*, type, description, due, status, on_weekly, team_id, parent_id, context) | "add task", "create item", "new to-do", "add action item" | `/items/{id}` |
 | GET | `/items/{id}` | Get item detail (includes first-level children) | "show item", "item details", "open task", "what's in item X" | `/items/{id}` |
 | PATCH | `/items/{id}` | Update item (body: name, description, due, status, on_weekly) | "update item", "change status", "rename task", "set due date" | `/items/{id}` |
 | DELETE | `/items/{id}` | Archive item (soft delete, sets status=archived) | "archive item", "delete task", "remove item", "soft delete" | — |
-| GET | `/items/{id}/children` | List child items (params: page, per_page, q) | "show sub-tasks", "list children", "nested items", "what's under this" | `/items/{id}` |
+| GET | `/items/{id}/children` | List child items as nested tree (params: page, per_page, q, depth) | "show sub-tasks", "list children", "nested items", "what's under this" | `/items/{id}` |
 | PUT | `/items/{id}/move` | Reposition item in tree (body: parent_id, left_id, right_id) | "move item", "reparent", "nest under", "reorder" | `/items/{id}` |
 
 Item fields: `id`, `name`, `description`, `due`, `status`, `on_weekly`,
@@ -36,6 +36,8 @@ Item fields: `id`, `name`, `description`, `due`, `status`, `on_weekly`,
 `parent_id`, `created_at`, `updated_at`.
 
 ItemDetail: Item fields + `children` (Item[]).
+
+Children `depth` param: integer 1–20 (default 2). Controls levels of nested descendants. At max depth, `children` is `[]`. Pagination applies to top-level children only.
 
 Move body fields: `parent_id` (integer or null — move under parent or to root), `left_id` (integer — place after sibling), `right_id` (integer — place before sibling). At least one required. If both `left_id` and `right_id` given, `left_id` takes precedence.
 
@@ -90,7 +92,7 @@ TeamMember: `id`, `team` (TeamSimple), `user` (UserSimple), `role` ("member" | "
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/items` | All team items (params: page, per_page, q, all) | "show weekly", "team board", "weekly board", "L10 board" | `/teams/{id}` |
+| GET | `/teams/{id}/items` | All team items (params: page, per_page, q, all, include_archived) | "show weekly", "team board", "weekly board", "L10 board" | `/teams/{id}` |
 | POST | `/teams/{id}/items` | Create team item (on_weekly=true) | "add to weekly", "new team task", "create on board" | `/items/{item_id}` |
 | PUT | `/teams/{id}/items/{item_id}` | Add item to board (sets on_weekly=true) | "put on weekly", "add to board", "show on weekly" | `/items/{item_id}` |
 | DELETE | `/teams/{id}/items/{item_id}` | Remove from weekly (sets on_weekly=false, keeps item) | "remove from weekly", "take off board", "hide from weekly" | — |
@@ -100,7 +102,7 @@ TeamMember: `id`, `team` (TeamSimple), `user` (UserSimple), `role` ("member" | "
 | PUT | `/teams/{id}/items/done/{item_id}` | Add to board + set status=done | "mark done", "complete", "finish item" | `/items/{item_id}` |
 | GET | `/teams/{id}/items/issues` | Items with status=blocked (params: page, per_page, q) | "show issues", "blockers", "stuck items", "IDS (EOS)" | `/teams/{id}` |
 | PUT | `/teams/{id}/items/issues/{item_id}` | Add to board + set status=blocked | "flag as blocked", "raise issue", "mark stuck" | `/items/{item_id}` |
-| GET | `/teams/{id}/items/parked` | Items with status=parked (params: page, per_page, q) | "show parked", "parking lot", "on hold", "deprioritized" | `/teams/{id}` |
+| GET | `/teams/{id}/items/parked` | Items with status=parked (params: page, per_page, q, include_archived) | "show parked", "parking lot", "on hold", "deprioritized" | `/teams/{id}` |
 | PUT | `/teams/{id}/items/parked/{item_id}` | Add to board + set status=parked | "park item", "put on hold", "deprioritize" | `/items/{item_id}` |
 
 The `all` param (boolean, default false) shows all team members' items when true; otherwise only current user's.
@@ -109,7 +111,7 @@ The `all` param (boolean, default false) shows all team members' items when true
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/projects` | List active projects (params: page, per_page, q, all) | "show projects", "team projects", "rocks (EOS)", "execution plan" | `/teams/{id}` |
+| GET | `/teams/{id}/projects` | List active projects (params: page, per_page, q, include_archived) | "show projects", "team projects", "rocks (EOS)", "execution plan" | `/teams/{id}` |
 | POST | `/teams/{id}/projects` | Create project in team (body: name*, description, due, status, on_weekly, team_id, parent_id, context) | "create project", "new project on team", "add rock" | `/items/{project_id}` |
 | PUT | `/teams/{id}/projects/{project_id}` | Convert item to team project (sets type=TodoList, assigns to team). Idempotent. | "convert to project", "promote to project", "make it a project" | `/items/{project_id}` |
 | PATCH | `/teams/{id}/projects/{project_id}` | Update project (body: name, description, due, status, on_weekly) | "update project", "rename project", "change project status" | `/items/{project_id}` |
