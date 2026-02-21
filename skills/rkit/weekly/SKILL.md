@@ -22,14 +22,17 @@ allowed-tools: Bash, Read, AskUserQuestion
 
 ## Framework Terminology
 
-Fetch the team's `framework` field from `GET /teams/{team_id}`. Map column headers:
+Fetch the team's `framework` field from `GET /teams/{team_id}`. Map the board name and column headers:
 
-| Column (API) | Default / null | EOS | OKR | 4DX | V2MOM | SRT |
+| | Default / null | EOS | OKR | 4DX | V2MOM | SRT |
 |-------------|----------------|-----|-----|-----|-------|-----|
+| **Board name** | Weekly | Level 10 | Weekly | Weekly | Weekly | Weekly |
 | next | Next | To-Do | Next | WIG Actions | Next | Next |
 | done | Done | Done | Done | Done | Done | Done |
 | issues | Issues | Issues | Blockers | Blockers | Obstacles | Issues |
 | parked | Parked | Parked | Deferred | Parked | Parked | Parked |
+
+**Always use the framework-mapped board name in all user-facing output and messages.** For EOS teams, say "Level 10" — never "weekly board" or "team weekly."
 
 ## Argument Parsing
 
@@ -106,7 +109,7 @@ Use the team's `framework` field to look up column headers from the Framework Te
 Display format:
 
 ```
-Team Weekly: {team_name} (ID: {team_id}) — Framework: {framework or "Default"}
+{board_name}: {team_name} (ID: {team_id})
 
 ## {Next Header} ({next_total} items)
 
@@ -191,7 +194,7 @@ Map the item's `status` to a column:
 
 If the item's current column matches the target → "Item {item_id} is already in {column}." and stop.
 
-If the item is not on the weekly (`on_weekly` is false) → "Item {item_id} is not on the weekly. Use `add` to put it on the board first."
+If the item is not on the {board_name} (`on_weekly` is false) → "Item {item_id} is not on the {board_name}. Use `add` to put it on first."
 
 ### Step 2: Confirm and execute
 
@@ -228,7 +231,7 @@ echo "$RESPONSE"
 ```
 
 - If 404 → "Item {item_id} not found."
-- If `on_weekly` is true → "Item **{item_name}** (ID: {item_id}) is already on the weekly in **{current_column}**. Move it instead?" If user says yes, switch to Move flow.
+- If `on_weekly` is true → "Item **{item_name}** (ID: {item_id}) is already on the {board_name} in **{current_column}**. Move it instead?" If user says yes, switch to Move flow.
 
 ### Step 2: Determine column
 
@@ -245,7 +248,7 @@ echo "$RESPONSE"
 ### Step 3: Confirm and execute
 
 Resolve team ID. Describe:
-> Add **{item_name}** (ID: {item_id}) to the weekly in **{column}**?
+> Add **{item_name}** (ID: {item_id}) to the {board_name} in **{column}**?
 
 Wait for confirmation. Then:
 
@@ -254,6 +257,8 @@ API_SH="<api.sh path from Current State>"
 RESPONSE=$("$API_SH" PUT "/teams/TEAM_ID/items/COLUMN/ITEM_ID")
 echo "$RESPONSE"
 ```
+
+This single call adds the item to the team board (`on_weekly=true`) and sets its status in one step.
 
 ### Step 4: Handle response
 
@@ -277,12 +282,12 @@ echo "$RESPONSE"
 ```
 
 - If 404 → "Item {item_id} not found."
-- If `on_weekly` is false → "Item {item_id} is not on the weekly."
+- If `on_weekly` is false → "Item {item_id} is not on the {board_name}."
 
 ### Step 2: Confirm and execute
 
 Resolve team ID. Describe:
-> Remove **{item_name}** (ID: {item_id}) from the weekly? (Item will still exist — only removed from the board.)
+> Remove **{item_name}** (ID: {item_id}) from the {board_name}? (Item will still exist — only removed from the {board_name}.)
 
 Wait for confirmation. Then:
 
@@ -294,7 +299,7 @@ echo "$RESPONSE"
 
 ### Step 3: Handle response
 
-- **Status 200**: "Removed **{item_name}** (ID: {item_id}) from the weekly."
+- **Status 200**: "Removed **{item_name}** (ID: {item_id}) from the {board_name}."
 - **Error** → use Error Handling above
 
 ---
@@ -304,9 +309,9 @@ echo "$RESPONSE"
 - **No config** → "Config not found. Run `/rkit:setup` first."
 - **api.sh not found** → "api.sh not found. Run `scripts/install.sh` to install rkit skills."
 - **All columns empty** → show all four column headers with "(empty)"
-- **Item not on weekly (move)** → "Item {id} is not on the weekly. Use `add` to put it on the board first."
+- **Item not on {board_name} (move)** → "Item {id} is not on the {board_name}. Use `add` to put it on first."
 - **Item already in target column (move)** → warn and skip
-- **Item already on weekly (add)** → warn and offer to move instead
+- **Item already on {board_name} (add)** → warn and offer to move instead
 - **Column has >50 items** → show first 50 with "Showing 50 of {total} — more items exist"
 - **Invalid column name** → "Invalid column '{input}'. Use: next, done, issues, or parked."
 - **Team not found (--team override)** → "Team {id} not found (404)."

@@ -105,6 +105,7 @@ TeamMember: `id`, `team` (TeamSimple), `user` (UserSimple), `role` ("member" | "
 
 The `all` param (boolean, default false) shows all team members' items when true; otherwise only current user's.
 
+
 ### Team Projects
 
 | Method | Path | Description | User Phrases | Web URL |
@@ -217,7 +218,7 @@ Delete responses return `204 No Content` with empty body.
 | 1:1, 1x1, one-on-one | Meeting (type=one_on_one) | `/meetings` |
 | project meeting | Meeting (type=project) | `/meetings` |
 | day plan, daily plan, prioritizer, tasks for today, my plan | Day Plan | `/day-plans/today`, `/day-plans/{date}` |
-| weekly, team weekly, weekly board | Team Items (weekly board) | `/teams/{id}/items` |
+| weekly, team weekly, weekly board, Level 10, L10 (EOS) | Team Items (weekly board; called "Level 10" for EOS teams) | `/teams/{id}/items` |
 | issue, blocker, blocked item, challenge | Item with status=blocked | `/teams/{id}/items/issues` |
 | next, to-do (column), priority for the week | Item with status=next | `/teams/{id}/items/next` |
 | parked, parking lot, park for later | Item with status=parked | `/teams/{id}/items/parked` |
