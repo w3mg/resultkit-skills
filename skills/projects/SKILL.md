@@ -26,10 +26,11 @@ List active projects for a team.
 
 | Input | Behavior |
 |-------|----------|
-| *(no args)* | List projects for default team |
-| `{team_id}` | List projects for specified team |
-| `all` | List all team members' projects (passes `all=true`) |
-| `{team_id} all` | List all projects for specified team |
+| *(no args)* | List **active** projects for default team |
+| `{team_id}` | List active projects for specified team |
+| `all` | List all team members' active projects (passes `all=true`) |
+| `{team_id} all` | All members' active projects for specified team |
+| `done` / `realized` / `completed` | List realized (completed) projects |
 | `q "search term"` | Filter projects by name |
 
 ---
@@ -48,6 +49,8 @@ Start with `per_page=50`.
 
 - If `all` is in args → add `all=true`
 - If `q "term"` is in args → add `q=term`
+- If user says "completed", "done", "realized", or "archived" → add `status=realized`
+- Otherwise default: **do NOT pass a status param** — the API returns active (non-realized) projects by default
 
 ### Step 3: Fetch projects
 
@@ -83,8 +86,8 @@ Extract `body.data` array (the projects) and `body.meta` (pagination info).
 
   | ID | Name | Status | Due | Owner |
   |----|------|--------|-----|-------|
-  | 201 | Q1 Product Launch | next | 2026-03-31 | Jane D. |
-  | 205 | API Migration | not_started | — | John S. |
+  | 201 | Q1 Product Launch | active | 2026-03-31 | Jane D. |
+  | 205 | API Migration | active | — | John S. |
 
   {total} projects
   ```
@@ -95,6 +98,17 @@ Extract `body.data` array (the projects) and `body.meta` (pagination info).
   - If `meta.total_pages` > 1: show "(page 1 of {total_pages})"
 
 ---
+
+## Project Status (not the same as item status)
+
+Projects use a different status model than items/tasks:
+
+| Status | Meaning | User says |
+|--------|---------|-----------|
+| `active` | In progress, not completed | "active", "current", "in progress" |
+| `realized` | Completed/achieved | "done", "completed", "realized", "finished" |
+
+Do NOT use item statuses (`next`, `blocked`, `not_started`, `done`) for projects. Those apply to tasks/items, not projects.
 
 ## Edge Cases
 
