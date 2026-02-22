@@ -1,0 +1,11 @@
+{
+  "name": "rkit",
+  "version": "1.0.0",
+  "description": "ResultMaps V2 API skills for daily planning, team boards, and item management",
+  "author": {
+    "name": "ResultMaps"
+  },
+  "repository": "https://github.com/w3mg/resultkit-skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}

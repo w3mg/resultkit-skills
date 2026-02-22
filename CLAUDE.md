@@ -6,15 +6,31 @@ Spec-driven skill suite for interacting with the ResultMaps V2 API as a user.
 
 This project contains **specs and source files** for the `rkit:*` skill namespace — global Claude Code skills for daily planning, team boards, meetings, and item management via the ResultMaps API.
 
-Skills are developed here, then installed globally to `~/.claude/skills/`.
+Skills are developed here and distributed as a Claude Code plugin.
+
+## Installation (for users)
+
+```bash
+# Add the marketplace
+/plugin marketplace add w3mg/resultkit-skills
+
+# Install the plugin
+/plugin install rkit@resultkit
+
+# Run first-time setup
+/rkit:setup
+```
+
+Update to latest: `/plugin marketplace update`
 
 ## Structure
 
+- `.claude-plugin/` — Plugin manifest and marketplace config
 - `constitution.md` — Core principles governing all rkit skills
 - `api-reference.md` — V2 API endpoint summary
 - `specs/` — Spec-kit-inspired feature specs (one per skill)
-- `skills/rkit/` — Built skill source files (SKILL.md + scripts + references)
-- `scripts/install.sh` — Deploy skills to `~/.claude/skills/`
+- `skills/` — Plugin skills (SKILL.md + scripts + references)
+- `scripts/install.sh` — Legacy install (deprecated)
 
 ## Skill Namespace
 

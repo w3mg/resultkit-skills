@@ -1,0 +1,19 @@
+{
+  "name": "resultkit",
+  "owner": {
+    "name": "ResultMaps"
+  },
+  "metadata": {
+    "description": "ResultKit skills for the ResultMaps API"
+  },
+  "plugins": [
+    {
+      "name": "rkit",
+      "source": {
+        "source": "github",
+        "repo": "w3mg/resultkit-skills"
+      },
+      "description": "Daily planning, team boards, and item management via ResultMaps API"
+    }
+  ]
+}

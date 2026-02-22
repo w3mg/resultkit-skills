@@ -12,7 +12,7 @@ allowed-tools: Bash, Read, Write
 
 - Config status: !`if [ -f "$HOME/.config/resultkit/config.json" ] && jq empty "$HOME/.config/resultkit/config.json" 2>/dev/null; then echo "EXISTS"; jq '{token_masked: (.api_token[:3] + "..." + .api_token[-4:]), default_team_id, api_base}' "$HOME/.config/resultkit/config.json"; else echo "MISSING"; fi`
 - Env var: !`[ -n "${RESULTKIT_TOKEN:-}" ] && echo "RESULTKIT_TOKEN is set" || echo "RESULTKIT_TOKEN not set"`
-- api.sh: !`for p in "$HOME/.claude/skills/rkit:setup/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && break; done || echo "NOT_FOUND"`
+- api.sh: !`for p in "$HOME/.claude/plugins/"*/rkit/skills/setup/scripts/api.sh "$HOME/.claude/skills/rkit:setup/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && break; done || echo "NOT_FOUND"`
 
 ## Rules
 

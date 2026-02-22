@@ -11,7 +11,7 @@ allowed-tools: Bash, Read, AskUserQuestion
 ## Current State
 
 - Config status: !`if [ -f "$HOME/.config/resultkit/config.json" ] && jq empty "$HOME/.config/resultkit/config.json" 2>/dev/null; then echo "EXISTS"; jq '{token_masked: (.api_token[:3] + "..." + .api_token[-4:]), default_team_id, api_base, default_board_id}' "$HOME/.config/resultkit/config.json"; else echo "MISSING"; fi`
-- api.sh: !`for p in "$HOME/.claude/skills/rkit:board/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && break; done || echo "NOT_FOUND"`
+- api.sh: !`for p in "$HOME/.claude/plugins/"*/rkit/skills/board/scripts/api.sh "$HOME/.claude/skills/rkit:board/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && break; done || echo "NOT_FOUND"`
 
 ## Rules
 
@@ -355,7 +355,7 @@ Show confirmation: "Moved **{item_name}** (ID: {item_id}) to item {target_id}."
 - **Column has no children** → show column header with "(empty)"
 - **Item not found (404)** → "Item {id} not found (404)."
 - **No config** → "Config not found. Run `/rkit:setup` first."
-- **api.sh not found** → "api.sh not found. Run `scripts/install.sh` to install rkit skills."
+- **api.sh not found** → "api.sh not found. Install via: `/plugin marketplace add w3mg/resultkit-skills` then `/plugin install rkit@resultkit`"
 - **Column has >50 items** → show first 50 with "({total} total, showing first 50)"
 - **Board has >10 columns** → show first 10 with "({N} more columns not shown)"
 - **Column name/ID not found** → "No column matching '{input}' on board {id}." with list of available columns

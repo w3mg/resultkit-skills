@@ -13,7 +13,7 @@ A single skill that handles all day plan operations by interpreting user intent 
 ## Current State
 
 - Config: !`if [ -f "$HOME/.config/resultkit/config.json" ] && jq empty "$HOME/.config/resultkit/config.json" 2>/dev/null; then echo "EXISTS"; jq '{token_masked: (.api_token[:3] + "..." + .api_token[-4:]), default_team_id, api_base}' "$HOME/.config/resultkit/config.json"; else echo "MISSING — run /rkit:setup"; fi`
-- api.sh: !`for p in "$HOME/.claude/skills/rkit:today/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && break; done || echo "NOT_FOUND"`
+- api.sh: !`for p in "$HOME/.claude/plugins/"*/rkit/skills/today/scripts/api.sh "$HOME/.claude/skills/rkit:today/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && break; done || echo "NOT_FOUND"`
 - Today: !`date +%Y-%m-%d`
 
 ## Rules
@@ -236,7 +236,7 @@ echo "$RESPONSE"
 ### Edge Cases
 
 - **No config**: Any flow → "Config not found. Run `/rkit:setup` first."
-- **api.sh not found**: "api.sh not found. Run `scripts/install.sh` to install rkit skills."
+- **api.sh not found**: "api.sh not found. Install via: `/plugin marketplace add w3mg/resultkit-skills` then `/plugin install rkit@resultkit`"
 - **Item already on plan** (PUT/attach): Idempotent — API returns 200, confirm it's on the plan.
 - **Empty plan on view**: Show helpful message with add hint.
 - **Date plan doesn't exist**: 404 → "No plan exists for {date}."

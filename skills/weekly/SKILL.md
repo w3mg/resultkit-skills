@@ -11,7 +11,7 @@ allowed-tools: Bash, Read, AskUserQuestion
 ## Current State
 
 - Config status: !`if [ -f "$HOME/.config/resultkit/config.json" ] && jq empty "$HOME/.config/resultkit/config.json" 2>/dev/null; then echo "EXISTS"; jq '{token_masked: (.api_token[:3] + "..." + .api_token[-4:]), default_team_id, api_base}' "$HOME/.config/resultkit/config.json"; else echo "MISSING"; fi`
-- api.sh: !`for p in "$HOME/.claude/skills/rkit:weekly/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && break; done || echo "NOT_FOUND"`
+- api.sh: !`for p in "$HOME/.claude/plugins/"*/rkit/skills/weekly/scripts/api.sh "$HOME/.claude/skills/rkit:weekly/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && break; done || echo "NOT_FOUND"`
 
 ## Rules
 
@@ -307,7 +307,7 @@ echo "$RESPONSE"
 ## Edge Cases
 
 - **No config** → "Config not found. Run `/rkit:setup` first."
-- **api.sh not found** → "api.sh not found. Run `scripts/install.sh` to install rkit skills."
+- **api.sh not found** → "api.sh not found. Install via: `/plugin marketplace add w3mg/resultkit-skills` then `/plugin install rkit@resultkit`"
 - **All columns empty** → show all four column headers with "(empty)"
 - **Item not on {board_name} (move)** → "Item {id} is not on the {board_name}. Use `add` to put it on first."
 - **Item already in target column (move)** → warn and skip

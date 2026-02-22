@@ -1,9 +1,22 @@
 #!/usr/bin/env bash
 #
-# Install rkit skills to ~/.claude/skills/
-# Copies skill directories and shared scripts.
+# [DEPRECATED] Install rkit skills to ~/.claude/skills/
+#
+# Prefer the plugin install method:
+#   /plugin marketplace add w3mg/resultkit-skills
+#   /plugin install rkit@resultkit
+#
+# This script is kept for backwards compatibility.
 
 set -euo pipefail
+
+echo ""
+echo "⚠  DEPRECATED: Use the plugin install method instead:"
+echo "     /plugin marketplace add w3mg/resultkit-skills"
+echo "     /plugin install rkit@resultkit"
+echo ""
+echo "Continuing with legacy install..."
+echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
