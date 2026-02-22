@@ -194,7 +194,7 @@ done
 3. Add a `references/` folder if the skill needs reference docs.
 4. Add the api.sh path resolver to the Current State section (searches Claude Code plugin cache, Claude Code manual install, Codex CLI, Gemini CLI, and local dev):
    ```
-   - api.sh: !`for p in "$HOME/.claude/plugins/"*/rkit/skills/<name>/scripts/api.sh "$HOME/.claude/skills/rkit:<name>/scripts/api.sh" "$HOME/.agents/skills/<name>/scripts/api.sh" "$HOME/.gemini/skills/<name>/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && break; done || echo "NOT_FOUND"`
+   - api.sh: !`(setopt +o nomatch 2>/dev/null; shopt -s nullglob 2>/dev/null; for p in "$HOME/.claude/plugins/"*/rkit/skills/<name>/scripts/api.sh "$HOME/.claude/skills/rkit:<name>/scripts/api.sh" "$HOME/.agents/skills/<name>/scripts/api.sh" "$HOME/.gemini/skills/<name>/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && break; done) || echo "NOT_FOUND"`
    ```
 5. Follow the principles in `constitution.md`.
 6. Bump the version in `plugin.json` and push.

@@ -126,13 +126,14 @@ cp -r skills/* ~/.gemini/skills/
 Each skill's `SKILL.md` includes a path resolver that searches for `api.sh` across all supported agent locations:
 
 ```bash
+(setopt +o nomatch 2>/dev/null; shopt -s nullglob 2>/dev/null; \
 for p in \
   "$HOME/.claude/plugins/"*/rkit/skills/<name>/scripts/api.sh \
   "$HOME/.claude/skills/rkit:<name>/scripts/api.sh" \
   "$HOME/.agents/skills/<name>/scripts/api.sh" \
   "$HOME/.gemini/skills/<name>/scripts/api.sh" \
   "scripts/api.sh"; \
-do [ -f "$p" ] && echo "$p" && break; done || echo "NOT_FOUND"
+do [ -f "$p" ] && echo "$p" && break; done) || echo "NOT_FOUND"
 ```
 
 Search order:
