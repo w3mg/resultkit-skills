@@ -26,11 +26,11 @@ List active projects for a team.
 
 | Input | Behavior |
 |-------|----------|
-| *(no args)* | List **active** projects for default team |
+| *(no args)* | List **active** projects for default team (excludes done/archived) |
 | `{team_id}` | List active projects for specified team |
 | `all` | List all team members' active projects (passes `all=true`) |
 | `{team_id} all` | All members' active projects for specified team |
-| `done` / `realized` / `completed` | List realized (completed) projects |
+| `done` / `completed` | Include done/archived projects too |
 | `q "search term"` | Filter projects by name |
 
 ---
@@ -45,12 +45,10 @@ List active projects for a team.
 
 ### Step 2: Build query params
 
-Start with `per_page=50`.
+Start with `per_page=100` (API does not filter by status server-side, so fetch all and filter client-side).
 
 - If `all` is in args → add `all=true`
 - If `q "term"` is in args → add `q=term`
-- If user says "completed", "done", "realized", or "archived" → add `status=realized`
-- Otherwise default: **do NOT pass a status param** — the API returns active (non-realized) projects by default
 
 ### Step 3: Fetch projects
 
@@ -77,38 +75,46 @@ Parse the JSON response from api.sh:
 
 Extract `body.data` array (the projects) and `body.meta` (pagination info).
 
-- **Empty array**: "No active projects for team {team_id}."
+**Client-side filtering** (API returns all statuses):
+- Default: exclude projects where `status` is `done` or `archived`
+- If user asked for "done" or "completed": show all projects (no filter)
+
+After filtering:
+
+- **Empty result**: "No active projects for team {team_id}."
 
 - **Projects present**: Display as a table:
 
   ```
-  ## Projects — Team {team_id}
+  ## Active Projects — Team {team_id}
 
   | ID | Name | Status | Due | Owner |
   |----|------|--------|-----|-------|
-  | 201 | Q1 Product Launch | active | 2026-03-31 | Jane D. |
-  | 205 | API Migration | active | — | John S. |
+  | 201 | Q1 Product Launch | not_started | 2026-03-31 | Jane D. |
+  | 205 | API Migration | parked | — | John S. |
 
-  {total} projects
+  {count} active projects ({total} total)
   ```
 
   - `Due` column: show date if present, "—" if null
   - `Owner` column: show `owner.first_name` + last initial (e.g., "Jane D.")
-  - If `meta.total` > 50: show "({total} total, showing first 50)"
-  - If `meta.total_pages` > 1: show "(page 1 of {total_pages})"
+  - Show count of filtered results and total from API
+  - If `meta.total_pages` > 1: paginate (fetch all pages) to ensure complete client-side filtering
 
 ---
 
-## Project Status (not the same as item status)
+## Project Status Values (from live API)
 
-Projects use a different status model than items/tasks:
+Projects use the same status field as items:
 
-| Status | Meaning | User says |
-|--------|---------|-----------|
-| `active` | In progress, not completed | "active", "current", "in progress" |
-| `realized` | Completed/achieved | "done", "completed", "realized", "finished" |
+| Status | Meaning | Active? |
+|--------|---------|---------|
+| `not_started` | Not yet begun | yes |
+| `parked` | On hold | yes |
+| `done` | Completed | no |
+| `archived` | Archived | no |
 
-Do NOT use item statuses (`next`, `blocked`, `not_started`, `done`) for projects. Those apply to tasks/items, not projects.
+**"Active" = not done and not archived.** The API does not filter by status server-side on this endpoint — all projects are returned regardless of query params. Filtering must happen client-side.
 
 ## Edge Cases
 

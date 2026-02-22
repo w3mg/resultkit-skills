@@ -47,6 +47,16 @@ All skills use the `rkit:` prefix: `/rkit:setup`, `/rkit:today`, `/rkit:board`, 
 - Be concise. No filler.
 - Questions get answers, not actions.
 
+## Mandatory: Verify Before Writing Skills
+
+**NEVER write or modify API-related skill logic based on assumptions.** Before changing any skill that calls the API:
+
+1. **Read `api-reference.md`** for the endpoint's documented params, statuses, and response shape.
+2. **Call the actual API** with `scripts/api.sh` to verify real behavior — field names, status values, whether query params actually filter, response structure.
+3. **Check real data** — look at what the API actually returns, not what you think it returns.
+
+Do not invent status values, field names, or filtering behavior. If the reference is incomplete, test the API first and update the reference.
+
 ## Shared Files
 
 Master copies of shared files live at the repo root. Each skill gets its own copy for plugin self-containment. **Never edit the copies inside `skills/*/` directly.**
