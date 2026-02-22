@@ -11,7 +11,7 @@ allowed-tools: Bash, Read, AskUserQuestion
 ## Current State
 
 - Config status: !`if [ -f "$HOME/.config/resultkit/config.json" ] && jq empty "$HOME/.config/resultkit/config.json" 2>/dev/null; then echo "EXISTS"; jq '{token_masked: (.api_token[:3] + "..." + .api_token[-4:]), default_team_id, api_base, default_board_id}' "$HOME/.config/resultkit/config.json"; else echo "MISSING"; fi`
-- api.sh: !`(setopt +o nomatch 2>/dev/null; shopt -s nullglob 2>/dev/null; for p in "$HOME/.claude/plugins/"*/rkit/skills/board/scripts/api.sh "$HOME/.claude/skills/rkit:board/scripts/api.sh" "$HOME/.agents/skills/board/scripts/api.sh" "$HOME/.gemini/skills/board/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && break; done) || echo "NOT_FOUND"`
+- api.sh: !`echo "${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/board/scripts/api.sh}" | xargs -I{} sh -c '[ -f "{}" ] && echo "{}" && exit 0; for p in "$HOME/.claude/plugins/cache/"*/rkit/*/skills/board/scripts/api.sh "$HOME/.claude/skills/rkit:board/scripts/api.sh" "$HOME/.agents/skills/board/scripts/api.sh" "$HOME/.gemini/skills/board/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && exit 0; done; echo "NOT_FOUND"'`
 
 ## Rules
 

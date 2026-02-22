@@ -1,6 +1,6 @@
 # Project Handoffs
 
-**Last Updated**: 2026-02-16
+**Last Updated**: 2026-02-22
 
 ## Active
 
@@ -28,17 +28,20 @@
 
 ## Open Issues
 
-- [ ] **Plugin cache not picking up new skills on marketplace update**
-  - **Symptom**: After adding `skills/projects/` and running `/plugin marketplace update`, the cache at `~/.claude/plugins/cache/resultkit/rkit/1.0.0/skills/projects/` gets the subdirectories (`scripts/`, `references/`) but NOT `SKILL.md`. Other existing skills (today, board, etc.) have their SKILL.md in the cache.
-  - **What was tried**: Bumped `plugin.json` version from 1.0.0 to 1.1.0 and pushed. Marketplace update then entered an infinite loop asking the user what to do. The cache directory still shows version `1.0.0/` — the 1.1.0 bump didn't create a new cache folder.
-  - **Workaround applied**: Manually copied SKILL.md into the cache (`cp skills/projects/SKILL.md ~/.claude/plugins/cache/resultkit/rkit/1.0.0/skills/projects/SKILL.md`). This works but doesn't solve the deployment pipeline.
-  - **Things to investigate**:
-    1. How does `/plugin marketplace update` decide what to pull? Does it diff against the cached version or re-clone?
-    2. Does the version bump in `plugin.json` require a corresponding change in `marketplace.json`?
-    3. Is there a `.gitattributes`, GitHub release tag, or branch requirement that controls what gets fetched?
-    4. Check if other plugins in `~/.claude/plugins/` follow a different cache versioning pattern
-    5. The cache stayed at `1.0.0/` even after pushing `1.1.0` — is the cache keyed by the version at install time?
-  - **Files involved**: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `~/.claude/plugins/cache/resultkit/`
+- [x] **Plugin cache not picking up new skills on marketplace update** — **RESOLVED 2026-02-22**
+  - **Root cause**: The plugin cache is keyed by the `version` field in `plugin.json`. Code changes without a version bump are invisible to users because the cache serves the old version. The original failure was pushing new skills without bumping the version first.
+  - **Fix**: Always bump `version` in `plugin.json` before pushing. The `/plugin-dev publish` skill now enforces this workflow (sync shared files → bump version → commit → push).
+  - **How updates actually work** (from official docs):
+    1. Cache lives at `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`
+    2. `claude plugin update` pulls latest from source and creates a new cache entry only if version changed
+    3. Version can be set in `plugin.json` or `marketplace.json` — `plugin.json` takes priority if both are set
+    4. Old cache versions are marked with `.orphaned_at` but not immediately deleted
+  - **Current state**: Cache has both `1.0.0/` (orphaned) and `1.1.0/` with all 6 skills. Published v1.1.1 with correct workflow.
+  - **Developer tooling added**: `.claude/skills/plugin-dev/SKILL.md` — project-local skill with validate, publish, status, diagnose, scaffold, and info commands. Encodes the full plugin lifecycle so future sessions don't repeat this mistake.
+
+- [x] **api.sh path resolver glob doesn't match plugin cache structure** — **RESOLVED 2026-02-22**
+  - **Root cause**: SKILL.md used `$HOME/.claude/plugins/*/rkit/skills/...` but cache path is `$HOME/.claude/plugins/cache/resultkit/rkit/<version>/skills/...`. Missing `cache/`, marketplace name, and version directory levels.
+  - **Fix**: Replaced all 5 skill path resolvers (setup, today, board, weekly, projects) to: (1) check `${CLAUDE_PLUGIN_ROOT}` first (the official plugin env var), (2) fall back to corrected cache glob `$HOME/.claude/plugins/cache/*/rkit/*/skills/<name>/scripts/api.sh`, (3) then legacy paths. Also updated the scaffold template in `/plugin-dev`.
 
 - [ ] **API gap**: Item detail and item summary responses should return team context (team_id, framework, etc.) so board skill can derive team context from an item without a separate team lookup. Affects 003-board and potentially 008-item.
 
