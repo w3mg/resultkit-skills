@@ -25,9 +25,11 @@ Update to latest: `/plugin marketplace update`
 
 ## Structure
 
-- `.claude-plugin/` — Plugin manifest and marketplace config
+- `.claude-plugin/` — Claude Code plugin manifest and marketplace config
+- `gemini-extension.json` — Gemini CLI extension manifest
 - `constitution.md` — Core principles governing all rkit skills
-- `api-reference.md` — V2 API endpoint summary
+- `api-reference.md` — Master API endpoint summary (source of truth)
+- `scripts/api.sh` — Master API caller script (source of truth)
 - `specs/` — Spec-kit-inspired feature specs (one per skill)
 - `skills/` — Plugin skills (SKILL.md + scripts + references)
 - `scripts/install.sh` — Legacy install (deprecated)
@@ -45,12 +47,17 @@ All skills use the `rkit:` prefix: `/rkit:setup`, `/rkit:today`, `/rkit:board`, 
 - Be concise. No filler.
 - Questions get answers, not actions.
 
-## Active Technologies
-- Bash 5.x (api.sh, helper scripts), Markdown + Claude Code runtime, curl, jq (001-setup)
-- JSON file at `~/.config/resultkit/config.json` (001-setup)
-- Bash 5.x (api.sh), Markdown + Claude Code runtime + curl, jq, shared `scripts/api.sh` (002-today)
-- N/A — reads from ResultMaps API; config at `~/.config/resultkit/config.json` (002-today)
-- `~/.config/resultkit/config.json` (auth + `default_board_id`) (003-board)
+## Shared Files
 
-## Recent Changes
-- 001-setup: Added Bash 5.x (api.sh, helper scripts), Markdown + Claude Code runtime, curl, jq
+Master copies of shared files live at the repo root. Each skill gets its own copy for plugin self-containment. **Never edit the copies inside `skills/*/` directly.**
+
+| Master file | Copied to | Purpose |
+|-------------|-----------|---------|
+| `scripts/api.sh` | `skills/*/scripts/api.sh` | API caller script |
+| `api-reference.md` | `skills/*/references/api-reference.md` | API endpoint reference |
+
+After editing a master file, run `/sync-plugin` to copy it to all skills and bump the plugin version.
+
+## Active Technologies
+- Bash 5.x (api.sh, helper scripts), Markdown + Claude Code runtime, curl, jq
+- JSON config at `~/.config/resultkit/config.json`

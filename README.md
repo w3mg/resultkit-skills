@@ -1,58 +1,108 @@
 # ResultKit Skills
 
-Claude Code skills for the [ResultMaps](https://resultmaps.com) V2 API. Manage your day plans, team boards, weekly meetings, and items directly from the command line.
+AI coding agent skills for the [ResultMaps](https://resultmaps.com) V2 API. Manage your day plans, team boards, weekly meetings, and items directly from the command line.
+
+Works with **Claude Code**, **OpenAI Codex CLI**, and **Google Gemini CLI**.
 
 ## What's Included
 
 | Skill | Description |
 |-------|-------------|
-| `/rkit:setup` | First-run configuration. Sets up API token, default team, and base URL. |
-| `/rkit:today` | View and manage your daily plan. Add, complete, and remove items. |
-| `/rkit:board` | View any item as a board. Columns are children, items are grandchildren. |
-| `/rkit:weekly` | Team weekly board with framework-aware terminology (EOS, OKR, 4DX, etc.). |
-| `/rkit:braindump` | Parse unstructured text (meeting notes, emails, dictation) into organized action items. |
+| `rkit:setup` | First-run configuration. Sets up API token, default team, and base URL. |
+| `rkit:today` | View and manage your daily plan. Add, complete, and remove items. |
+| `rkit:board` | View any item as a board. Columns are children, items are grandchildren. |
+| `rkit:weekly` | Team weekly board with framework-aware terminology (EOS, OKR, 4DX, etc.). |
+| `rkit:braindump` | Parse unstructured text (meeting notes, emails, dictation) into organized action items. |
 
 ## Prerequisites
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed
 - A ResultMaps account with an API token ([get one here](https://resultmaps.com))
 - `curl` and `jq` available in your shell
+- One of the supported AI coding agents (see installation below)
+
+---
 
 ## Installation
 
-### Plugin install (recommended)
+### Claude Code
+
+Requires [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI.
+
+**Install via plugin marketplace (recommended):**
 
 ```
 /plugin marketplace add w3mg/resultkit-skills
 /plugin install rkit@resultkit
 ```
 
-Then run `/rkit:setup` to configure your API token and default team.
-
-### Update to latest
+**Update to latest:**
 
 ```
 /plugin marketplace update
 ```
 
-### Legacy install (deprecated)
+Then run `/rkit:setup` to configure your API token and default team.
+
+### OpenAI Codex CLI
+
+Requires [Codex CLI](https://github.com/openai/codex).
+
+**Install skills:**
 
 ```bash
 git clone https://github.com/w3mg/resultkit-skills.git
-cd resultkit-skills
-bash scripts/install.sh
+mkdir -p ~/.agents/skills
+cp -r resultkit-skills/skills/* ~/.agents/skills/
 ```
+
+**Update to latest:**
+
+```bash
+cd resultkit-skills && git pull
+cp -r skills/* ~/.agents/skills/
+```
+
+Then run `$rkit:setup` to configure your API token and default team.
+
+### Google Gemini CLI
+
+Requires [Gemini CLI](https://github.com/google-gemini/gemini-cli).
+
+**Install as extension:**
+
+```bash
+gemini extensions install https://github.com/w3mg/resultkit-skills
+```
+
+**Or install skills manually:**
+
+```bash
+git clone https://github.com/w3mg/resultkit-skills.git
+mkdir -p ~/.gemini/skills
+cp -r resultkit-skills/skills/* ~/.gemini/skills/
+```
+
+**Update to latest:**
+
+```bash
+cd resultkit-skills && git pull
+cp -r skills/* ~/.gemini/skills/
+```
+
+Then run the setup skill to configure your API token and default team.
+
+---
 
 ## Quick Start
 
-```
-/rkit:setup          # Configure token + team (first time only)
-/rkit:today           # Show today's day plan
-/rkit:today add       # Add a new item to today
-/rkit:board           # View your default board
-/rkit:weekly          # View team weekly board
-/rkit:braindump       # Paste meeting notes, get structured items
-```
+| Action | Claude Code | Codex CLI | Gemini CLI |
+|--------|-------------|-----------|------------|
+| Configure token + team | `/rkit:setup` | `$rkit:setup` | `rkit:setup` |
+| Show today's day plan | `/rkit:today` | `$rkit:today` | `rkit:today` |
+| Add item to today | `/rkit:today add` | `$rkit:today add` | `rkit:today add` |
+| View your default board | `/rkit:board` | `$rkit:board` | `rkit:board` |
+| View team weekly board | `/rkit:weekly` | `$rkit:weekly` | `rkit:weekly` |
+| Parse meeting notes | `/rkit:braindump` | `$rkit:braindump` | `rkit:braindump` |
 
 ## Configuration
 
@@ -66,7 +116,7 @@ All config lives in `~/.config/resultkit/config.json`:
 }
 ```
 
-Run `/rkit:setup` to create or update this file.
+Run the `rkit:setup` skill to create or update this file.
 
 ---
 
@@ -76,8 +126,9 @@ Run `/rkit:setup` to create or update this file.
 
 ```
 .claude-plugin/
-  plugin.json            # Plugin manifest (name, version, metadata)
-  marketplace.json       # Marketplace catalog for distribution
+  plugin.json            # Claude Code plugin manifest
+  marketplace.json       # Claude Code marketplace catalog
+gemini-extension.json    # Gemini CLI extension manifest
 skills/
   setup/                 # /rkit:setup skill
     SKILL.md
@@ -122,10 +173,10 @@ done
 ### Releasing a new version
 
 1. Make your changes to skill files, api.sh, etc.
-2. Sync api.sh to all skills (see above).
-3. Bump the `version` in `.claude-plugin/plugin.json`. Users won't receive updates without a version bump.
+2. Run `/sync-plugin` to sync shared files and bump the version (or `/sync-plugin 2.0.0` for a specific version).
+3. Bump the `version` in `gemini-extension.json` to match.
 4. Commit and push to `main`.
-5. Users run `/plugin marketplace update` to get the new version.
+5. Claude Code users run `/plugin marketplace update`. Gemini CLI users re-run `gemini extensions install`.
 
 ### Adding a new skill
 
@@ -141,9 +192,9 @@ done
    ```
 2. Add a `scripts/` folder and copy `api.sh` into it.
 3. Add a `references/` folder if the skill needs reference docs.
-4. Add the api.sh path resolver to the Current State section:
+4. Add the api.sh path resolver to the Current State section (searches Claude Code plugin cache, Claude Code manual install, Codex CLI, Gemini CLI, and local dev):
    ```
-   - api.sh: !`for p in "$HOME/.claude/plugins/"*/rkit/skills/<name>/scripts/api.sh "$HOME/.claude/skills/rkit:<name>/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && break; done || echo "NOT_FOUND"`
+   - api.sh: !`for p in "$HOME/.claude/plugins/"*/rkit/skills/<name>/scripts/api.sh "$HOME/.claude/skills/rkit:<name>/scripts/api.sh" "$HOME/.agents/skills/<name>/scripts/api.sh" "$HOME/.gemini/skills/<name>/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && break; done || echo "NOT_FOUND"`
    ```
 5. Follow the principles in `constitution.md`.
 6. Bump the version in `plugin.json` and push.
