@@ -33,17 +33,10 @@ Parse the user input to determine which flow to follow:
 | `{meeting_id} add "text"` | Add New Item |
 | `{meeting_id} add {item_id}` | Add Existing Item |
 | `{meeting_id} remove {item_id}` | Remove Item |
-| `--team {id}` (anywhere in args) | Override team ID for any flow |
 
 If the input doesn't match any pattern, show this usage summary and ask what they'd like to do.
 
 ---
-
-## Team ID Resolution
-
-1. **`--team {id}` flag** in args → use that team ID
-2. **`default_team_id` in config** → use that
-3. **Neither** → "No default team configured. Run `/rkit:setup` first."
 
 ---
 
@@ -66,7 +59,7 @@ Parse the JSON response from api.sh. Handle these cases:
 
 ### Step 1: Fetch meetings
 
-Resolve team ID. Fetch all meetings:
+Fetch all meetings:
 
 ```bash
 API_SH="<api.sh path from Current State>"
@@ -78,12 +71,12 @@ echo "$RESPONSE"
 
 Filter the response client-side:
 - `type` must be `one_on_one`
-- At least one participant must belong to the resolved team (match against team members if needed, or filter by presence of team context)
+- If `--team {id}` is provided, additionally filter to only meetings where at least one participant belongs to that team
 
 Display as a table:
 
 ```
-## One-on-Ones — Team {team_id}
+## One-on-Ones
 
 | ID | With | Date |
 |----|------|------|
@@ -96,7 +89,7 @@ Display as a table:
 - `With` column: show the other participant (`person1` or `person2` — whichever is not the current user). Show `first_name last_name`; fall back to `login` if names are empty.
 - `Date` column: show date if present, "—" if null
 
-**Empty result**: "No one-on-ones found for team {team_id}."
+**Empty result**: "No one-on-ones found."
 
 ---
 
@@ -297,7 +290,7 @@ echo "$RESPONSE"
 
 - **No config** → "Config not found. Run `/rkit:setup` first."
 - **api.sh not found** → "api.sh not found. Install via: `/plugin marketplace add w3mg/resultkit-skills` then `/plugin install rkit@resultkit`"
-- **No one-on-ones** → "No one-on-ones found for team {team_id}."
+- **No one-on-ones** → "No one-on-ones found."
 - **Meeting not found (404)** → "Meeting {id} not found."
 - **All columns empty** → show all three column headers with "(empty)"
 - **Item already in target column (move)** → warn and skip
