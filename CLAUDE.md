@@ -68,6 +68,19 @@ Master copies of shared files live at the repo root. Each skill gets its own cop
 
 After editing a master file, run `/sync-plugin` to copy it to all skills and bump the plugin version.
 
+## Commit & Push Checklist
+
+**When asked to commit, commit and push, or ship code, ALWAYS do ALL of these steps automatically — no asking, no skipping:**
+
+1. **Bump version** in `.claude-plugin/plugin.json` (patch bump unless told otherwise)
+2. **Stage all changed files** including the version bump
+3. **Commit** with a descriptive message
+4. **`git pull --rebase origin main`** to sync with remote
+5. **`git push origin main`**
+6. **Print update instructions**: tell the user to run `/plugin marketplace update`
+
+Never do these piecemeal. Never forget the version bump. One shot, every time.
+
 ## Active Technologies
 - Bash 5.x (api.sh, helper scripts), Markdown + Claude Code runtime, curl, jq
 - JSON config at `~/.config/resultkit/config.json`
