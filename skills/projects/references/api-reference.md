@@ -14,28 +14,33 @@ Many list endpoints accept these shared params:
 | Param | Type | Description |
 |-------|------|-------------|
 | `page` | integer | Page number (default: 1) |
-| `per_page` | integer | Results per page, 1–100 (default: 25) |
+| `per_page` | integer | Results per page, 1–100 (default: 100) |
 | `q` | string | Filter by name (min 2 chars, case-insensitive contains match) |
+| `include_archived` | string | When `"true"`, includes archived items (default: `"false"`) |
 
-Endpoints that support `q` are noted below.
+Endpoints that support `q` and `include_archived` are noted below.
 
 ## Items
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/items` | List authenticated user's items (params: page, per_page, q, status, team_id) | "show my tasks", "list items", "what's on my plate", "my to-dos" | — |
-| POST | `/items` | Create item (body: name*, description, due, status, on_weekly, team_id, parent_id, context) | "add task", "create item", "new to-do", "add action item" | `/items/{id}` |
+| GET | `/items` | List authenticated user's items (params: page, per_page, q, status, team_id, include_archived) | "show my tasks", "list items", "what's on my plate", "my to-dos" | — |
+| POST | `/items` | Create item (body: name*, type, description, due, status, on_weekly, team_id, parent_id, context) | "add task", "create item", "new to-do", "add action item" | `/items/{id}` |
 | GET | `/items/{id}` | Get item detail (includes first-level children) | "show item", "item details", "open task", "what's in item X" | `/items/{id}` |
 | PATCH | `/items/{id}` | Update item (body: name, description, due, status, on_weekly) | "update item", "change status", "rename task", "set due date" | `/items/{id}` |
 | DELETE | `/items/{id}` | Archive item (soft delete, sets status=archived) | "archive item", "delete task", "remove item", "soft delete" | — |
-| GET | `/items/{id}/children` | List child items (params: page, per_page, q) | "show sub-tasks", "list children", "nested items", "what's under this" | `/items/{id}` |
+| GET | `/items/{id}/children` | List child items as nested tree (params: page, per_page, q, depth) | "show sub-tasks", "list children", "nested items", "what's under this" | `/items/{id}` |
 | PUT | `/items/{id}/move` | Reposition item in tree (body: parent_id, left_id, right_id) | "move item", "reparent", "nest under", "reorder" | `/items/{id}` |
 
 Item fields: `id`, `name`, `description`, `due`, `status`, `on_weekly`,
-`team` (TeamSimple | null), `owner` (UserSimple), `assignees` (UserSimple[]),
+`team` (TeamSimple | null), `creator` (UserSimple), `assignees` (UserSimple[]),
 `parent_id`, `created_at`, `updated_at`.
 
+Item `type` values: `Task` (default), `TodoList`, `Outcome`, `KeyResult`.
+
 ItemDetail: Item fields + `children` (Item[]).
+
+ItemTreeNode: Item fields + `children` (ItemTreeNode[]). Returned by `GET /items/{id}/children`. Nested recursively to the requested `depth` (1–20, default 2). Empty array at leaf nodes or max depth.
 
 Move body fields: `parent_id` (integer or null — move under parent or to root), `left_id` (integer — place after sibling), `right_id` (integer — place before sibling). At least one required. If both `left_id` and `right_id` given, `left_id` takes precedence.
 
@@ -70,11 +75,11 @@ Comment fields: `id`, `body`, `author` (UserSimple), `created_at`.
 
 `GET /teams` response fields per team: `id`, `name`, `description`,
 `framework`, `organization_name`, `organization_id`, `parent_name`,
-`parent_id`, `is_default`, `is_muted`, `owner` (UserSimple),
+`parent_id`, `is_default`, `is_muted`, `creator` (UserSimple),
 `created_at`, `updated_at`.
 
 Team detail fields: `id`, `name`, `description`, `framework`,
-`owner` (UserSimple), `created_at`, `updated_at`, `members` (TeamMember[]).
+`creator` (UserSimple), `created_at`, `updated_at`, `members` (TeamMember[]).
 
 TeamMember: `id`, `team` (TeamSimple), `user` (UserSimple), `role` ("member" | "admin").
 
@@ -90,7 +95,7 @@ TeamMember: `id`, `team` (TeamSimple), `user` (UserSimple), `role` ("member" | "
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/items` | All team items (params: page, per_page, q, all) | "show weekly", "team board", "weekly board", "L10 board" | `/teams/{id}` |
+| GET | `/teams/{id}/items` | All team items (params: page, per_page, q, all, include_archived) | "show weekly", "team board", "weekly board", "L10 board" | `/teams/{id}` |
 | POST | `/teams/{id}/items` | Create team item (on_weekly=true) | "add to weekly", "new team task", "create on board" | `/items/{item_id}` |
 | PUT | `/teams/{id}/items/{item_id}` | Add item to board (sets on_weekly=true) | "put on weekly", "add to board", "show on weekly" | `/items/{item_id}` |
 | DELETE | `/teams/{id}/items/{item_id}` | Remove from weekly (sets on_weekly=false, keeps item) | "remove from weekly", "take off board", "hide from weekly" | — |
@@ -100,7 +105,7 @@ TeamMember: `id`, `team` (TeamSimple), `user` (UserSimple), `role` ("member" | "
 | PUT | `/teams/{id}/items/done/{item_id}` | Add to board + set status=done | "mark done", "complete", "finish item" | `/items/{item_id}` |
 | GET | `/teams/{id}/items/issues` | Items with status=blocked (params: page, per_page, q) | "show issues", "blockers", "stuck items", "IDS (EOS)" | `/teams/{id}` |
 | PUT | `/teams/{id}/items/issues/{item_id}` | Add to board + set status=blocked | "flag as blocked", "raise issue", "mark stuck" | `/items/{item_id}` |
-| GET | `/teams/{id}/items/parked` | Items with status=parked (params: page, per_page, q) | "show parked", "parking lot", "on hold", "deprioritized" | `/teams/{id}` |
+| GET | `/teams/{id}/items/parked` | Items with status=parked (params: page, per_page, q, include_archived) | "show parked", "parking lot", "on hold", "deprioritized" | `/teams/{id}` |
 | PUT | `/teams/{id}/items/parked/{item_id}` | Add to board + set status=parked | "park item", "put on hold", "deprioritize" | `/items/{item_id}` |
 
 The `all` param (boolean, default false) shows all team members' items when true; otherwise only current user's.
@@ -139,19 +144,19 @@ TeamSimple: `{ id: integer, name: string }`.
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/day-plans/today` | Today's plan (auto-creates if none exists) | "show today", "my plan", "daily plan", "prioritizer" | `/day-plans/today` |
-| GET | `/day-plans/today/items` | Today's items (params: page, per_page, q) | "today's tasks", "what's on today", "my plan items" | `/day-plans/today` |
+| GET | `/day-plans/today/items` | Today's items (params: page, per_page, q, include_archived) | "today's tasks", "what's on today", "my plan items" | `/day-plans/today` |
 | POST | `/day-plans/today/items` | Create item in today's plan (auto-creates plan) | "add to today", "new task for today", "put on my plan" | `/items/{item_id}` |
 | PUT | `/day-plans/today/items/{item_id}` | Attach existing item to today (auto-creates plan, body: position?) | "attach to today", "add to plan", "link to today" | `/day-plans/today` |
 | PATCH | `/day-plans/today/items/{item_id}` | Toggle completion (body: completed*) | "check off", "mark done for today", "complete for today", "undo" | `/day-plans/today` |
 | DELETE | `/day-plans/today/items/{item_id}` | Remove from plan (keeps item) | "remove from today", "take off plan", "drop from today" | — |
 | GET | `/day-plans/{date}` | Plan by date (YYYY-MM-DD) | "show plan for Monday", "last Friday's plan" | `/day-plans/{date}` |
-| GET | `/day-plans/{date}/items` | Items by date (params: page, per_page, q) | "items for that day", "what was on Monday" | `/day-plans/{date}` |
+| GET | `/day-plans/{date}/items` | Items by date (params: page, per_page, q, include_archived) | "items for that day", "what was on Monday" | `/day-plans/{date}` |
 | POST | `/day-plans/{date}/items` | Create item in date's plan (plan must already exist) | "add to that day's plan" | `/items/{item_id}` |
 | PUT | `/day-plans/{date}/items/{item_id}` | Attach existing item to date (plan must already exist, body: position?) | "attach to that plan" | `/day-plans/{date}` |
 | PATCH | `/day-plans/{date}/items/{item_id}` | Toggle completion (body: completed*) | "check off for that day" | `/day-plans/{date}` |
 | DELETE | `/day-plans/{date}/items/{item_id}` | Remove from plan (keeps item) | "remove from that day" | — |
 
-DayPlan fields: `id`, `date`, `owner` (UserSimple), `items` (DayPlanItem[]).
+DayPlan fields: `id`, `date`, `creator` (UserSimple), `items` (DayPlanItem[]).
 
 DayPlanItem fields: Item fields + `completed` (boolean), `position` (integer).
 
@@ -163,13 +168,13 @@ Day plan completion: regular items also get status=done. Recurring/daily items o
 |--------|------|-------------|--------------|---------|
 | GET | `/meetings` | List meetings (paginated) | "show meetings", "my meetings", "list 1:1s", "L10s" | — |
 | GET | `/meetings/{id}` | Meeting detail (includes issues, done, next arrays) | "show meeting", "meeting details", "open meeting" | `/meetings/{id}` |
-| GET | `/meetings/{id}/items` | All meeting items (params: owner_id?, page, per_page, q) | "meeting items", "what's on the agenda" | `/meetings/{id}` |
+| GET | `/meetings/{id}/items` | All meeting items (params: creator_id?, page, per_page, q, include_archived) | "meeting items", "what's on the agenda" | `/meetings/{id}` |
 | POST | `/meetings/{id}/items` | Create item in meeting | "add to meeting", "new meeting item" | `/items/{item_id}` |
 | PUT | `/meetings/{id}/items/{item_id}` | Attach existing item | "attach to meeting", "link item to meeting" | `/meetings/{id}` |
 | DELETE | `/meetings/{id}/items/{item_id}` | Remove from meeting (keeps item) | "remove from meeting", "detach from meeting" | — |
-| GET | `/meetings/{id}/items/next` | Next items (params: owner_id?, page, per_page, q) | "meeting next items", "meeting priorities" | `/meetings/{id}` |
-| GET | `/meetings/{id}/items/done` | Done items (params: owner_id?, page, per_page, q) | "meeting done items", "what got done" | `/meetings/{id}` |
-| GET | `/meetings/{id}/items/blocked` | Blocked items (params: owner_id?, page, per_page, q) | "meeting blockers", "meeting issues" | `/meetings/{id}` |
+| GET | `/meetings/{id}/items/next` | Next items (params: creator_id?, page, per_page, q, include_archived) | "meeting next items", "meeting priorities" | `/meetings/{id}` |
+| GET | `/meetings/{id}/items/done` | Done items (params: creator_id?, page, per_page, q) | "meeting done items", "what got done" | `/meetings/{id}` |
+| GET | `/meetings/{id}/items/blocked` | Blocked items (params: creator_id?, page, per_page, q) | "meeting blockers", "meeting issues" | `/meetings/{id}` |
 
 MeetingSimple fields: `id`, `type` (one_on_one | project), `date`,
 `person1` (UserSimple), `person2` (UserSimple),
@@ -292,7 +297,7 @@ Delete responses return `204 No Content` with empty body.
 
 | Concept A | Concept B | Difference |
 |-----------|-----------|------------|
-| Owner (`owner` field) | Assignee (`assignees` array) | Owner = who created the item. Assignees = who's responsible. One owner, many assignees. |
+| Creator (`creator` field) | Assignee (`assignees` array) | Creator = who created the item. Assignees = who's responsible. One creator, many assignees. |
 | Archive (`DELETE /items/{id}`) | Delete (`DELETE /teams/{id}`) | Items are soft-deleted (status→archived). Teams are permanently deleted. |
 | Completed (day plan) | Done (item status) | Day plan `completed: true` checks off for that day. Item status `done` marks it globally done. For recurring items only the day plan toggles. |
 | on_weekly (item field) | status (item field) | `on_weekly` controls board visibility. `status` controls the column. An item can be `status: next` but `on_weekly: false`. |
