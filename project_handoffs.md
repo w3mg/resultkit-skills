@@ -1,11 +1,12 @@
 # Project Handoffs
 
-**Last Updated**: 2026-02-22
+**Last Updated**: 2026-02-23
 
 ## Active
 
 - [ ] **003-board**: `/speckit.clarify` complete (5/5). Spec updated with US5 (remove). **Next step**: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`.
 - [ ] **004-weekly**: Full spec + plan + research ready in `specs/004-weekly/`. Needs tasks → implement after 003 is done
+- [ ] **011-1on1**: Spec drafted in `specs/011-1on1/spec.md`. One-on-one specific skill (`/rkit:1on1`), separate from project meetings (`/rkit:meeting`). Follows weekly skill patterns — same column display, move/add/remove flows, confirm-before-write. **Next step**: clarify → plan → implement.
 
 ## Clarifications Completed (003-board, session 2026-02-16)
 
