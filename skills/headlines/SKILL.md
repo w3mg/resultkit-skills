@@ -182,7 +182,6 @@ echo "$RESPONSE"
 ### Step 3: Handle response
 
 - **Status 204**: "Archived headline **{headline_id}**."
-  Then always warn: "Note: recently-created headlines may still appear for up to 7 days after archiving."
 - **Status 403** → "You do not have permission to archive this headline."
 - **Status 404** → "Headline {headline_id} not found."
 - **Error** → use Error Handling above
@@ -252,7 +251,6 @@ Only include `text` in the body if `--text` was provided. Only include `expires_
 - **Empty headline text** → "Headline text cannot be empty."
 - **Invalid expires_at format** → "Expiration date must be in YYYY-MM-DD format."
 - **More than 100 headlines** → show first 100 with "(showing 100 of {total})"
-- **Recently-archived headline still visible** → warn: "Note: recently-created headlines may still appear for up to 7 days after archiving."
 - **Network error** → "Network error. Check your connection."
 - **Unauthorized (401)** → "Unauthorized (401). Run `/rkit:setup` to update your token."
 - **Team not found (404)** → "Team {id} not found (404)."
