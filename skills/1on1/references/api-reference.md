@@ -74,6 +74,8 @@ Comment fields: `id`, `body`, `author` (UserSimple), `created_at`.
 | GET | `/teams/{id}` | Get team detail (includes members) | "show team", "team details", "team info", "who's on the team" | `/teams/{id}` |
 | PATCH | `/teams/{id}` | Update team (body: name, description, framework) | "update team", "rename team", "change framework" | `/teams/{id}` |
 | DELETE | `/teams/{id}` | Delete team (permanent) | "delete team", "remove team" | — |
+| PUT | `/teams/{id}/mute` | Mute team for current user (idempotent). Muted teams excluded from `GET /teams` unless `include_muted=true`. | "mute team", "hide team", "silence team" | — |
+| DELETE | `/teams/{id}/mute` | Unmute team for current user (idempotent) | "unmute team", "unhide team", "show team again" | — |
 
 `GET /teams` response fields per team: `id`, `name`, `description`,
 `framework`, `organization_name`, `organization_id`, `parent_name`,
@@ -84,6 +86,8 @@ Team detail fields: `id`, `name`, `description`, `framework`,
 `creator` (UserSimple), `created_at`, `updated_at`, `members` (TeamMember[]).
 
 TeamMember: `id`, `team` (TeamSimple), `user` (UserSimple), `role` ("member" | "admin").
+
+Mute/unmute response: `{ data: { id, name, is_muted } }`.
 
 ### Team Members
 
@@ -126,6 +130,23 @@ Due date auto-set: creating an item with `status: "next"` in a team context (or 
 | DELETE | `/teams/{id}/projects/{project_id}` | Remove project from team (clears group_id, keeps project) | "remove project from team", "unlink project", "take off team board" | — |
 
 Default filtering: returns only active, non-parkinglot, non-muted projects. Use `status` to override the active-only filter (e.g. `?status=done`). Use `include_muted=true` to include muted items.
+
+### Team Headlines
+
+Only available for teams using the EOS framework.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/headlines` | List active headlines (params: page, per_page). Active = created within 7 days OR expires_at > today. | "show headlines", "team headlines", "what's new", "announcements" | `/teams/{id}` |
+| POST | `/teams/{id}/headlines` | Create headline (body: text*, expires_at?) | "add headline", "new headline", "share update", "post announcement" | `/teams/{id}` |
+| PATCH | `/teams/{id}/headlines/{headline_id}` | Update headline (body: text?, expires_at?). Creator or team admin only. | "update headline", "edit headline", "change headline" | `/teams/{id}` |
+| DELETE | `/teams/{id}/headlines/{headline_id}` | Archive headline (soft delete — sets expires_at to today). Creator or team admin only. | "delete headline", "remove headline", "archive headline" | — |
+
+Headline fields: `id`, `text`, `creator` (UserSimple), `expires_at` (YYYY-MM-DD | null), `created_at`, `updated_at`.
+
+HeadlineCreateRequest: `text` (string, required), `expires_at` (YYYY-MM-DD, optional — if omitted, headline visible for 7 days from creation).
+
+HeadlineUpdateRequest: `text` (string), `expires_at` (YYYY-MM-DD). At least one field required.
 
 ## Users
 
@@ -188,6 +209,15 @@ MeetingSimple fields: `id`, `type` (one_on_one | project), `date`,
 
 Meeting fields: MeetingSimple + `issues` (Item[]), `done` (Item[]), `next` (Item[]).
 
+## Sessions
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| POST | `/sessions` | Login via credentials or Google OAuth. No auth required. Returns API token. | "login", "authenticate", "get token" | — |
+| DELETE | `/sessions` | Logout / destroy current session | "logout", "sign out", "end session" | — |
+
+SessionResponse: `api_token` (string), user fields.
+
 ## Status Values
 
 `not_started`, `next`, `parked`, `blocked`, `done`, `archived`, `draft`
@@ -238,6 +268,9 @@ Delete responses return `204 No Content` with empty body.
 | creator, item creator, who created this | Creator (`creator` field) | `/items`, `/teams`, `/day-plans` |
 | accountability owner, accountable | Assignee (if any), else Creator | `/items/{id}/assignees`, `creator` field |
 | muted, hidden team, show muted | Muted Team | `GET /teams?include_muted=true` |
+| mute team, hide team, silence team | Mute Team | `PUT /teams/{id}/mute` |
+| unmute team, unhide team, show team again | Unmute Team | `DELETE /teams/{id}/mute` |
+| headline, announcement, team update, news | Headline (EOS only) | `/teams/{id}/headlines` |
 | show archived, include archived | Archived filter | `?include_archived=true` on list endpoints |
 | comment, note | Comment | `/items/{id}/comments` |
 | member, team member | Team Member | `/teams/{id}/members` |
@@ -314,3 +347,4 @@ Delete responses return `204 No Content` with empty body.
 | One-on-one meeting | Project meeting | `type: "one_on_one"` has person1/person2. `type: "project"` has a project field. Same endpoints. |
 | Team projects (`/teams/{id}/projects`) | Standalone projects (`/projects`) | Team projects are scoped to a team. Standalone are user-level. Same underlying data (type=TodoList). |
 | `DELETE /teams/{id}/projects/{pid}` | `DELETE /projects/{id}` | Team version removes from team (clears group_id). Standalone version archives the project. |
+| Headline (`/teams/{id}/headlines`) | Comment (`/items/{id}/comments`) | Headlines are team-level announcements (EOS only, auto-expire after 7 days). Comments are item-level notes. |

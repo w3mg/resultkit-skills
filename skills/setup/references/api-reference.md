@@ -20,6 +20,8 @@ Many list endpoints accept these shared params:
 
 Endpoints that support `q` and `include_archived` are noted below.
 
+`include_archived`: by default, archived items are excluded from all list endpoints. Pass `include_archived=true` to include them. Supported on `GET /items`, `GET /projects`, `GET /meetings/{id}/items`, and `GET /meetings/{id}/items/next`.
+
 ## Items
 
 | Method | Path | Description | User Phrases | Web URL |
@@ -29,7 +31,7 @@ Endpoints that support `q` and `include_archived` are noted below.
 | GET | `/items/{id}` | Get item detail (includes first-level children) | "show item", "item details", "open task", "what's in item X" | `/items/{id}` |
 | PATCH | `/items/{id}` | Update item (body: name, description, due, status, on_weekly) | "update item", "change status", "rename task", "set due date" | `/items/{id}` |
 | DELETE | `/items/{id}` | Archive item (soft delete, sets status=archived) | "archive item", "delete task", "remove item", "soft delete" | — |
-| GET | `/items/{id}/children` | List child items as nested tree (params: page, per_page, q, depth) | "show sub-tasks", "list children", "nested items", "what's under this" | `/items/{id}` |
+| GET | `/items/{id}/children` | List child items as nested tree (params: page, per_page, q, depth). `depth` default 2, range 1-20. | "show sub-tasks", "list children", "nested items", "what's under this" | `/items/{id}` |
 | PUT | `/items/{id}/move` | Reposition item in tree (body: parent_id, left_id, right_id) | "move item", "reparent", "nest under", "reorder" | `/items/{id}` |
 
 Item fields: `id`, `name`, `description`, `due`, `status`, `on_weekly`,
@@ -72,6 +74,8 @@ Comment fields: `id`, `body`, `author` (UserSimple), `created_at`.
 | GET | `/teams/{id}` | Get team detail (includes members) | "show team", "team details", "team info", "who's on the team" | `/teams/{id}` |
 | PATCH | `/teams/{id}` | Update team (body: name, description, framework) | "update team", "rename team", "change framework" | `/teams/{id}` |
 | DELETE | `/teams/{id}` | Delete team (permanent) | "delete team", "remove team" | — |
+| PUT | `/teams/{id}/mute` | Mute team for current user (idempotent). Muted teams excluded from `GET /teams` unless `include_muted=true`. | "mute team", "hide team", "silence team" | — |
+| DELETE | `/teams/{id}/mute` | Unmute team for current user (idempotent) | "unmute team", "unhide team", "show team again" | — |
 
 `GET /teams` response fields per team: `id`, `name`, `description`,
 `framework`, `organization_name`, `organization_id`, `parent_name`,
@@ -82,6 +86,8 @@ Team detail fields: `id`, `name`, `description`, `framework`,
 `creator` (UserSimple), `created_at`, `updated_at`, `members` (TeamMember[]).
 
 TeamMember: `id`, `team` (TeamSimple), `user` (UserSimple), `role` ("member" | "admin").
+
+Mute/unmute response: `{ data: { id, name, is_muted } }`.
 
 ### Team Members
 
@@ -108,18 +114,39 @@ TeamMember: `id`, `team` (TeamSimple), `user` (UserSimple), `role` ("member" | "
 | GET | `/teams/{id}/items/parked` | Items with status=parked (params: page, per_page, q, include_archived) | "show parked", "parking lot", "on hold", "deprioritized" | `/teams/{id}` |
 | PUT | `/teams/{id}/items/parked/{item_id}` | Add to board + set status=parked | "park item", "put on hold", "deprioritize" | `/items/{item_id}` |
 
-The `all` param (boolean, default false) shows all team members' items when true; otherwise only current user's.
+The `all` param (boolean, default false) on team item endpoints shows all team members' items when true; otherwise only current user's. Note: team projects do NOT use `all` — use `followed_only` and `include_muted` instead.
+
+Due date auto-set: creating an item with `status: "next"` in a team context (or moving an item to the `next` column via `PUT .../items/next/{item_id}`) with no explicit `due` date auto-sets `due` to 7 days from now. Explicit `due` values are always preserved.
 
 
 ### Team Projects
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/projects` | List active projects (params: page, per_page, q, all) | "show projects", "team projects", "rocks (EOS)", "execution plan" | `/teams/{id}` |
+| GET | `/teams/{id}/projects` | List team projects (params: page, per_page, q, status, include_muted, followed_only). Default: active, non-parkinglot, non-muted. | "show projects", "team projects", "rocks (EOS)", "execution plan" | `/teams/{id}` |
 | POST | `/teams/{id}/projects` | Create project in team (body: name*, description, due, status, on_weekly, team_id, parent_id, context) | "create project", "new project on team", "add rock" | `/items/{project_id}` |
 | PUT | `/teams/{id}/projects/{project_id}` | Convert item to team project (sets type=TodoList, assigns to team). Idempotent. | "convert to project", "promote to project", "make it a project" | `/items/{project_id}` |
 | PATCH | `/teams/{id}/projects/{project_id}` | Update project (body: name, description, due, status, on_weekly) | "update project", "rename project", "change project status" | `/items/{project_id}` |
 | DELETE | `/teams/{id}/projects/{project_id}` | Remove project from team (clears group_id, keeps project) | "remove project from team", "unlink project", "take off team board" | — |
+
+Default filtering: returns only active, non-parkinglot, non-muted projects. Use `status` to override the active-only filter (e.g. `?status=done`). Use `include_muted=true` to include muted items.
+
+### Team Headlines
+
+Only available for teams using the EOS framework.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/headlines` | List active headlines (params: page, per_page). Active = created within 7 days OR expires_at > today. | "show headlines", "team headlines", "what's new", "announcements" | `/teams/{id}` |
+| POST | `/teams/{id}/headlines` | Create headline (body: text*, expires_at?) | "add headline", "new headline", "share update", "post announcement" | `/teams/{id}` |
+| PATCH | `/teams/{id}/headlines/{headline_id}` | Update headline (body: text?, expires_at?). Creator or team admin only. | "update headline", "edit headline", "change headline" | `/teams/{id}` |
+| DELETE | `/teams/{id}/headlines/{headline_id}` | Archive headline (soft delete — sets expires_at to today). Creator or team admin only. | "delete headline", "remove headline", "archive headline" | — |
+
+Headline fields: `id`, `text`, `creator` (UserSimple), `expires_at` (YYYY-MM-DD | null), `created_at`, `updated_at`.
+
+HeadlineCreateRequest: `text` (string, required), `expires_at` (YYYY-MM-DD, optional — if omitted, headline visible for 7 days from creation).
+
+HeadlineUpdateRequest: `text` (string), `expires_at` (YYYY-MM-DD). At least one field required.
 
 ## Users
 
@@ -182,6 +209,15 @@ MeetingSimple fields: `id`, `type` (one_on_one | project), `date`,
 
 Meeting fields: MeetingSimple + `issues` (Item[]), `done` (Item[]), `next` (Item[]).
 
+## Sessions
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| POST | `/sessions` | Login via credentials or Google OAuth. No auth required. Returns API token. | "login", "authenticate", "get token" | — |
+| DELETE | `/sessions` | Logout / destroy current session | "logout", "sign out", "end session" | — |
+
+SessionResponse: `api_token` (string), user fields.
+
 ## Status Values
 
 `not_started`, `next`, `parked`, `blocked`, `done`, `archived`, `draft`
@@ -228,7 +264,14 @@ Delete responses return `204 No Content` with empty body.
 | next, to-do (column), priority for the week | Item with status=next | `/teams/{id}/items/next` |
 | parked, parking lot, park for later | Item with status=parked | `/teams/{id}/items/parked` |
 | done, completed, finished | Item with status=done | `/teams/{id}/items/done` |
-| assignee, owner, assigned to | Assignee | `/items/{id}/assignees` |
+| assignee, assigned to, responsible | Assignee | `/items/{id}/assignees` |
+| creator, item creator, who created this | Creator (`creator` field) | `/items`, `/teams`, `/day-plans` |
+| accountability owner, accountable | Assignee (if any), else Creator | `/items/{id}/assignees`, `creator` field |
+| muted, hidden team, show muted | Muted Team | `GET /teams?include_muted=true` |
+| mute team, hide team, silence team | Mute Team | `PUT /teams/{id}/mute` |
+| unmute team, unhide team, show team again | Unmute Team | `DELETE /teams/{id}/mute` |
+| headline, announcement, team update, news | Headline (EOS only) | `/teams/{id}/headlines` |
+| show archived, include archived | Archived filter | `?include_archived=true` on list endpoints |
 | comment, note | Comment | `/items/{id}/comments` |
 | member, team member | Team Member | `/teams/{id}/members` |
 | child, sub-task, sub-item, nested item | Child Item (parent_id) | `/items/{id}/children` |
@@ -297,10 +340,11 @@ Delete responses return `204 No Content` with empty body.
 
 | Concept A | Concept B | Difference |
 |-----------|-----------|------------|
-| Creator (`creator` field) | Assignee (`assignees` array) | Creator = who created the item. Assignees = who's responsible. One creator, many assignees. |
+| Creator (`creator` field) | Assignee (`assignees` array) | Creator = who created the item. Assignees = who's responsible for it. One creator, many assignees. Accountability ownership = assignees if any, otherwise creator. |
 | Archive (`DELETE /items/{id}`) | Delete (`DELETE /teams/{id}`) | Items are soft-deleted (status→archived). Teams are permanently deleted. |
 | Completed (day plan) | Done (item status) | Day plan `completed: true` checks off for that day. Item status `done` marks it globally done. For recurring items only the day plan toggles. |
 | on_weekly (item field) | status (item field) | `on_weekly` controls board visibility. `status` controls the column. An item can be `status: next` but `on_weekly: false`. |
 | One-on-one meeting | Project meeting | `type: "one_on_one"` has person1/person2. `type: "project"` has a project field. Same endpoints. |
 | Team projects (`/teams/{id}/projects`) | Standalone projects (`/projects`) | Team projects are scoped to a team. Standalone are user-level. Same underlying data (type=TodoList). |
 | `DELETE /teams/{id}/projects/{pid}` | `DELETE /projects/{id}` | Team version removes from team (clears group_id). Standalone version archives the project. |
+| Headline (`/teams/{id}/headlines`) | Comment (`/items/{id}/comments`) | Headlines are team-level announcements (EOS only, auto-expire after 7 days). Comments are item-level notes. |
