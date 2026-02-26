@@ -189,6 +189,38 @@ DayPlanItem fields: Item fields + `completed` (boolean), `position` (integer).
 
 Day plan completion: regular items also get status=done. Recurring/daily items only toggle `completed` for that day — item stays active for tomorrow.
 
+## Result Feeds
+
+The "90-second practice" — a daily check-in report where users record what they got done, what's next, and what's blocked.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/result-feeds/{date}` | Get check-in for date (auto-creates empty report). `{date}` accepts `YYYY-MM-DD` or literal `today`. | "show my check-in", "90 seconds", "result feed", "daily report", "what did I do", "show check-in for {date}" | — |
+| POST | `/result-feeds/{date}/{section}` | Create new item in section (body: name*) | "add done", "add next", "add issue", "new done item", "got something done" | — |
+| PUT | `/result-feeds/{date}/{section}/{item_id}` | Add existing item to section (idempotent) | "add item {id} to done", "put {id} in next", "attach {id} to issues" | — |
+| DELETE | `/result-feeds/{date}/{section}/{item_id}` | Remove item from section (keeps item, does not revert status) | "remove {id} from done", "take {id} off next", "drop {id} from issues" | — |
+| POST | `/result-feeds/{date}/submit` | Submit + share check-in (body: optional team_id, item_ids). Requires ≥1 item in both done and next. Idempotent. | "submit", "finalize", "done for the day", "submit check-in" | — |
+| GET | `/teams/{id}/result-feeds` | List team's shared check-ins (params: page, per_page). Reverse chronological. Requires team membership. | "team check-ins", "team feed", "team result feed", "show team check-ins" | — |
+
+ResultFeed fields: `id`, `date`, `is_completed`, `done` (Item[]), `next` (Item[]), `issues` (Item[]).
+
+TeamResultFeed fields: ResultFeed fields + `user` (UserSimple).
+
+Submit request body (all optional): `team_id` (integer — team to share with), `item_ids` (integer[] — items to highlight).
+
+Section path parameter: `done`, `next`, `issues`. Note: `issues` maps to `blocked` internally — always use `issues` in the URL, never `blocked`.
+
+Date path parameter: `YYYY-MM-DD` or literal `today` (resolved server-side via user timezone).
+
+Behavioral notes:
+- GET auto-creates an empty report if none exists for the date.
+- PUT (add item) is idempotent — adding an already-present item returns 200.
+- DELETE (remove item) returns 404 if item is not in that section. Does NOT delete the item or revert its status.
+- Submit is idempotent — re-submitting a completed report returns 200.
+- Submit validation: requires ≥1 item in both `done` and `next` (422 otherwise).
+- Adding items triggers status side-effects: done→realized, next→active, issues→blocked.
+- Removing items does NOT revert status side-effects.
+
 ## Meetings
 
 | Method | Path | Description | User Phrases | Web URL |
@@ -259,6 +291,8 @@ Delete responses return `204 No Content` with empty body.
 | 1:1, 1x1, one-on-one | Meeting (type=one_on_one) | `/meetings` |
 | project meeting | Meeting (type=project) | `/meetings` |
 | day plan, daily plan, prioritizer, tasks for today, my plan | Day Plan | `/day-plans/today`, `/day-plans/{date}` |
+| check-in, 90-second practice, result feed, daily report | Result Feed (daily check-in report) | `/result-feeds/today`, `/result-feeds/{date}` |
+| team check-ins, team feed, team result feed | Team Result Feeds (shared check-ins) | `/teams/{id}/result-feeds` |
 | weekly, team weekly, weekly board, Level 10, L10 (EOS) | Team Items (weekly board; called "Level 10" for EOS teams) | `/teams/{id}/items` |
 | issue, blocker, blocked item, challenge | Item with status=blocked | `/teams/{id}/items/issues` |
 | next, to-do (column), priority for the week | Item with status=next | `/teams/{id}/items/next` |
