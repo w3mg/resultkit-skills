@@ -1,6 +1,6 @@
 ---
 name: rkit:projects
-description: List active projects for a team. Shows project name, status, due date, and owner.
+description: List active projects for a team. View project columns. Add items to project columns.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash, Read, AskUserQuestion
@@ -8,7 +8,7 @@ allowed-tools: Bash, Read, AskUserQuestion
 
 # rkit:projects
 
-List active projects for a team.
+List active projects for a team. Drill into a project to see its columns and add items.
 
 ## Current State
 
@@ -17,8 +17,8 @@ List active projects for a team.
 
 ## Rules
 
-- **GET only.** This skill only reads data — no confirmation needed.
-- **Show IDs.** Always include project IDs in output.
+- **Confirm writes.** Before any POST, describe the action and ask for confirmation. GET requests execute immediately.
+- **Show IDs.** Always include project and item IDs in output.
 - **Concise output.** Tables and short summaries. No filler.
 - **Direct execution.** Use Bash with api.sh for all API calls. Never use Task agents.
 
@@ -32,6 +32,9 @@ List active projects for a team.
 | `{team_id} all` | All members' active projects for specified team |
 | `done` / `completed` | Include done/archived projects too |
 | `q "search term"` | Filter projects by name |
+| `{project_id} columns` | Show columns (direct children) of a project |
+| `{project_id} add "item name"` | Add an item to a project column (prompts for column if not specified) |
+| `{project_id} add {column_id} "item name"` | Add an item directly to a specific column |
 
 ---
 
@@ -100,6 +103,118 @@ After filtering:
   - `Owner` column: show `owner.first_name` + last initial (e.g., "Jane D.")
   - Show count of filtered results and total from API
   - If `meta.total_pages` > 1: paginate (fetch all pages) to ensure complete client-side filtering
+  - **Footer hint**: After the table, always show:
+    ```
+    Tip: `/rkit:projects {id} columns` to view columns · `/rkit:projects {id} add "item"` to add items · `/rkit:board {id}` for full board view
+    ```
+
+---
+
+## Flow: View Project Columns
+
+**Trigger**: `{project_id} columns`
+
+### Step 1: Fetch project children (columns)
+
+```bash
+API_SH="<api.sh path>"
+RESPONSE=$("$API_SH" GET "/items/PROJECT_ID/children?per_page=50")
+echo "$RESPONSE"
+```
+
+### Step 2: Handle response
+
+- Error → use Error Handling from List Projects flow
+- Success (status 200): Extract `body.data` (columns)
+- **Empty data array** → "No columns found for project {project_id}."
+- **Columns present** → display:
+
+  ```
+  ## Columns — {project_name} ({project_id})
+
+  | ID | Column | Items |
+  |----|--------|-------|
+  | 207441 | Backlog | 12 |
+  | 207442 | Do next | 3 |
+  | 207443 | Working | 5 |
+  | 207444 | Done | 8 |
+
+  Tip: `/rkit:projects {project_id} add "item name"` to add an item · `/rkit:board {project_id}` for full board view
+  ```
+
+  To get item counts per column, fetch each column's children:
+
+  ```bash
+  API_SH="<api.sh path>"
+  RESPONSE=$("$API_SH" GET "/items/COLUMN_ID/children?per_page=1")
+  echo "$RESPONSE"
+  ```
+
+  Use `body.meta.total` for the count (only need 1 result to get the total).
+
+---
+
+## Flow: Add Item to Project Column
+
+**Trigger**: `{project_id} add "item name"` or `{project_id} add {column_id} "item name"`
+
+### Step 1: Resolve column
+
+**If column ID is provided** (three args after project_id: column_id + item name): use that column ID directly.
+
+**If no column ID** (just project_id + item name):
+
+Fetch columns:
+
+```bash
+API_SH="<api.sh path>"
+RESPONSE=$("$API_SH" GET "/items/PROJECT_ID/children?per_page=50")
+echo "$RESPONSE"
+```
+
+List columns with IDs and ask user to pick:
+
+```
+Which column?
+1. Backlog (207441)
+2. Do next (207442)
+3. Working (207443)
+4. Done (207444)
+```
+
+### Step 2: Confirm and execute
+
+Describe the action:
+> Create item "**{name}**" under **{column_name}** (ID: {column_id})?
+
+Wait for confirmation. Then execute:
+
+```bash
+API_SH="<api.sh path>"
+RESPONSE=$("$API_SH" POST "/items" '{"name": "ITEM_NAME", "parent_id": COLUMN_ID}')
+echo "$RESPONSE"
+```
+
+Escape any double quotes in ITEM_NAME.
+
+### Step 3: Handle response
+
+- **Status 201**: "Created item **{id}**: \"{name}\" under **{column_name}** (ID: {column_id})."
+- **Status 422** → show validation error
+- **Error** → use Error Handling from List Projects flow
+
+### Batch add
+
+If the user provides multiple item names (comma-separated, or multiple quoted strings), create each one under the same column. Confirm the full list before executing. Display results as a table:
+
+```
+Added to {column_name} ({column_id}):
+
+| ID | Name |
+|----|------|
+| 211296 | CDW quote tool |
+| 211297 | Research Pipedrive workflow |
+```
 
 ---
 
@@ -122,6 +237,9 @@ Projects use the same status field as items:
 - **api.sh not found**: "api.sh not found. Install via: `/plugin marketplace add w3mg/resultkit-skills` then `/plugin install rkit@resultkit`"
 - **No projects**: "No active projects for team {team_id}."
 - **Team not found (404)**: "Team {team_id} not found."
+- **No columns**: "No columns found for project {project_id}." (project has no direct children)
+- **Project not found (404)**: "Project {project_id} not found."
+- **Ambiguous project_id vs team_id**: If the first arg is a number followed by `columns` or `add`, treat it as a project ID. Otherwise treat it as a team ID.
 
 ## References
 
