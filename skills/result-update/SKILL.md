@@ -1,6 +1,6 @@
 ---
 name: rkit:result-update
-description: Compose and submit your daily check-in (90-second practice). Add/remove items in done/next/issues sections, then submit to share with your team.
+description: Compose and submit your daily check-in (90-second practice). Add/remove items in done/next/blocked sections, then submit to share with your team.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash, Read, AskUserQuestion
@@ -33,9 +33,9 @@ Match the user's message against the **Triggers** column. Pick the first matchin
 | Triggers | Intent | Tool/Flow |
 |---|---|---|
 | "show my update", "my check-in", "90 seconds", "daily report", "what did I do", "show {date}", "check-in", "what did I get done", "my result update" | View my update for today or a date | `get_result_feed` |
-| "add done", "add next", "add issue", "new done item", "create done", "add to done", "add to next", "add to issues" | Create a new item in a section | `create_new_item` |
-| "add item {id} to done", "put {id} in next", "attach {id} to issues", "attach {id} to done", "move {id} to next" | Attach an existing item to a section by ID | `attach_existing_item` |
-| "remove {id} from done", "take {id} off next", "drop {id} from issues", "remove {id}" | Remove an item from a section | `remove_item` |
+| "add done", "add next", "add blocked", "new done item", "create done", "add to done", "add to next", "add to blocked" | Create a new item in a section | `create_new_item` |
+| "add item {id} to done", "put {id} in next", "attach {id} to blocked", "attach {id} to done", "move {id} to next" | Attach an existing item to a section by ID | `attach_existing_item` |
+| "remove {id} from done", "take {id} off next", "drop {id} from blocked", "remove {id}" | Remove an item from a section | `remove_item` |
 | "submit", "finalize", "done for the day", "submit check-in", "share check-in", "submit update", "send update" | Submit and share update | `submit_check_in` |
 
 ---
@@ -52,7 +52,7 @@ Determine the date path segment:
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" GET "/result-feeds/DATE_SEGMENT")
+RESPONSE=$("$API_SH" GET "/result-feed/DATE_SEGMENT")
 echo "$RESPONSE"
 ```
 
@@ -68,7 +68,7 @@ Parse the JSON response from api.sh:
 
 **Success (status 200)**:
 
-Extract `body.data` object: `id`, `date`, `is_completed`, `done[]`, `next[]`, `issues[]`.
+Extract `body.data` object: `id`, `date`, `is_completed`, `done[]`, `next[]`, `blocked[]`.
 
 - **All sections empty**: Display:
   > ## My Update — {date_label}
@@ -94,10 +94,10 @@ Extract `body.data` object: `id`, `date`, `is_completed`, `done[]`, `next[]`, `i
   |---|---|---|
   | 1 | 420 | Review PR |
 
-  ### Issues
+  ### Blocked
   No items.
 
-  **{total} items** — {done_count} done, {next_count} next, {issues_count} issues
+  **{total} items** — {done_count} done, {next_count} next, {blocked_count} blocked
   ```
 
   - `date_label`: "Today" for today segment, or the formatted date
@@ -111,9 +111,9 @@ Extract `body.data` object: `id`, `date`, `is_completed`, `done[]`, `next[]`, `i
 
 #### Step 1: Extract parameters
 
-Extract the **item name** (quoted text or text after "add done"/"add next"/"add issue") and the **section** (done, next, or issues) from the user's message.
+Extract the **item name** (quoted text or text after "add done"/"add next"/"add blocked") and the **section** (done, next, or blocked) from the user's message.
 
-If section is unclear, ask: "Which section — done, next, or issues?"
+If section is unclear, ask: "Which section — done, next, or blocked?"
 
 #### Step 2: Confirm
 
@@ -126,7 +126,7 @@ Wait for confirmation.
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" POST "/result-feeds/DATE_SEGMENT/SECTION" '{"name":"ITEM_NAME"}')
+RESPONSE=$("$API_SH" POST "/result-feed/DATE_SEGMENT/SECTION" '{"name":"ITEM_NAME"}')
 echo "$RESPONSE"
 ```
 
@@ -138,7 +138,7 @@ Escape any double quotes in ITEM_NAME. Use `today` as DATE_SEGMENT unless user s
   > Created item **{id}**: "{name}" in {section}
 
   Then re-fetch and display the updated check-in using `get_result_feed`.
-- **Status 400**: "Invalid section. Use: done, next, or issues."
+- **Status 400**: "Invalid section. Use: done, next, or blocked."
 - **Status 422**: Show validation error from response body.
 - **Other errors**: Handle per error handling table.
 
@@ -148,7 +148,7 @@ Escape any double quotes in ITEM_NAME. Use `today` as DATE_SEGMENT unless user s
 
 #### Step 1: Extract parameters
 
-Extract the **item ID** (integer) and **section** (done, next, or issues) from the user's message.
+Extract the **item ID** (integer) and **section** (done, next, or blocked) from the user's message.
 
 #### Step 2: Confirm
 
@@ -161,7 +161,7 @@ Wait for confirmation.
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" PUT "/result-feeds/DATE_SEGMENT/SECTION/ITEM_ID")
+RESPONSE=$("$API_SH" PUT "/result-feed/DATE_SEGMENT/SECTION/ITEM_ID")
 echo "$RESPONSE"
 ```
 
@@ -172,7 +172,7 @@ echo "$RESPONSE"
 
   Then re-fetch and display the updated check-in using `get_result_feed`.
   Note: already-present items also return 200 (idempotent).
-- **Status 400**: "Invalid section. Use: done, next, or issues."
+- **Status 400**: "Invalid section. Use: done, next, or blocked."
 - **Status 404**: "Item {id} not found or not viewable."
 - **Other errors**: Handle per error handling table.
 
@@ -182,7 +182,7 @@ echo "$RESPONSE"
 
 #### Step 1: Extract parameters
 
-Extract the **item ID** (integer) and **section** (done, next, or issues) from the user's message.
+Extract the **item ID** (integer) and **section** (done, next, or blocked) from the user's message.
 
 #### Step 2: Confirm
 
@@ -195,7 +195,7 @@ Wait for confirmation.
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" DELETE "/result-feeds/DATE_SEGMENT/SECTION/ITEM_ID")
+RESPONSE=$("$API_SH" DELETE "/result-feed/DATE_SEGMENT/SECTION/ITEM_ID")
 echo "$RESPONSE"
 ```
 
@@ -205,7 +205,7 @@ echo "$RESPONSE"
   > Item **{id}** removed from {section}.
 
   Then re-fetch and display the updated check-in using `get_result_feed`.
-- **Status 400**: "Invalid section. Use: done, next, or issues."
+- **Status 400**: "Invalid section. Use: done, next, or blocked."
 - **Status 404**: "Item {id} not found in {section} section."
 - **Other errors**: Handle per error handling table.
 
@@ -247,7 +247,7 @@ Wait for confirmation.
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" POST "/result-feeds/DATE_SEGMENT/submit" '{"team_id":TEAM_ID}')
+RESPONSE=$("$API_SH" POST "/result-feed/DATE_SEGMENT/submit" '{"team_id":TEAM_ID}')
 echo "$RESPONSE"
 ```
 
@@ -270,8 +270,8 @@ echo "$RESPONSE"
 2. **Extract parameters.** Look for:
    - An **item ID** (integer, e.g., "415", "item 415", "#415")
    - A **date** (e.g., "tomorrow", "Monday", "2026-02-20") → convert to `YYYY-MM-DD`
-   - A **name** (quoted text, or text after "add done"/"add next"/"add issue")
-   - A **section** (done, next, issues — note "blocked" means "issues")
+   - A **name** (quoted text, or text after "add done"/"add next"/"add blocked")
+   - A **section** (done, next, blocked — note "issues" means "blocked")
 3. **Pick the matching tool row.** If the user provides an ID with "add"/"attach"/"put", use `attach_existing_item`. If they provide a name/text, use `create_new_item`.
 4. **Default to `get_result_feed`** if no clear write intent is detected.
 5. **If ambiguous**, ask the user: "Did you mean to [option A] or [option B]?"
@@ -294,9 +294,9 @@ Use the current date from **Current State** to resolve relative dates.
 |---|---|
 | "done", "completed", "finished" | `done` |
 | "next", "up next", "planned" | `next` |
-| "issues", "blocked", "blockers", "stuck" | `issues` |
+| "blocked", "issues", "blockers", "stuck" | `blocked` |
 
-Always use `done`, `next`, `issues` in API paths — never `blocked`.
+Always use `done`, `next`, `blocked` in API paths.
 
 ---
 
@@ -310,7 +310,7 @@ Always use `done`, `next`, `issues` in API paths — never `blocked`.
   "is_completed": false,
   "done": [Item, ...],
   "next": [Item, ...],
-  "issues": [Item, ...]
+  "blocked": [Item, ...]
 }
 ```
 
