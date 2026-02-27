@@ -1,6 +1,6 @@
 ---
 name: rkit:weekly
-description: View and manage the team weekly board. Shows items grouped by status column (next, done, issues, parked) using framework-specific terminology.
+description: View and manage the team weekly board. Shows items grouped by status column (next, done, blocked, parked) using framework-specific terminology.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash, Read, AskUserQuestion
@@ -24,13 +24,13 @@ allowed-tools: Bash, Read, AskUserQuestion
 
 Fetch the team's `framework` field from `GET /teams/{team_id}`. Map the board name and column headers:
 
-| | Default / null | EOS | OKR | 4DX | V2MOM | SRT |
-|-------------|----------------|-----|-----|-----|-------|-----|
-| **Board name** | Weekly | Level 10 | Weekly | Weekly | Weekly | Weekly |
-| next | Next | To-Do | Next | WIG Actions | Next | Next |
-| done | Done | Done | Done | Done | Done | Done |
-| issues | Issues | Issues | Blockers | Blockers | Obstacles | Issues |
-| parked | Parked | Parked | Deferred | Parked | Parked | Parked |
+| | Default / null | EOS | OKR | 4DX | V2MOM | SRT | SVEP |
+|-------------|----------------|-----|-----|-----|-------|-----|------|
+| **Board name** | Weekly | Level 10 | Weekly | Weekly | Weekly | Weekly | Weekly |
+| next | Next | To-Do | Priorities | WIG Actions | Next | Next | Next |
+| done | Done | Done | Done | Done | Done | Done | Done |
+| blocked | Issues | Issues | Issues + Challenges | Blockers | Obstacles | Issues | Issues |
+| parked | Parked | Parked | Park for Later | Parked | Parked | Parked | Parked |
 
 **Always use the framework-mapped board name in all user-facing output and messages.** For EOS teams, say "Level 10" — never "weekly board" or "team weekly."
 
@@ -41,7 +41,7 @@ Parse the user input to determine which flow to follow:
 | Input | Flow |
 |-------|------|
 | *(no args)* | View Weekly |
-| `next` / `done` / `issues` / `parked` | View Single Column |
+| `next` / `done` / `blocked` / `parked` | View Single Column |
 | `move {item_id} {column}` | Move Item |
 | `add {item_id}` or `add {item_id} {column}` | Add Item to Weekly |
 | `remove {item_id}` | Remove Item from Weekly |
@@ -90,14 +90,14 @@ echo "$TEAM"
 API_SH="<api.sh path from Current State>"
 NEXT=$("$API_SH" GET "/teams/TEAM_ID/items/next?per_page=50")
 DONE=$("$API_SH" GET "/teams/TEAM_ID/items/done?per_page=50")
-ISSUES=$("$API_SH" GET "/teams/TEAM_ID/items/issues?per_page=50")
+BLOCKED=$("$API_SH" GET "/teams/TEAM_ID/items/blocked?per_page=50")
 PARKED=$("$API_SH" GET "/teams/TEAM_ID/items/parked?per_page=50")
 echo "---NEXT---"
 echo "$NEXT"
 echo "---DONE---"
 echo "$DONE"
-echo "---ISSUES---"
-echo "$ISSUES"
+echo "---BLOCKED---"
+echo "$BLOCKED"
 echo "---PARKED---"
 echo "$PARKED"
 ```
@@ -113,8 +113,8 @@ Display format:
 
 ## {Next Header} ({next_total} items)
 
-| ID | Name | Owner | Due |
-|----|------|-------|-----|
+| ID | Name | Creator | Due |
+|----|------|---------|-----|
 | 42 | Fix login bug | Scott Levy | 2026-02-20 |
 | 88 | Write API tests | Patrick Angodung | — |
 
@@ -124,7 +124,7 @@ Showing 50 of {total} — more items exist
 
 (empty)
 
-## {Issues Header} ({issues_total} items)
+## {Blocked Header} ({blocked_total} items)
 
 ...
 
@@ -135,16 +135,16 @@ Showing 50 of {total} — more items exist
 
 **Display rules**:
 - Column header shows framework-mapped name and total item count from `meta.total`
-- Each item shows: ID, name, owner (`first_name last_name` from `owner` field; show login if names are empty), due date (or "—" if null)
+- Each item shows: ID, name, creator (`first_name last_name` from `creator` field; show login if names are empty), due date (or "—" if null)
 - Empty columns show "(empty)"
 - If a column has more than 50 items (`meta.total > 50`), show "Showing 50 of {total} — more items exist" after the table
-- Column order: next, done, issues, parked (always this order)
+- Column order: next, done, blocked, parked (always this order)
 
 ---
 
 ## Flow: View Single Column
 
-**Trigger**: `next`, `done`, `issues`, or `parked`
+**Trigger**: `next`, `done`, `blocked`, or `parked`
 
 ### Step 1: Fetch team detail and the requested column
 
@@ -162,7 +162,7 @@ RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/items/COLUMN?per_page=50")
 echo "$RESPONSE"
 ```
 
-Replace `COLUMN` with the requested column name (next/done/issues/parked).
+Replace `COLUMN` with the requested column name (next/done/blocked/parked).
 
 ### Step 2: Display column
 
@@ -174,7 +174,7 @@ Use same display format as a single section from View Weekly — framework-mappe
 
 **Trigger**: `move {item_id} {column}`
 
-Column must be one of: `next`, `done`, `issues`, `parked`.
+Column must be one of: `next`, `done`, `blocked`, `parked`.
 
 ### Step 1: Check current status
 
@@ -189,7 +189,7 @@ echo "$RESPONSE"
 Map the item's `status` to a column:
 - `next` → next
 - `done` → done
-- `blocked` → issues
+- `blocked` → blocked
 - `parked` → parked
 
 If the item's current column matches the target → "Item {item_id} is already in {column}." and stop.
@@ -235,12 +235,12 @@ echo "$RESPONSE"
 
 ### Step 2: Determine column
 
-- If column provided in args → validate it's one of next/done/issues/parked
+- If column provided in args → validate it's one of next/done/blocked/parked
 - If no column → prompt user:
   > Which column for **{item_name}** (ID: {item_id})?
   > 1. Next
   > 2. Done
-  > 3. Issues
+  > 3. Blocked
   > 4. Parked
 
   (Use framework-mapped names in the prompt.)
@@ -313,9 +313,9 @@ echo "$RESPONSE"
 - **Item already in target column (move)** → warn and skip
 - **Item already on {board_name} (add)** → warn and offer to move instead
 - **Column has >50 items** → show first 50 with "Showing 50 of {total} — more items exist"
-- **Invalid column name** → "Invalid column '{input}'. Use: next, done, issues, or parked."
+- **Invalid column name** → "Invalid column '{input}'. Use: next, done, blocked, or parked."
 - **Team not found (--team override)** → "Team {id} not found (404)."
-- **Owner names empty** → fall back to `login` field
+- **Creator names empty** → fall back to `login` field
 
 ## References
 

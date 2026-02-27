@@ -51,7 +51,7 @@ Resolve team ID using Team ID Resolution. Build query params from args (page, pe
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/result-feeds?PARAMS")
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/result-feed?PARAMS")
 echo "$RESPONSE"
 ```
 
@@ -84,7 +84,7 @@ Extract `body.data` array and `body.meta` pagination.
   **Next**
   - [{id}] {name}
 
-  **Issues**
+  **Blocked**
   - [{id}] {name}
   ```
 
@@ -106,7 +106,7 @@ Extract `body.data` array and `body.meta` pagination.
   "user": { "id": 1, "login": "pat", "first_name": "Pat", "last_name": "A" },
   "done": [Item, ...],
   "next": [Item, ...],
-  "issues": [Item, ...]
+  "blocked": [Item, ...]
 }
 ```
 

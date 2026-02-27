@@ -281,21 +281,22 @@ Use the current date from **Current State** to resolve relative dates.
   "status": "next",
   "on_weekly": true,
   "team": { "id": 1, "name": "Acme Team" },
-  "owner": { "id": 1, "login": "patrick", "first_name": "Patrick", "last_name": "Smith" },
+  "creator": { "id": 1, "login": "patrick", "first_name": "Patrick", "last_name": "Smith" },
   "assignees": [{ "id": 7, "login": "sarah", "first_name": "Sarah", "last_name": "Lee" }],
   "parent_id": 100,
   "created_at": "2026-02-19T08:00:00Z",
   "updated_at": "2026-02-19T08:00:00Z",
-  "completed": false
+  "completed": false,
+  "position": 1
 }
 ```
 
 **Pagination:**
 ```json
 {
-  "current_page": 1,
+  "page": 1,
   "per_page": 25,
-  "total_count": 3,
+  "total": 3,
   "total_pages": 1
 }
 ```

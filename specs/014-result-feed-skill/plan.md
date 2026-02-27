@@ -49,7 +49,7 @@ specs/014-result-feed-skill/
 ├── data-model.md        # Phase 1 output
 ├── quickstart.md        # Phase 1 output
 ├── contracts/           # Phase 1 output
-│   └── result-feeds-api.md
+│   └── result-feed-api.md
 └── checklists/
     └── requirements.md  # Spec quality checklist
 ```

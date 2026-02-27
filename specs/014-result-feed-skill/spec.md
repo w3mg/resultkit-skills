@@ -9,15 +9,15 @@
 
 ### User Story 1 - View Today's Check-In (Priority: P1)
 
-A user invokes `/rkit:result-feed` with no arguments to see their current daily check-in report. The skill fetches today's result feed and displays three sections — Done, Next, and Issues — each listing items with their IDs and names. If no check-in exists for today, the API auto-creates an empty one.
+A user invokes `/rkit:result-feed` with no arguments to see their current daily check-in report. The skill fetches today's result feed and displays three sections — Done, Next, and Blocked — each listing items with their IDs and names. If no check-in exists for today, the API auto-creates an empty one.
 
 **Why this priority**: Viewing the current check-in is the most fundamental operation — every other action (adding items, submitting) depends on the user first seeing where they stand.
 
-**Independent Test**: Can be fully tested by invoking the skill with no arguments and verifying it displays a structured report with Done/Next/Issues sections, item counts, and completion status.
+**Independent Test**: Can be fully tested by invoking the skill with no arguments and verifying it displays a structured report with Done/Next/Blocked sections, item counts, and completion status.
 
 **Acceptance Scenarios**:
 
-1. **Given** a user with a configured rkit setup, **When** they run `/rkit:result-feed`, **Then** the skill displays today's check-in with Done, Next, and Issues sections, each showing item IDs and names, plus a completion status indicator.
+1. **Given** a user with a configured rkit setup, **When** they run `/rkit:result-feed`, **Then** the skill displays today's check-in with Done, Next, and Blocked sections, each showing item IDs and names, plus a completion status indicator.
 2. **Given** a user who has not started a check-in today, **When** they run `/rkit:result-feed`, **Then** the skill displays an empty check-in with zero items in each section and a hint on how to add items.
 3. **Given** a user who specifies a date (e.g., "yesterday" or "2026-02-25"), **When** they run `/rkit:result-feed`, **Then** the skill displays the check-in for that date.
 
@@ -25,7 +25,7 @@ A user invokes `/rkit:result-feed` with no arguments to see their current daily 
 
 ### User Story 2 - Add Items to Check-In Sections (Priority: P1)
 
-A user adds items to their daily check-in. They can create a brand-new task and place it in a section (Done, Next, or Issues), or attach an existing item by ID to a section. Adding an item triggers the appropriate status side-effect on the item itself.
+A user adds items to their daily check-in. They can create a brand-new task and place it in a section (Done, Next, or Blocked), or attach an existing item by ID to a section. Adding an item triggers the appropriate status side-effect on the item itself.
 
 **Why this priority**: Building the check-in by populating sections is the core workflow — without it, the check-in is empty and cannot be submitted.
 
@@ -35,7 +35,7 @@ A user adds items to their daily check-in. They can create a brand-new task and 
 
 1. **Given** a user viewing today's check-in, **When** they add a new item with a name to the "done" section, **Then** a new Task is created, added to the Done section, and the updated check-in is displayed.
 2. **Given** a user with an existing item (ID 415), **When** they attach it to the "next" section, **Then** the item appears in the Next section of today's check-in.
-3. **Given** a user who adds an item to "issues", **When** the operation completes, **Then** the item is added to the Issues section.
+3. **Given** a user who adds an item to "blocked", **When** the operation completes, **Then** the item is added to the Blocked section.
 4. **Given** a user who tries to add an item they cannot view, **When** the API responds with 404, **Then** the skill displays an appropriate error.
 
 ---
@@ -75,7 +75,7 @@ A user removes an item from a check-in section. The item itself is not deleted a
 
 ### User Story 5 - View Team Check-Ins (Priority: P3)
 
-A user views completed check-ins shared by their team members. The skill fetches the team's result feed — a paginated list of submitted and shared check-ins in reverse date order, each showing the team member's name and their full Done/Next/Issues items in ItemSimple format (ID + name).
+A user views completed check-ins shared by their team members. The skill fetches the team's result feed — a paginated list of submitted and shared check-ins in reverse date order, each showing the team member's name and their full Done/Next/Blocked items in ItemSimple format (ID + name).
 
 **Why this priority**: Team visibility is a valuable feature but depends on individual check-ins being built and submitted first.
 
@@ -96,7 +96,7 @@ A user views completed check-ins shared by their team members. The skill fetches
 - What happens when the API returns 401 Unauthorized? Skill displays "Unauthorized. Run `/rkit:setup` to update your token."
 - What happens when the user provides an invalid date format? Skill displays "Invalid date format. Use YYYY-MM-DD."
 - What happens when adding an item that is already in the section? Operation is idempotent — API returns 200, item remains in section.
-- What happens when the user provides an invalid section name? Skill displays an error. Valid sections are: done, next, issues.
+- What happens when the user provides an invalid section name? Skill displays an error. Valid sections are: done, next, blocked.
 - What happens when submitting with a team_id the user doesn't belong to? API returns 404, skill displays "Team not found."
 - What happens when submitting with no default_team_id configured? Skill prompts the user to specify a team before proceeding.
 
@@ -104,24 +104,24 @@ A user views completed check-ins shared by their team members. The skill fetches
 
 ### Functional Requirements
 
-- **FR-001**: Skill MUST display the user's result feed for today (or a specified date), showing Done, Next, and Issues sections with item IDs, names, and a completion status indicator.
-- **FR-002**: Skill MUST allow creating a new task item and adding it to a specified section (done, next, or issues) of the check-in.
+- **FR-001**: Skill MUST display the user's result feed for today (or a specified date), showing Done, Next, and Blocked sections with item IDs, names, and a completion status indicator.
+- **FR-002**: Skill MUST allow creating a new task item and adding it to a specified section (done, next, or blocked) of the check-in.
 - **FR-003**: Skill MUST allow attaching an existing item (by ID) to a specified section of the check-in.
 - **FR-004**: Skill MUST allow removing an item from a specified section without deleting the item or reverting its status.
 - **FR-005**: Skill MUST allow submitting (finalizing) the check-in, which requires at least one item in both Done and Next sections.
 - **FR-006**: Skill MUST always share the check-in with a team during submission. The default team is read from `default_team_id` in config. The confirmation message MUST display which team the check-in will be shared with. The user can specify a different team to override the default. If no default team is configured, the skill MUST prompt for a team.
 - **FR-007**: Skill MUST display team members' completed and shared check-ins in reverse date order, paginated, showing all items per section in ItemSimple format (ID + name).
-- **FR-008**: Skill MUST use the URL section names "done", "next", and "issues" — never "blocked" in API calls.
+- **FR-008**: Skill MUST use the URL section names "done", "next", and "blocked" in API calls.
 - **FR-009**: Skill MUST confirm all write operations (POST, PUT, DELETE) before executing them.
 - **FR-010**: Skill MUST resolve natural-language dates ("today", "tomorrow", "yesterday", "Monday", "2026-02-25") to YYYY-MM-DD format or the literal "today".
 - **FR-011**: Skill MUST display item IDs in all output so users can reference them in follow-up commands.
-- **FR-012**: The api-reference.md MUST be updated with Result Feeds endpoint documentation before the skill is built.
+- **FR-012**: The api-reference.md MUST be updated with Result Feed endpoint documentation before the skill is built.
 - **FR-013**: Skill MUST follow existing rkit skill patterns: SKILL.md frontmatter, Current State block, Tool Routing Table, flow-based execution, standard error handling.
 
 ### Key Entities
 
-- **Result Feed (Check-In)**: A daily report containing three sections (Done, Next, Issues), each holding a list of items. Has a date, completion status, and optional team sharing. One per user per day.
-- **Section**: One of three categories within a check-in — Done (completed work), Next (upcoming work), Issues (blocked items). URL names: "done", "next", "issues".
+- **Result Feed (Check-In)**: A daily report containing three sections (Done, Next, Blocked), each holding a list of items. Has a date, completion status, and optional team sharing. One per user per day.
+- **Section**: One of three categories within a check-in — Done (completed work), Next (upcoming work), Blocked (blocked items). URL names: "done", "next", "blocked".
 - **Item**: A task or action item that can be placed in a check-in section. Has an ID, name, status, and other metadata. Items exist independently of check-ins.
 - **Team Result Feed**: A check-in that has been submitted and shared with a team. Includes the user who created it. Visible to all team members.
 

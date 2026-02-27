@@ -84,3 +84,8 @@ Never do these piecemeal. Never forget the version bump. One shot, every time.
 ## Active Technologies
 - Bash 5.x (api.sh, helper scripts), Markdown + Claude Code runtime, curl, jq
 - JSON config at `~/.config/resultkit/config.json`
+- Bash 5.x (api.sh), Markdown (SKILL.md — Claude Code skill runtime) + curl, jq, `scripts/api.sh` (shared API caller) (014-result-feed-skill)
+- `~/.config/resultkit/config.json` (user config with token + default_team_id) (014-result-feed-skill)
+
+## Recent Changes
+- 014-result-feed-skill: Added Bash 5.x (api.sh), Markdown (SKILL.md — Claude Code skill runtime) + curl, jq, `scripts/api.sh` (shared API caller)

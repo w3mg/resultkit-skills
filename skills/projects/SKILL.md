@@ -28,9 +28,7 @@ List active projects for a team. Drill into a project to see its columns and add
 |-------|----------|
 | *(no args)* | List **active** projects for default team (excludes done/archived) |
 | `{team_id}` | List active projects for specified team |
-| `all` | List all team members' active projects (passes `all=true`) |
-| `{team_id} all` | All members' active projects for specified team |
-| `done` / `completed` | Include done/archived projects too |
+| `done` / `completed` | List done projects (passes `?status=done`) |
 | `q "search term"` | Filter projects by name |
 | `{project_id} columns` | Show columns (direct children) of a project |
 | `{project_id} add "item name"` | Add an item to a project column (prompts for column if not specified) |
@@ -48,9 +46,9 @@ List active projects for a team. Drill into a project to see its columns and add
 
 ### Step 2: Build query params
 
-Start with `per_page=100` (API does not filter by status server-side, so fetch all and filter client-side).
+Start with `per_page=100`. The API filters by status server-side (default: active only).
 
-- If `all` is in args → add `all=true`
+- If user asked for `done` / `completed` → add `status=done`
 - If `q "term"` is in args → add `q=term`
 
 ### Step 3: Fetch projects
@@ -78,11 +76,7 @@ Parse the JSON response from api.sh:
 
 Extract `body.data` array (the projects) and `body.meta` (pagination info).
 
-**Client-side filtering** (API returns all statuses):
-- Default: exclude projects where `status` is `done` or `archived`
-- If user asked for "done" or "completed": show all projects (no filter)
-
-After filtering:
+After extracting:
 
 - **Empty result**: "No active projects for team {team_id}."
 
@@ -91,8 +85,8 @@ After filtering:
   ```
   ## Active Projects — Team {team_id}
 
-  | ID | Name | Status | Due | Owner |
-  |----|------|--------|-----|-------|
+  | ID | Name | Status | Due | Creator |
+  |----|------|--------|-----|---------|
   | 201 | Q1 Product Launch | not_started | 2026-03-31 | Jane D. |
   | 205 | API Migration | parked | — | John S. |
 
@@ -100,9 +94,9 @@ After filtering:
   ```
 
   - `Due` column: show date if present, "—" if null
-  - `Owner` column: show `owner.first_name` + last initial (e.g., "Jane D.")
+  - `Creator` column: show `creator.first_name` + last initial (e.g., "Jane D.")
   - Show count of filtered results and total from API
-  - If `meta.total_pages` > 1: paginate (fetch all pages) to ensure complete client-side filtering
+  - If `meta.total_pages` > 1: show "Page {page} of {total_pages}" with note about additional pages
   - **Footer hint**: After the table, always show:
     ```
     Tip: `/rkit:projects {id} columns` to view columns · `/rkit:projects {id} add "item"` to add items · `/rkit:board {id}` for full board view
@@ -229,7 +223,7 @@ Projects use the same status field as items:
 | `done` | Completed | no |
 | `archived` | Archived | no |
 
-**"Active" = not done and not archived.** The API does not filter by status server-side on this endpoint — all projects are returned regardless of query params. Filtering must happen client-side.
+**"Active" = not done and not archived.** The API filters by status server-side: default returns only active projects. Use `?status=done` or `?status=parked` to get other statuses. Use `?include_muted=true` to include muted projects.
 
 ## Edge Cases
 

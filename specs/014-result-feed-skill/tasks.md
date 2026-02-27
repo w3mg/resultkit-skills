@@ -128,7 +128,7 @@ All paths relative to repository root (`/home/patrick/projects/resultkit-skills/
 **Purpose**: Final validation and ship
 
 - [x] T017 Review complete SKILL.md against constitution principles in skills/result-feed/SKILL.md. Verify: (I) SKILL.md is sole entry point, (II) self-contained — no cross-skill deps, (III) all values from config, (IV) all writes confirmed, (V) IDs shown everywhere, (VII) only Bash+api.sh, (VIII) all error states handled, (IX) concise tables/summaries. Fix any violations.
-- [ ] T018 Commit, bump version, and push. Follow CLAUDE.md commit checklist: bump version in .claude-plugin/plugin.json, stage all changed files, commit with descriptive message, git pull --rebase origin main, git push origin main, print update instructions.
+- [x] T018 Commit, bump version, and push. Follow CLAUDE.md commit checklist: bump version in .claude-plugin/plugin.json, stage all changed files, commit with descriptive message, git pull --rebase origin main, git push origin main, print update instructions.
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: rkit:1on1
-description: View and manage one-on-one meetings for a team. Shows meetings filtered by type and team, with items grouped by column (next, done, issues). Supports move, add, and remove.
+description: View and manage one-on-one meetings for a team. Shows meetings filtered by type and team, with items grouped by column (next, done, blocked). Supports move, add, and remove.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash, Read, AskUserQuestion
@@ -28,7 +28,7 @@ Parse the user input to determine which flow to follow:
 |-------|------|
 | *(no args)* | List One-on-Ones |
 | `{meeting_id}` or `show {meeting_id}` | View One-on-One Detail |
-| `{meeting_id} next` / `done` / `issues` | View Single Column |
+| `{meeting_id} next` / `done` / `blocked` | View Single Column |
 | `{meeting_id} move {item_id} {column}` | Move Item |
 | `{meeting_id} add "text"` | Add New Item |
 | `{meeting_id} add {item_id}` | Add Existing Item |
@@ -107,7 +107,7 @@ echo "$RESPONSE"
 
 ### Step 2: Display meeting
 
-The response includes `next`, `done`, and `issues` arrays directly.
+The response includes `next`, `done`, and `blocked` arrays directly.
 
 Display format:
 
@@ -116,31 +116,31 @@ Display format:
 
 ### Next ({count} items)
 
-| ID | Name | Owner | Due |
-|----|------|-------|-----|
+| ID | Name | Creator | Due |
+|----|------|---------|-----|
 | 42 | Discuss hiring plan | Scott Levy | 2026-02-25 |
 
 ### Done ({count} items)
 
-| ID | Name | Owner | Due |
-|----|------|-------|-----|
+| ID | Name | Creator | Due |
+|----|------|---------|-----|
 | 38 | Review Q4 results | Patrick Angodung | — |
 
-### Issues ({count} items)
+### Blocked ({count} items)
 
 (empty)
 ```
 
 **Display rules**:
-- Each item shows: ID, name, owner (`first_name last_name`; fall back to `login` if names empty), due date (or "—" if null)
+- Each item shows: ID, name, creator (`first_name last_name` from `creator` field; fall back to `login` if names empty), due date (or "—" if null)
 - Empty columns show "(empty)"
-- Column order: next, done, issues (always this order)
+- Column order: next, done, blocked (always this order)
 
 ---
 
 ## Flow: View Single Column
 
-**Trigger**: `{meeting_id} next`, `{meeting_id} done`, or `{meeting_id} issues`
+**Trigger**: `{meeting_id} next`, `{meeting_id} done`, or `{meeting_id} blocked`
 
 ### Step 1: Fetch the requested column
 
@@ -153,7 +153,7 @@ echo "$RESPONSE"
 Replace `COLUMN` with:
 - `next` for next
 - `done` for done
-- `blocked` for issues (API uses `blocked`, user says `issues`)
+- `blocked` for blocked items
 
 ### Step 2: Display column
 
@@ -165,7 +165,7 @@ Use same display format as a single section from View Detail — column header, 
 
 **Trigger**: `{meeting_id} move {item_id} {column}`
 
-Column must be one of: `next`, `done`, `issues`.
+Column must be one of: `next`, `done`, `blocked`.
 
 ### Step 1: Check current status
 
@@ -180,7 +180,7 @@ echo "$RESPONSE"
 Map the item's `status` to a column:
 - `next` → next
 - `done` → done
-- `blocked` → issues
+- `blocked` → blocked
 
 If the item's current column matches the target → "Item {item_id} is already in {column}." and stop.
 
@@ -189,7 +189,7 @@ If the item's current column matches the target → "Item {item_id} is already i
 Map target column to API status:
 - `next` → `next`
 - `done` → `done`
-- `issues` → `blocked`
+- `blocked` → `blocked`
 
 Describe the move:
 > Move item **{item_name}** (ID: {item_id}) from **{current_column}** to **{target_column}**?
@@ -295,7 +295,7 @@ echo "$RESPONSE"
 - **All columns empty** → show all three column headers with "(empty)"
 - **Item already in target column (move)** → warn and skip
 - **Item not found (add existing)** → "Item {id} not found."
-- **Owner names empty** → fall back to `login` field
+- **Creator names empty** → fall back to `login` field
 
 ## References
 
