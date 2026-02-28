@@ -57,6 +57,10 @@ Use the Bash tool directly for all API calls via the shared `api.sh` script. No 
 
 Format responses as clean tables or short summaries. No verbose prose. Show what matters: names, statuses, IDs, dates.
 
+## X. Use the Skill Builder
+
+When creating or modifying SKILL.md files, ALWAYS use the `/skill-creator` skill. Never hand-write SKILL.md files from scratch or manually replicate patterns from other skills. The skill creator enforces consistent structure, runs evals to verify behavior, and iterates on skill quality through benchmarking. Use `/plugin-dev` for plugin lifecycle tasks (manifest validation, syncing, versioning, publishing) but `/skill-creator` for authoring and improving the skills themselves.
+
 ---
 
-**Version**: 1.1.0 | **Ratified**: 2026-02-14 | **Last Amended**: 2026-02-14
+**Version**: 1.2.0 | **Ratified**: 2026-02-14 | **Last Amended**: 2026-02-28
