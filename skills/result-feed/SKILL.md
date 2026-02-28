@@ -1,6 +1,6 @@
 ---
 name: rkit:result-feed
-description: View your team's shared daily check-ins (result feeds). Shows what teammates got done, what's next, and blockers.
+description: View your team's shared daily check-ins (result feeds). Shows what teammates got done, what's next, and what's blocking them. Use this skill when users want to see team updates, daily check-ins, team progress, what the team has been working on, or review result feeds.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash, Read, AskUserQuestion

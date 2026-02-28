@@ -1,6 +1,6 @@
 ---
 name: rkit:setup
-description: First-run configuration for ResultKit. Creates and manages ~/.config/resultkit/config.json with API token, default team, and API base URL. Use when setting up rkit skills for the first time or reconfiguring.
+description: First-run configuration for ResultKit. Creates and manages ~/.config/resultkit/config.json with API token, default team, and API base URL. Use this skill when users need to set up ResultKit for the first time, reconfigure their token, change default team, or update API settings. Triggers on "setup", "configure", "connect my account", "change team", "update token", or any first-time rkit usage issues.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash, Read, Write

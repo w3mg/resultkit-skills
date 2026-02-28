@@ -1,6 +1,6 @@
 ---
 name: rkit:1on1
-description: View and manage one-on-one meetings for a team. Shows meetings filtered by type and team, with items grouped by column (next, done, blocked). Supports move, add, and remove.
+description: View and manage one-on-one meetings. Shows meetings with items grouped by column (next, done, blocked). Use this skill when users mention 1:1s, one-on-ones, 1-on-1 meetings, want to see their one-on-one agenda, add items to a 1:1, or manage items in a one-on-one meeting.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash, Read, AskUserQuestion
@@ -35,8 +35,6 @@ Parse the user input to determine which flow to follow:
 | `{meeting_id} remove {item_id}` | Remove Item |
 
 If the input doesn't match any pattern, show this usage summary and ask what they'd like to do.
-
----
 
 ---
 

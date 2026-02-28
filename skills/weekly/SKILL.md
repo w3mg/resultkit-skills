@@ -1,6 +1,6 @@
 ---
 name: rkit:weekly
-description: View and manage the team weekly board. Shows items grouped by status column (next, done, blocked, parked) using framework-specific terminology.
+description: View and manage the team weekly board (Level 10 for EOS teams). Shows items grouped by status column using framework-specific terminology. Uses L10-specific API routes for EOS teams. Use this skill when users mention their weekly board, team board, Level 10 board, L10, weekly items, team priorities, team issues, or want to manage items on the team's weekly meeting board.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash, Read, AskUserQuestion
@@ -33,6 +33,19 @@ Fetch the team's `framework` field from `GET /teams/{team_id}`. Map the board na
 | parked | Parked | Parked | Park for Later | Parked | Parked | Parked | Parked |
 
 **Always use the framework-mapped board name in all user-facing output and messages.** For EOS teams, say "Level 10" — never "weekly board" or "team weekly."
+
+## L10 Route Selection
+
+After fetching the team detail, check the `framework` field. For EOS teams, use L10-specific API routes for the next and blocked columns. The L10 routes are aliases that return identical responses but use EOS terminology in the URL.
+
+| Column | EOS Route | Non-EOS Route |
+|--------|-----------|---------------|
+| next (To-Do) | `GET /teams/{id}/l10/todos` | `GET /teams/{id}/items/next` |
+| blocked (Issues) | `GET /teams/{id}/l10/issues` | `GET /teams/{id}/items/blocked` |
+| done | `GET /teams/{id}/items/done` | `GET /teams/{id}/items/done` |
+| parked | `GET /teams/{id}/items/parked` | `GET /teams/{id}/items/parked` |
+
+Write operations (move, add, remove) always use generic routes (`/teams/{id}/items/...`) regardless of framework — L10 routes only support GET and POST.
 
 ## Argument Parsing
 
@@ -85,6 +98,28 @@ API_SH="<api.sh path from Current State>"
 TEAM=$("$API_SH" GET "/teams/TEAM_ID")
 echo "$TEAM"
 ```
+
+Extract the team's `framework` from the response. Then fetch all four columns using the routes from the **L10 Route Selection** table:
+
+**If framework is `eos`** — use L10 routes for next and blocked:
+
+```bash
+API_SH="<api.sh path from Current State>"
+NEXT=$("$API_SH" GET "/teams/TEAM_ID/l10/todos?per_page=50")
+DONE=$("$API_SH" GET "/teams/TEAM_ID/items/done?per_page=50")
+BLOCKED=$("$API_SH" GET "/teams/TEAM_ID/l10/issues?per_page=50")
+PARKED=$("$API_SH" GET "/teams/TEAM_ID/items/parked?per_page=50")
+echo "---NEXT---"
+echo "$NEXT"
+echo "---DONE---"
+echo "$DONE"
+echo "---BLOCKED---"
+echo "$BLOCKED"
+echo "---PARKED---"
+echo "$PARKED"
+```
+
+**Otherwise** — use generic routes:
 
 ```bash
 API_SH="<api.sh path from Current State>"
@@ -156,13 +191,17 @@ TEAM=$("$API_SH" GET "/teams/TEAM_ID")
 echo "$TEAM"
 ```
 
+Use the **L10 Route Selection** table to determine the correct path:
+
+- If framework is `eos` and column is `next`: use `/teams/TEAM_ID/l10/todos?per_page=50`
+- If framework is `eos` and column is `blocked`: use `/teams/TEAM_ID/l10/issues?per_page=50`
+- Otherwise: use `/teams/TEAM_ID/items/COLUMN?per_page=50`
+
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/items/COLUMN?per_page=50")
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/<selected-path>?per_page=50")
 echo "$RESPONSE"
 ```
-
-Replace `COLUMN` with the requested column name (next/done/blocked/parked).
 
 ### Step 2: Display column
 

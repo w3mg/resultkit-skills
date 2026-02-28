@@ -1,6 +1,6 @@
 ---
 name: rkit:braindump
-description: Parse unstructured text (meeting notes, emails, dictation, voice memos, chat) into organized action items using the team's management framework. Outputs a structured table with item names, types, status, context, owners, and dates.
+description: Parse unstructured text (meeting notes, emails, dictation, voice memos, chat, pasted text) into organized action items using the team's management framework. Outputs a structured table with item names, types, status, context, owners, and dates. Use this skill when users paste unstructured text, meeting notes, emails, or voice memo transcripts and want them organized into actionable items.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash, Read, AskUserQuestion

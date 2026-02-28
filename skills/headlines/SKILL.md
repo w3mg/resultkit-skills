@@ -1,6 +1,6 @@
 ---
 name: rkit:headlines
-description: View and manage EOS headlines (People & Customer Headlines) for a team. List active headlines, add new ones, archive (soft-delete), and update text or expiration.
+description: View and manage EOS headlines (People & Customer Headlines) for a team. List active headlines, add new ones, archive (soft-delete), and update text or expiration. Uses L10-specific API routes for EOS teams. Use this skill when users mention headlines, people headlines, customer headlines, team announcements, or want to add, remove, or update headlines for their team.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash, Read, AskUserQuestion
@@ -56,6 +56,19 @@ Parse the JSON response from api.sh. Handle these cases:
 - `status: 422` → Check if the error message mentions "EOS framework". If so, show: "Headlines are only available for teams using the EOS framework." Otherwise, show the validation error from the response body.
 - Other non-200 → Show status code and error from response body.
 
+## L10 Route Selection
+
+After fetching the team detail, check the `framework` field. For EOS teams, use L10-specific API routes for listing and creating headlines. The L10 routes are aliases that return identical responses.
+
+| Operation | EOS Route | Non-EOS Route |
+|-----------|-----------|---------------|
+| List headlines | `GET /teams/{id}/l10/headlines` | `GET /teams/{id}/headlines` |
+| Create headline | `POST /teams/{id}/l10/headlines` | `POST /teams/{id}/headlines` |
+| Archive headline | `DELETE /teams/{id}/headlines/{headline_id}` | `DELETE /teams/{id}/headlines/{headline_id}` |
+| Update headline | `PATCH /teams/{id}/headlines/{headline_id}` | `PATCH /teams/{id}/headlines/{headline_id}` |
+
+Archive and update always use generic routes — L10 routes only support GET and POST.
+
 ---
 
 ## Flow: View Headlines
@@ -64,13 +77,25 @@ Parse the JSON response from api.sh. Handle these cases:
 
 ### Step 1: Resolve team and fetch headlines
 
-Resolve team ID using Team ID Resolution. Fetch team detail for team name, then fetch headlines:
+Resolve team ID using Team ID Resolution. Fetch team detail for team name and framework:
 
 ```bash
 API_SH="<api.sh path from Current State>"
 TEAM=$("$API_SH" GET "/teams/TEAM_ID")
 echo "$TEAM"
 ```
+
+Extract the team's `framework` from the response. Then fetch headlines using the route from the **L10 Route Selection** table:
+
+**If framework is `eos`**:
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/l10/headlines?per_page=100")
+echo "$RESPONSE"
+```
+
+**Otherwise**:
 
 ```bash
 API_SH="<api.sh path from Current State>"
@@ -135,6 +160,18 @@ Describe the action and ask for confirmation:
 Wait for confirmation.
 
 ### Step 3: Execute
+
+Use the route from the **L10 Route Selection** table based on the team's framework:
+
+**If framework is `eos`**:
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" POST "/teams/TEAM_ID/l10/headlines" '{"text": "HEADLINE_TEXT", "expires_at": "YYYY-MM-DD"}')
+echo "$RESPONSE"
+```
+
+**Otherwise**:
 
 ```bash
 API_SH="<api.sh path from Current State>"

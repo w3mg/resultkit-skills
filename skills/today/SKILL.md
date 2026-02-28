@@ -1,6 +1,6 @@
 ---
 name: rkit:today
-description: View and manage today's day plan. Interprets what the user says, matches against known intents, and calls the correct API endpoint. Primary "start of day" skill.
+description: View and manage today's day plan — the daily prioritizer. Interprets user intent and routes to the correct API action. Use this skill when users mention their day plan, daily tasks, prioritizer, today's items, checking off tasks, adding tasks to today, or want to manage what they're working on today or any specific date.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash, Read, AskUserQuestion
