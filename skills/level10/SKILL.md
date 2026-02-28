@@ -1,6 +1,6 @@
 ---
 name: rkit:level10
-description: View and manage EOS Level 10 meeting artifacts — to-dos, issues, and headlines. Full L10 workflow with native EOS terminology. Use this skill when users mention "level 10", "L10", "EOS meeting", "EOS to-dos", "EOS issues", or want to work with a team's Level 10 board.
+description: View and manage EOS Level 10 meeting artifacts — to-dos, done, issues, parked, and headlines. Full L10 workflow with native EOS terminology. Use this skill when users mention "level 10", "L10", "EOS meeting", "EOS to-dos", "EOS issues", "parked items", "done items", or want to work with a team's Level 10 board.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash, Read, AskUserQuestion
@@ -29,7 +29,9 @@ Parse the user input to determine which flow to follow:
 |-------|------|
 | *(no args)* | View L10 Board |
 | `todos` | View To-Dos Only |
+| `done` | View Done Only |
 | `issues` | View Issues Only |
+| `parked` | View Parked Only |
 | `headlines` | View Headlines Only |
 | `add todo "text"` | Create To-Do |
 | `add issue "text"` | Create Issue |
@@ -37,6 +39,8 @@ Parse the user input to determine which flow to follow:
 | `done {item_id}` | Mark Item Done |
 | `move {item_id} todos` | Move Item to To-Dos |
 | `move {item_id} issues` | Move Item to Issues |
+| `move {item_id} parked` | Move Item to Parked |
+| `remove {item_id}` | Remove from L10 Board |
 | `remove headline {id}` | Archive Headline |
 | `update headline {id} "text"` | Update Headline Text |
 | `--team {id}` *(anywhere)* | Override team ID for any flow |
@@ -88,19 +92,25 @@ Parse the JSON response from api.sh. Handle these cases:
 
 **Trigger**: No args (or only `--team {id}`)
 
-### Step 1: Resolve team, run EOS gate, fetch all three sections
+### Step 1: Resolve team, run EOS gate, fetch all five sections
 
-Resolve team ID. Run Pre-Flight gate. Then fetch to-dos, issues, and headlines:
+Resolve team ID. Run Pre-Flight gate. Then fetch all sections:
 
 ```bash
 API_SH="<api.sh path from Current State>"
 TODOS=$("$API_SH" GET "/teams/TEAM_ID/l10/todos")
+DONE=$("$API_SH" GET "/teams/TEAM_ID/l10/done")
 ISSUES=$("$API_SH" GET "/teams/TEAM_ID/l10/issues")
+PARKED=$("$API_SH" GET "/teams/TEAM_ID/l10/parked")
 HEADLINES=$("$API_SH" GET "/teams/TEAM_ID/l10/headlines")
 echo "---TODOS---"
 echo "$TODOS"
+echo "---DONE---"
+echo "$DONE"
 echo "---ISSUES---"
 echo "$ISSUES"
+echo "---PARKED---"
+echo "$PARKED"
 echo "---HEADLINES---"
 echo "$HEADLINES"
 ```
@@ -116,11 +126,23 @@ Level 10: {team_name} (ID: {team_id})
 |----|------|---------|-----|
 | 42 | Fix login bug | Scott Levy | 2026-03-07 |
 
+## Done ({count} items)
+
+| ID | Name | Creator | Due |
+|----|------|---------|-----|
+| 55 | Deploy staging fix | Jane Doe | 2026-02-28 |
+
 ## Issues ({count} items)
 
 | ID | Name | Creator | Due |
 |----|------|---------|-----|
 | 88 | Cash flow concern | Patrick A. | — |
+
+## Parked ({count} items)
+
+| ID | Name | Creator | Due |
+|----|------|---------|-----|
+| 73 | Office relocation plan | Scott Levy | — |
 
 ## Headlines ({count} headlines)
 
@@ -131,7 +153,7 @@ Level 10: {team_name} (ID: {team_id})
 
 **Display rules**:
 - Section headers show count from `meta.total`
-- To-Dos and Issues: show ID, name, creator (`first_name last_name` from `creator` field; fall back to `login` if names are empty), due date (or "—" if null)
+- To-Dos, Done, Issues, and Parked: show ID, name, creator (`first_name last_name` from `creator` field; fall back to `login` if names are empty), due date (or "—" if null)
 - Headlines: show ID, text, creator, expires_at date (or "—" if null)
 - Empty sections show "(empty)"
 - If any section has more items than returned (`meta.total` > returned count), show "Showing {returned} of {total} — more items exist"
@@ -140,7 +162,7 @@ Level 10: {team_name} (ID: {team_id})
 
 ## Flow: View Single Section
 
-**Trigger**: `todos`, `issues`, or `headlines`
+**Trigger**: `todos`, `done`, `issues`, `parked`, or `headlines`
 
 ### Step 1: Resolve team, run EOS gate, fetch the requested section
 
@@ -152,7 +174,7 @@ RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/l10/SECTION")
 echo "$RESPONSE"
 ```
 
-Replace `SECTION` with `todos`, `issues`, or `headlines`.
+Replace `SECTION` with `todos`, `done`, `issues`, `parked`, or `headlines`.
 
 ### Step 2: Display section
 
@@ -287,6 +309,7 @@ echo "$RESPONSE"
 Map the item's current status to L10 terminology:
 - `next` → "To-Do"
 - `blocked` → "Issue"
+- `parked` → "Parked"
 
 Describe the action:
 > Mark {L10_term} **{item_name}** (ID: {item_id}) as done?
@@ -297,7 +320,7 @@ Wait for confirmation.
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" PUT "/teams/TEAM_ID/items/done/ITEM_ID")
+RESPONSE=$("$API_SH" PUT "/teams/TEAM_ID/l10/done/ITEM_ID")
 echo "$RESPONSE"
 ```
 
@@ -310,7 +333,7 @@ echo "$RESPONSE"
 
 ## Flow: Move Item
 
-**Trigger**: `move {item_id} todos` or `move {item_id} issues`
+**Trigger**: `move {item_id} todos`, `move {item_id} issues`, or `move {item_id} parked`
 
 ### Step 1: Resolve team, run EOS gate, fetch item
 
@@ -324,16 +347,59 @@ echo "$RESPONSE"
 
 - If 404 → "Item {item_id} not found."
 
-Map the target section to the API column:
+Map the target section to the API status:
 - `todos` → `next`
 - `issues` → `blocked`
+- `parked` → `parked`
 
 If the item's current `status` already matches the target → "Item **{name}** (ID: {item_id}) is already in {target_section}." and stop.
 
 ### Step 2: Confirm
 
-Map current status to L10 term (`next` → "To-Dos", `blocked` → "Issues", `done` → "Done"). Describe the move:
+Map current status to L10 term (`next` → "To-Dos", `blocked` → "Issues", `done` → "Done", `parked` → "Parked"). Describe the move:
 > Move **{item_name}** (ID: {item_id}) from **{current_section}** to **{target_section}**?
+
+Wait for confirmation.
+
+### Step 3: Execute
+
+Use L10-specific routes:
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" PUT "/teams/TEAM_ID/l10/L10_COLUMN/ITEM_ID")
+echo "$RESPONSE"
+```
+
+Replace `L10_COLUMN` with `todos` (for To-Dos), `issues` (for Issues), or `parked` (for Parked).
+
+### Step 4: Handle response
+
+- **Status 200**: "Moved **{item_name}** (ID: {item_id}) to **{target_section}**."
+- **Error** → use Error Handling
+
+---
+
+## Flow: Remove from L10 Board
+
+**Trigger**: `remove {item_id}`
+
+### Step 1: Resolve team, run EOS gate, fetch item
+
+Resolve team ID. Run Pre-Flight gate. Fetch the item to verify it's on the board:
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" GET "/items/ITEM_ID")
+echo "$RESPONSE"
+```
+
+- If 404 → "Item {item_id} not found."
+- If `on_weekly` is false → "Item {item_id} is not on the Level 10 board."
+
+### Step 2: Confirm
+
+> Remove **{item_name}** (ID: {item_id}) from the Level 10 board? Item will still exist.
 
 Wait for confirmation.
 
@@ -341,15 +407,13 @@ Wait for confirmation.
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" PUT "/teams/TEAM_ID/items/API_COLUMN/ITEM_ID")
+RESPONSE=$("$API_SH" DELETE "/teams/TEAM_ID/l10/items/ITEM_ID")
 echo "$RESPONSE"
 ```
 
-Replace `API_COLUMN` with `next` (for todos) or `blocked` (for issues).
-
 ### Step 4: Handle response
 
-- **Status 200**: "Moved **{item_name}** (ID: {item_id}) to **{target_section}**."
+- **Status 204**: "Removed **{item_name}** (ID: {item_id}) from the Level 10 board."
 - **Error** → use Error Handling
 
 ---
@@ -431,7 +495,10 @@ Only include `text` if text was provided. Only include `expires_at` if `--expire
 - **Headline not found (404)** → "Headline {id} not found."
 - **Item already done (done flow)** → "Item **{name}** (ID: {id}) is already done."
 - **Item already in target section (move)** → warn and skip
+- **Item already parked (move parked)** → "Item **{name}** (ID: {id}) is already in Parked."
+- **Item not on L10 board (remove)** → "Item {id} is not on the Level 10 board."
 - **Empty section** → show section header with "(empty)"
+- **Done section overflow** → "Showing {returned} of {total} — more items exist"
 - **Empty text for create** → "To-do/Issue/Headline name/text cannot be empty."
 - **Unauthorized (401)** → "Unauthorized (401). Run `/rkit:setup` to update your token."
 - **Network error** → "Network error. Check your connection."

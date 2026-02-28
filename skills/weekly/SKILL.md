@@ -36,14 +36,14 @@ Fetch the team's `framework` field from `GET /teams/{team_id}`. Map the board na
 
 ## L10 Route Selection
 
-After fetching the team detail, check the `framework` field. For EOS teams, use L10-specific API routes for the next and blocked columns. The L10 routes are aliases that return identical responses but use EOS terminology in the URL.
+After fetching the team detail, check the `framework` field. For EOS teams, use L10-specific API routes for all four columns. The L10 routes are aliases that return identical responses but use EOS terminology in the URL.
 
 | Column | EOS Route | Non-EOS Route |
 |--------|-----------|---------------|
 | next (To-Do) | `GET /teams/{id}/l10/todos` | `GET /teams/{id}/items/next` |
+| done | `GET /teams/{id}/l10/done` | `GET /teams/{id}/items/done` |
 | blocked (Issues) | `GET /teams/{id}/l10/issues` | `GET /teams/{id}/items/blocked` |
-| done | `GET /teams/{id}/items/done` | `GET /teams/{id}/items/done` |
-| parked | `GET /teams/{id}/items/parked` | `GET /teams/{id}/items/parked` |
+| parked | `GET /teams/{id}/l10/parked` | `GET /teams/{id}/items/parked` |
 
 Write operations (move, add, remove) always use generic routes (`/teams/{id}/items/...`) regardless of framework — L10 routes only support GET and POST.
 
@@ -106,9 +106,9 @@ Extract the team's `framework` from the response. Then fetch all four columns us
 ```bash
 API_SH="<api.sh path from Current State>"
 NEXT=$("$API_SH" GET "/teams/TEAM_ID/l10/todos?per_page=50")
-DONE=$("$API_SH" GET "/teams/TEAM_ID/items/done?per_page=50")
+DONE=$("$API_SH" GET "/teams/TEAM_ID/l10/done?per_page=50")
 BLOCKED=$("$API_SH" GET "/teams/TEAM_ID/l10/issues?per_page=50")
-PARKED=$("$API_SH" GET "/teams/TEAM_ID/items/parked?per_page=50")
+PARKED=$("$API_SH" GET "/teams/TEAM_ID/l10/parked?per_page=50")
 echo "---NEXT---"
 echo "$NEXT"
 echo "---DONE---"
@@ -194,7 +194,9 @@ echo "$TEAM"
 Use the **L10 Route Selection** table to determine the correct path:
 
 - If framework is `eos` and column is `next`: use `/teams/TEAM_ID/l10/todos?per_page=50`
+- If framework is `eos` and column is `done`: use `/teams/TEAM_ID/l10/done?per_page=50`
 - If framework is `eos` and column is `blocked`: use `/teams/TEAM_ID/l10/issues?per_page=50`
+- If framework is `eos` and column is `parked`: use `/teams/TEAM_ID/l10/parked?per_page=50`
 - Otherwise: use `/teams/TEAM_ID/items/COLUMN?per_page=50`
 
 ```bash

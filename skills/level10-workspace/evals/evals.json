@@ -1,0 +1,23 @@
+{
+  "skill_name": "rkit:level10",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/rkit:level10",
+      "expected_output": "Should display the full L10 board with To-Dos, Issues, and Headlines sections. Must run EOS framework gate first. Should show team name, section headers with counts, and item tables with IDs, names, creators, and dates.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "/rkit:level10 add todo \"Review quarterly metrics\"",
+      "expected_output": "Should ask for confirmation before creating the to-do. Must run EOS framework gate. After confirmation, should POST to /teams/{id}/l10/todos and show the created item with its ID and due date.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "/rkit:level10 issues",
+      "expected_output": "Should display only the Issues section. Must run EOS framework gate. Should show issues in a table with ID, Name, Creator, and Due columns.",
+      "files": []
+    }
+  ]
+}
