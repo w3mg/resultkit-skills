@@ -27,12 +27,12 @@ Endpoints that support `q` and `include_archived` are noted below.
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/items` | List authenticated user's items (params: page, per_page, q, status, team_id, include_archived) | "show my tasks", "list items", "what's on my plate", "my to-dos" | — |
-| POST | `/items` | Create item (body: name*, type, description, due, status, on_weekly, parent_id, context) | "add task", "create item", "new to-do", "add action item" | `/items/{id}` |
+| POST | `/items` | Create item (body: name*, type, description, due, status, on_weekly, team_id, parent_id, context) | "add task", "create item", "new to-do", "add action item" | `/items/{id}` |
 | GET | `/items/{id}` | Get item detail (includes first-level children) | "show item", "item details", "open task", "what's in item X" | `/items/{id}` |
 | PATCH | `/items/{id}` | Update item (body: name, description, due, status, on_weekly) | "update item", "change status", "rename task", "set due date" | `/items/{id}` |
 | DELETE | `/items/{id}` | Archive item (soft delete, sets status=archived) | "archive item", "delete task", "remove item", "soft delete" | — |
 | GET | `/items/{id}/children` | List child items as nested tree (params: page, per_page, q, depth). `depth` default 2, range 1-20. | "show sub-tasks", "list children", "nested items", "what's under this" | `/items/{id}` |
-| PUT | `/items/{id}/move` | Reposition item in tree (body: parent_id*) | "move item", "reparent", "nest under", "reorder" | `/items/{id}` |
+| PUT | `/items/{id}/move` | Reposition item in tree (body: parent_id, left_id, right_id) | "move item", "reparent", "nest under", "reorder" | `/items/{id}` |
 
 Item fields: `id`, `name`, `description`, `due`, `status`, `on_weekly`,
 `team` (TeamSimple | null), `creator` (UserSimple), `assignees` (UserSimple[]),
@@ -44,7 +44,7 @@ ItemDetail: Item fields + `children` (Item[]).
 
 ItemTreeNode: Item fields + `children` (ItemTreeNode[]). Returned by `GET /items/{id}/children`. Nested recursively to the requested `depth` (1–20, default 2). Empty array at leaf nodes or max depth.
 
-Move body fields: `parent_id` (integer or null, required). `null` moves to root, integer moves under that parent.
+Move body fields: `parent_id` (integer or null — move under parent or to root), `left_id` (integer — place after sibling), `right_id` (integer — place before sibling). At least one required. If both `left_id` and `right_id` given, `left_id` takes precedence.
 
 Smart text: `POST /items` supports `@username` in name to auto-assign, and hashtag date shortcuts (`#tomorrow`, `#nextweek`, `#1month`) to auto-set due date.
 
@@ -105,10 +105,19 @@ Mute/unmute response: `{ data: { id, name, is_muted } }`.
 | POST | `/teams/{id}/items` | Create team item (on_weekly=true) | "add to weekly", "new team task", "create on board" | `/items/{item_id}` |
 | PUT | `/teams/{id}/items/{item_id}` | Add item to board (sets on_weekly=true) | "put on weekly", "add to board", "show on weekly" | `/items/{item_id}` |
 | DELETE | `/teams/{id}/items/{item_id}` | Remove from weekly (sets on_weekly=false, keeps item) | "remove from weekly", "take off board", "hide from weekly" | — |
-| GET | `/teams/{id}/items/{section}` | Items by section. Sections: `done`, `next`, `blocked`, `parked` (params: page, per_page, q, all, include_archived). `all` applies to next and done only. | "show next", "show done", "show blocked", "show parked", "priorities", "blockers" | `/teams/{id}` |
-| PUT | `/teams/{id}/items/{section}/{item_id}` | Move item to section on board. Sets status based on section: done→realized, next→active (auto-sets due +7d if null), blocked→blocked, parked→active+#parkinglot. | "move to next", "mark done", "flag blocked", "park item" | `/items/{item_id}` |
+| GET | `/teams/{id}/items/{section}` | Items by section (params: page, per_page, q, all, include_archived). Section: `done`, `next`, `blocked`, `parked`. | "show next", "show done", "show issues", "show parked", "priorities", "blockers", "parking lot" | `/teams/{id}` |
+| PUT | `/teams/{id}/items/{section}/{item_id}` | Move item to section on board. Section: `done`, `next`, `blocked`, `parked`. | "move to next", "mark done", "flag as blocked", "park item", "prioritize" | `/items/{item_id}` |
 
-The `all` param (boolean, default false) on team item endpoints shows all team members' items when true; otherwise only current user's. The `all` param applies to `next` and `done` sections only. Note: team projects do NOT use `all` — use `followed_only` and `include_muted` instead.
+Section values for `{section}`: `done`, `next`, `blocked`, `parked`.
+
+| Section | GET shows | PUT effect |
+|---------|-----------|------------|
+| `next` | Items with status=next. Default: due within 7 days. Pass `?all=true` to skip. | Sets status=next, ensures on_weekly=true, auto-sets due date if null |
+| `done` | Items with status=done. Default: completed within 7 days. Pass `?all=true` to skip. | Sets status=done, records completion timestamp |
+| `blocked` | Items with status=blocked. No time filter. | Sets status=blocked, ensures on_weekly=true |
+| `parked` | Items with status=parked. No time filter. Supports `include_archived`. | Sets status=parked, ensures on_weekly=true |
+
+The `all` param (boolean, default false) on team item endpoints shows all team members' items when true; otherwise only current user's. Note: team projects do NOT use `all` — use `followed_only` and `include_muted` instead.
 
 Due date auto-set: creating an item with `status: "next"` in a team context (or moving an item to the `next` column via `PUT .../items/{section}/{item_id}`) with no explicit `due` date auto-sets `due` to 7 days from now. Explicit `due` values are always preserved.
 
@@ -141,6 +150,19 @@ Headline fields: `id`, `text`, `creator` (UserSimple), `expires_at` (YYYY-MM-DD 
 HeadlineCreateRequest: `text` (string, required), `expires_at` (YYYY-MM-DD, optional — if omitted, headline visible for 7 days from creation).
 
 HeadlineUpdateRequest: `text` (string), `expires_at` (YYYY-MM-DD). At least one field required.
+
+### EOS Level 10 (L10)
+
+EOS-friendly URL aliases for the team weekly board. These endpoints return the same data as their generic V2 counterparts but use Level 10 terminology. Only available for EOS teams.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/l10/todos` | List L10 to-dos (alias for `GET /teams/{id}/items/next`; params: page, per_page, q, all) | "show L10 to-dos", "L10 todos", "weekly to-dos" | `/teams/{id}` |
+| POST | `/teams/{id}/l10/todos` | Create L10 to-do (body: name*, description?, due?). Status=next, due defaults to 7 days. | "add L10 to-do", "new to-do", "create L10 todo" | `/items/{item_id}` |
+| GET | `/teams/{id}/l10/issues` | List L10 issues (alias for `GET /teams/{id}/items/blocked`; params: page, per_page, q) | "show L10 issues", "IDS list", "L10 blockers" | `/teams/{id}` |
+| POST | `/teams/{id}/l10/issues` | Create L10 issue (body: name*, description?, due?). Status=blocked. | "add L10 issue", "raise issue", "new IDS item" | `/items/{item_id}` |
+| GET | `/teams/{id}/l10/headlines` | List L10 headlines (alias for `GET /teams/{id}/headlines`; params: page, per_page) | "show L10 headlines", "L10 announcements" | `/teams/{id}` |
+| POST | `/teams/{id}/l10/headlines` | Create L10 headline (alias for `POST /teams/{id}/headlines`; body: text*, expires_at?) | "add L10 headline", "new L10 headline" | `/teams/{id}` |
 
 ## Users
 
@@ -190,7 +212,7 @@ The "90-second practice" — a daily check-in report where users record what the
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/result-feed/{date}` | Get check-in for date (auto-creates empty report). `{date}` accepts `YYYY-MM-DD` or literal `today`. | "show my check-in", "90 seconds", "result feed", "daily report", "what did I do", "show check-in for {date}" | — |
-| POST | `/result-feed/{date}/{section}` | Create new item in section (body: name*). Sections: `done`, `next`, `blocked`. | "add done", "add next", "add blocked", "new done item", "got something done" | — |
+| POST | `/result-feed/{date}/{section}` | Create new item in section (body: name*) | "add done", "add next", "add blocked", "new done item", "got something done" | — |
 | PUT | `/result-feed/{date}/{section}/{item_id}` | Add existing item to section (idempotent) | "add item {id} to done", "put {id} in next", "attach {id} to blocked" | — |
 | DELETE | `/result-feed/{date}/{section}/{item_id}` | Remove item from section (keeps item, does not revert status) | "remove {id} from done", "take {id} off next", "drop {id} from blocked" | — |
 | POST | `/result-feed/{date}/submit` | Submit + share check-in (body: optional team_id, item_ids). Requires ≥1 item in both done and next. Idempotent. | "submit", "finalize", "done for the day", "submit check-in" | — |
@@ -212,7 +234,7 @@ Behavioral notes:
 - DELETE (remove item) returns 404 if item is not in that section. Does NOT delete the item or revert its status.
 - Submit is idempotent — re-submitting a completed report returns 200.
 - Submit validation: requires ≥1 item in both `done` and `next` (422 otherwise).
-- Adding items triggers status side-effects: done→realized, next→active, blocked→blocked.
+- Adding items triggers status side-effects: done→done, next→next, blocked→blocked.
 - Removing items does NOT revert status side-effects.
 
 ## Meetings
@@ -225,7 +247,7 @@ Behavioral notes:
 | POST | `/meetings/{id}/items` | Create item in meeting | "add to meeting", "new meeting item" | `/items/{item_id}` |
 | PUT | `/meetings/{id}/items/{item_id}` | Attach existing item | "attach to meeting", "link item to meeting" | `/meetings/{id}` |
 | DELETE | `/meetings/{id}/items/{item_id}` | Remove from meeting (keeps item) | "remove from meeting", "detach from meeting" | — |
-| GET | `/meetings/{id}/items/{section}` | Items by section. Sections: `done`, `next`, `blocked` (params: creator_id?, page, per_page, q, include_archived). `include_archived` applies to next only. | "meeting next items", "meeting done items", "meeting blockers" | `/meetings/{id}` |
+| GET | `/meetings/{id}/items/{section}` | Items by section (params: creator_id?, page, per_page, q, include_archived). Section: `done`, `next`, `blocked`. | "meeting next items", "meeting done items", "meeting blockers", "meeting issues" | `/meetings/{id}` |
 
 MeetingSimple fields: `id`, `type` (one_on_one | project), `date`,
 `person1` (UserSimple), `person2` (UserSimple),
@@ -284,12 +306,15 @@ Delete responses return `204 No Content` with empty body.
 | project meeting | Meeting (type=project) | `/meetings` |
 | day plan, daily plan, prioritizer, tasks for today, my plan | Day Plan | `/day-plans/today`, `/day-plans/{date}` |
 | check-in, 90-second practice, result feed, daily report | Result Feed (daily check-in report) | `/result-feed/today`, `/result-feed/{date}` |
-| team check-ins, team feed, team result feed | Team Result Feed (shared check-ins) | `/teams/{id}/result-feed` |
+| team check-ins, team feed, team result feed | Team Result Feeds (shared check-ins) | `/teams/{id}/result-feed` |
 | weekly, team weekly, weekly board, Level 10, L10 (EOS) | Team Items (weekly board; called "Level 10" for EOS teams) | `/teams/{id}/items` |
 | issue, blocker, blocked item, challenge | Item with status=blocked | `/teams/{id}/items/blocked` |
 | next, to-do (column), priority for the week | Item with status=next | `/teams/{id}/items/next` |
 | parked, parking lot, park for later | Item with status=parked | `/teams/{id}/items/parked` |
 | done, completed, finished | Item with status=done | `/teams/{id}/items/done` |
+| L10 to-do, weekly to-do | Item with status=next (EOS alias) | `/teams/{id}/l10/todos` |
+| L10 issue, IDS item | Item with status=blocked (EOS alias) | `/teams/{id}/l10/issues` |
+| L10 headline | Headline (EOS alias) | `/teams/{id}/l10/headlines` |
 | assignee, assigned to, responsible | Assignee | `/items/{id}/assignees` |
 | creator, item creator, who created this | Creator (`creator` field) | `/items`, `/teams`, `/day-plans` |
 | accountability owner, accountable | Assignee (if any), else Creator | `/items/{id}/assignees`, `creator` field |
