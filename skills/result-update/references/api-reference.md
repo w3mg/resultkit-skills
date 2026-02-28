@@ -158,11 +158,18 @@ EOS-friendly URL aliases for the team weekly board. These endpoints return the s
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/teams/{id}/l10/todos` | List L10 to-dos (alias for `GET /teams/{id}/items/next`; params: page, per_page, q, all) | "show L10 to-dos", "L10 todos", "weekly to-dos" | `/teams/{id}` |
-| POST | `/teams/{id}/l10/todos` | Create L10 to-do (body: name*, description?, due?). Status=next, due defaults to 7 days. | "add L10 to-do", "new to-do", "create L10 todo" | `/items/{item_id}` |
+| GET | `/teams/{id}/l10/done` | List completed L10 to-dos (alias for `GET /teams/{id}/items/done`; params: page, per_page, q, all). Default: completed within 7 days. `all=true` for older. | "show L10 done", "completed to-dos", "L10 completed" | `/teams/{id}` |
 | GET | `/teams/{id}/l10/issues` | List L10 issues (alias for `GET /teams/{id}/items/blocked`; params: page, per_page, q) | "show L10 issues", "IDS list", "L10 blockers" | `/teams/{id}` |
-| POST | `/teams/{id}/l10/issues` | Create L10 issue (body: name*, description?, due?). Status=blocked. | "add L10 issue", "raise issue", "new IDS item" | `/items/{item_id}` |
+| GET | `/teams/{id}/l10/parked` | List L10 parking lot (alias for `GET /teams/{id}/items/parked`; params: page, per_page, q) | "show L10 parking lot", "L10 parked", "parked items" | `/teams/{id}` |
 | GET | `/teams/{id}/l10/headlines` | List L10 headlines (alias for `GET /teams/{id}/headlines`; params: page, per_page) | "show L10 headlines", "L10 announcements" | `/teams/{id}` |
+| POST | `/teams/{id}/l10/todos` | Create L10 to-do (body: name*, description?, due?). Status=next, due defaults to 7 days. | "add L10 to-do", "new to-do", "create L10 todo" | `/items/{item_id}` |
+| POST | `/teams/{id}/l10/issues` | Create L10 issue (body: name*, description?, due?). Status=blocked. | "add L10 issue", "raise issue", "new IDS item" | `/items/{item_id}` |
 | POST | `/teams/{id}/l10/headlines` | Create L10 headline (alias for `POST /teams/{id}/headlines`; body: text*, expires_at?) | "add L10 headline", "new L10 headline" | `/teams/{id}` |
+| PUT | `/teams/{id}/l10/todos/{item_id}` | Move item to L10 to-dos. Sets status=next, auto-sets due to 7 days if null. Alias for `PUT /teams/{id}/items/next/{item_id}`. | "move to L10 to-dos", "make it a to-do", "prioritize in L10" | `/items/{item_id}` |
+| PUT | `/teams/{id}/l10/done/{item_id}` | Mark L10 item as done. Sets status=done, records completion. Alias for `PUT /teams/{id}/items/done/{item_id}`. | "mark L10 done", "complete L10 to-do", "L10 done" | `/items/{item_id}` |
+| PUT | `/teams/{id}/l10/issues/{item_id}` | Move item to L10 issues. Sets status=blocked. Alias for `PUT /teams/{id}/items/blocked/{item_id}`. | "move to L10 issues", "flag as issue", "IDS this" | `/items/{item_id}` |
+| PUT | `/teams/{id}/l10/parked/{item_id}` | Park L10 item. Sets status=parked. Alias for `PUT /teams/{id}/items/parked/{item_id}`. | "park L10 item", "move to parking lot", "shelve in L10" | `/items/{item_id}` |
+| DELETE | `/teams/{id}/l10/items/{item_id}` | Remove item from L10 board (sets on_weekly=false, keeps item). Alias for `DELETE /teams/{id}/items/{item_id}`. | "remove from L10", "take off L10 board", "drop from L10" | — |
 
 ## Users
 
@@ -270,6 +277,76 @@ SessionResponse: `api_token` (string), user fields.
 
 `draft` is read-only — cannot be set via POST or PATCH (422 if attempted). Only allowed transition: `draft` → `not_started`.
 
+## Core Values
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/core-values` | List all core values for the user's account | "show core values", "list values", "our core values" | — |
+| GET | `/core-values-ratings` | List ratings for a subject (params: subject_id*, page, per_page) | "show ratings", "core value ratings", "ratings for user" | — |
+| POST | `/core-values-ratings` | Create standalone core value ratings (body: subject_id*, ratings[{core_value_id*, score*}]) | "rate core values", "submit ratings", "score values" | — |
+
+CoreValue fields: `id`, `name`, `description`, `position`.
+
+CoreValuesRating fields: `id`, `core_value` ({ id, name }), `score` (integer), `rater` (UserSimple), `review_id` (integer | null), `created_at`.
+
+## Reviews
+
+Performance reviews with self-assessment and reviewer assessment workflow.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/reviews` | List reviews (params: page, per_page, status, q). Excludes archived. | "show reviews", "list reviews", "my reviews", "performance reviews" | — |
+| POST | `/reviews` | Create review (body: reviewee_id*, reviewer_id*, template_id*, review_type?, start_date?, end_date?). Admin/people-ops only. | "create review", "start review", "new performance review" | — |
+| GET | `/reviews/{id}` | Review detail. Assessment visibility depends on requesting user's role. | "show review", "review details", "open review" | — |
+| PATCH | `/reviews/{id}` | Update review (body: review_type?, start_date?, end_date?) | "update review", "change review dates", "edit review" | — |
+| DELETE | `/reviews/{id}` | Archive review (soft delete). Admin/people-ops only. | "archive review", "delete review", "remove review" | — |
+| PUT | `/reviews/{id}/draft-assessment` | Save draft assessment (WIP, does not advance state). Body: AssessmentSubmitRequest. | "save draft", "draft assessment", "save progress" | — |
+| POST | `/reviews/{id}/submit-assessment` | Submit final assessment. Transitions to assessed when both parties submit. Body: AssessmentSubmitRequest. | "submit assessment", "finalize assessment", "submit review" | — |
+| POST | `/reviews/{id}/sign-off` | Sign off review (body: initials*). Must be in assessed state. Reviewer only. | "sign off", "approve review", "finalize review" | — |
+| PUT | `/reviews/{id}/void` | Void review (body: reason*). Admin/people-ops only. Rejects all further actions. | "void review", "cancel review", "invalidate review" | — |
+| PUT | `/reviews/{id}/notes` | Update review notes (body: notes*). Reviewer or people-ops. | "update review notes", "add notes", "edit review notes" | — |
+| POST | `/reviews/{id}/action-items` | Create action item (body: title*, assignee_id*) | "add action item", "create follow-up", "review action item" | — |
+| POST | `/reviews/{id}/attachments` | Upload attachment (multipart/form-data: file*). Beta. | "attach file", "upload to review", "add attachment" | — |
+| DELETE | `/reviews/{id}/attachments/{aid}` | Delete attachment | "remove attachment", "delete file from review" | — |
+| GET | `/reviews/{id}/audit-log` | Audit log entries for review | "review history", "audit log", "review changes" | — |
+
+Review status values: `in_progress`, `assessed`, `signed_off`, `voided`.
+
+ReviewListItem fields: `id`, `reviewee` (UserSimple), `reviewer` (UserSimple), `status`, `review_type` (integer | null), `template` ({ id, name } | null), `start_date`, `end_date`, `created_at`.
+
+ReviewDetail fields: ReviewListItem + `notes`, `void_reason`, `signed_off_at`, `signed_off_initials`, `self_assessment` (Assessment | null), `reviewer_assessment` (Assessment | null), `core_values_ratings` (CoreValuesRatingEntry[]), `attachments` (Attachment[]), `action_items` (ActionItem[]), `updated_at`.
+
+Assessment fields: `respondent_type` ("self" | "reviewer"), `respondent` (UserSimple), `is_draft` (boolean), `responses` ([{ prompt_id, description, response_value, score }]).
+
+AssessmentSubmitRequest: `respondent_type` ("self" | "reviewer"), `assessment_responses` ([{ prompt_id*, response_value?, score? }]), `core_values_ratings?` ([{ core_value_id, score }]).
+
+ActionItem fields: `id`, `title`, `assignee` (UserSimple), `status`, `created_at`.
+
+Attachment fields: `id`, `file_name`, `file_type`, `file_size`, `url`, `created_at`.
+
+AuditLogEntry fields: `id`, `change_type`, `user` (UserSimple), `description`, `created_at`.
+
+### Review Templates
+
+Admin-managed templates that define the prompts used in reviews.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/review-templates` | List review templates (params: page, per_page) | "show templates", "list review templates", "review forms" | — |
+| POST | `/review-templates` | Create template (body: name*, target_role?, reviewer_instructions?). Admin only. | "create template", "new review template", "add review form" | — |
+| PATCH | `/review-templates/{id}` | Update template (body: name?, target_role?, reviewer_instructions?). Admin only. | "update template", "edit review template", "rename template" | — |
+| DELETE | `/review-templates/{id}` | Delete template (permanent). Admin only. | "delete template", "remove review template" | — |
+| POST | `/review-templates/{id}/prompts` | Create assessment prompt (body: description*, answer_type*, hint?, answer_meta_data?). Admin only. | "add prompt", "new question", "add review question" | — |
+| PATCH | `/review-templates/{id}/prompts/{pid}` | Update prompt (body: description?, hint?, answer_type?, answer_meta_data?). Admin only. | "update prompt", "edit question", "change prompt" | — |
+| DELETE | `/review-templates/{id}/prompts/{pid}` | Delete prompt. Admin only. | "delete prompt", "remove question" | — |
+| PUT | `/review-templates/{id}/prompts/positions` | Reorder prompts (body: positions[{id*, position*}]). All prompts must be included. Admin only. | "reorder prompts", "rearrange questions", "sort prompts" | — |
+
+ReviewTemplateListItem fields: `id`, `name`, `target_role` (string | null), `prompt_count` (integer), `created_at`.
+
+ReviewTemplateDetail fields: `id`, `name`, `target_role`, `reviewer_instructions`, `prompts` (AssessmentPrompt[]), `created_at`, `updated_at`.
+
+AssessmentPrompt fields: `id`, `description`, `hint` (string | null), `answer_type` ("range" | "text" | "textarea" | "boolean" | "multiple"), `answer_meta_data` (object | null), `position` (integer).
+
 ## Error Responses
 
 All errors return: `{ "error": { "code": "<error_code>", "message": "<human-readable>", "details": { ... } } }`
@@ -315,6 +392,13 @@ Delete responses return `204 No Content` with empty body.
 | L10 to-do, weekly to-do | Item with status=next (EOS alias) | `/teams/{id}/l10/todos` |
 | L10 issue, IDS item | Item with status=blocked (EOS alias) | `/teams/{id}/l10/issues` |
 | L10 headline | Headline (EOS alias) | `/teams/{id}/l10/headlines` |
+| L10 done, L10 completed | Item with status=done (EOS alias) | `/teams/{id}/l10/done` |
+| L10 parking lot, L10 parked | Item with status=parked (EOS alias) | `/teams/{id}/l10/parked` |
+| move to L10 to-dos, prioritize in L10 | Move item to to-dos section | `PUT /teams/{id}/l10/todos/{item_id}` |
+| mark L10 done, complete L10 to-do | Mark item done on L10 board | `PUT /teams/{id}/l10/done/{item_id}` |
+| move to L10 issues, IDS this | Move item to issues section | `PUT /teams/{id}/l10/issues/{item_id}` |
+| park in L10, move to parking lot | Park item on L10 board | `PUT /teams/{id}/l10/parked/{item_id}` |
+| remove from L10, take off L10 board | Remove from L10 board | `DELETE /teams/{id}/l10/items/{item_id}` |
 | assignee, assigned to, responsible | Assignee | `/items/{id}/assignees` |
 | creator, item creator, who created this | Creator (`creator` field) | `/items`, `/teams`, `/day-plans` |
 | accountability owner, accountable | Assignee (if any), else Creator | `/items/{id}/assignees`, `creator` field |
@@ -322,6 +406,15 @@ Delete responses return `204 No Content` with empty body.
 | mute team, hide team, silence team | Mute Team | `PUT /teams/{id}/mute` |
 | unmute team, unhide team, show team again | Unmute Team | `DELETE /teams/{id}/mute` |
 | headline, announcement, team update, news | Headline (EOS only) | `/teams/{id}/headlines` |
+| review, performance review, quarterly review | Review | `/reviews` |
+| review template, review form | Review Template | `/review-templates` |
+| assessment, self-assessment, reviewer assessment | Assessment (within Review) | `/reviews/{id}/submit-assessment`, `/reviews/{id}/draft-assessment` |
+| sign off, approve review, finalize review | Review Sign-off | `POST /reviews/{id}/sign-off` |
+| void review, cancel review | Void Review | `PUT /reviews/{id}/void` |
+| core value, company value | Core Value | `/core-values` |
+| core value rating, value score | Core Values Rating | `/core-values-ratings` |
+| review prompt, review question | Assessment Prompt | `/review-templates/{id}/prompts` |
+| action item (review), follow-up | Review Action Item | `POST /reviews/{id}/action-items` |
 | show archived, include archived | Archived filter | `?include_archived=true` on list endpoints |
 | comment, note | Comment | `/items/{id}/comments` |
 | member, team member | Team Member | `/teams/{id}/members` |
@@ -377,6 +470,10 @@ Delete responses return `204 No Content` with empty body.
 | done, complete, finished, resolved | `done` | Completed (sets complete date) |
 | archived, deleted, removed | `archived` | Soft-deleted |
 | draft | `draft` | Read-only — cannot be set via API |
+| in progress (review) | `in_progress` | Review: awaiting assessments |
+| assessed (review) | `assessed` | Review: both assessments submitted |
+| signed off (review) | `signed_off` | Review: reviewer approved |
+| voided (review) | `voided` | Review: cancelled with reason |
 
 ### Framework Column Names
 
@@ -399,3 +496,6 @@ Delete responses return `204 No Content` with empty body.
 | Team projects (`/teams/{id}/projects`) | Standalone projects (`/projects`) | Team projects are scoped to a team. Standalone are user-level. Same underlying data (type=TodoList). |
 | `DELETE /teams/{id}/projects/{pid}` | `DELETE /projects/{id}` | Team version removes from team (clears group_id). Standalone version archives the project. |
 | Headline (`/teams/{id}/headlines`) | Comment (`/items/{id}/comments`) | Headlines are team-level announcements (EOS only, auto-expire after 7 days). Comments are item-level notes. |
+| Draft assessment | Submitted assessment | Draft saves WIP without advancing state. Submit finalizes and transitions review when both parties submit. |
+| Review archive (`DELETE /reviews/{id}`) | Review void (`PUT /reviews/{id}/void`) | Archive soft-deletes. Void records a reason and blocks all further lifecycle actions. |
+| Core values ratings (standalone) | Core values ratings (in review) | Standalone via `POST /core-values-ratings`. In-review via `core_values_ratings` in AssessmentSubmitRequest. |
