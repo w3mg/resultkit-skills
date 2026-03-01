@@ -1,0 +1,501 @@
+# ResultMaps V2 API Reference
+
+**Source**: https://api.resultmaps.com/api-docs/v2 — refresh from here when endpoints change or docs seem stale.
+
+Base URL: `https://api.resultmaps.com/api/v2`
+Web App: `https://app.resultmaps.com` — Web URL column values are paths relative to this base.
+Auth: Bearer token in `Authorization` header or `token` query param. Find your token in your profile settings at https://app.resultmaps.com/customize.
+Interactive docs: <https://api.resultmaps.com/api-docs/v2>
+
+## Common Query Parameters
+
+Many list endpoints accept these shared params:
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `page` | integer | Page number (default: 1) |
+| `per_page` | integer | Results per page, 1–100 (default: 100) |
+| `q` | string | Filter by name (min 2 chars, case-insensitive contains match) |
+| `include_archived` | string | When `"true"`, includes archived items (default: `"false"`) |
+
+Endpoints that support `q` and `include_archived` are noted below.
+
+`include_archived`: by default, archived items are excluded from all list endpoints. Pass `include_archived=true` to include them. Supported on `GET /items`, `GET /projects`, `GET /meetings/{id}/items`, and `GET /meetings/{id}/items/{section}` (next section only).
+
+## Items
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/items` | List authenticated user's items (params: page, per_page, q, status, team_id, include_archived) | "show my tasks", "list items", "what's on my plate", "my to-dos" | — |
+| POST | `/items` | Create item (body: name*, type, description, due, status, on_weekly, team_id, parent_id, context) | "add task", "create item", "new to-do", "add action item" | `/items/{id}` |
+| GET | `/items/{id}` | Get item detail (includes first-level children) | "show item", "item details", "open task", "what's in item X" | `/items/{id}` |
+| PATCH | `/items/{id}` | Update item (body: name, description, due, status, on_weekly) | "update item", "change status", "rename task", "set due date" | `/items/{id}` |
+| DELETE | `/items/{id}` | Archive item (soft delete, sets status=archived) | "archive item", "delete task", "remove item", "soft delete" | — |
+| GET | `/items/{id}/children` | List child items as nested tree (params: page, per_page, q, depth). `depth` default 2, range 1-20. | "show sub-tasks", "list children", "nested items", "what's under this" | `/items/{id}` |
+| PUT | `/items/{id}/move` | Reposition item in tree (body: parent_id, left_id, right_id) | "move item", "reparent", "nest under", "reorder" | `/items/{id}` |
+
+Item fields: `id`, `name`, `description`, `due`, `status`, `on_weekly`,
+`team` (TeamSimple | null), `creator` (UserSimple), `assignees` (UserSimple[]),
+`parent_id`, `created_at`, `updated_at`.
+
+Item `type` values: `Task` (default), `TodoList`, `Outcome`, `KeyResult`.
+
+ItemDetail: Item fields + `children` (Item[]).
+
+ItemTreeNode: Item fields + `children` (ItemTreeNode[]). Returned by `GET /items/{id}/children`. Nested recursively to the requested `depth` (1–20, default 2). Empty array at leaf nodes or max depth.
+
+Move body fields: `parent_id` (integer or null — move under parent or to root), `left_id` (integer — place after sibling), `right_id` (integer — place before sibling). At least one required. If both `left_id` and `right_id` given, `left_id` takes precedence.
+
+Smart text: `POST /items` supports `@username` in name to auto-assign, and hashtag date shortcuts (`#tomorrow`, `#nextweek`, `#1month`) to auto-set due date.
+
+### Item Assignees
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/items/{id}/assignees` | List assignees (paginated) | "who's assigned", "show assignees", "assigned to" | `/items/{id}` |
+| PUT | `/items/{id}/assignees` | Add assignee (body: user_id*) | "assign to", "add assignee", "give to" | `/items/{id}` |
+| DELETE | `/items/{id}/assignees/{user_id}` | Remove assignee | "unassign", "remove assignee", "take off" | `/items/{id}` |
+
+### Item Comments
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/items/{id}/comments` | List comments (chronological, paginated) | "show comments", "show notes", "what's been said" | `/items/{id}` |
+| POST | `/items/{id}/comments` | Create comment (body: body*) | "add comment", "leave a note", "comment on" | `/items/{id}` |
+
+Comment fields: `id`, `body`, `author` (UserSimple), `created_at`.
+
+## Teams
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams` | Authenticated user's teams (params: include_muted, q). Default team first, then alphabetical. | "show my teams", "list teams", "which teams", "my groups" | — |
+| POST | `/teams` | Create team (body: name*, description, framework) | "create team", "new team", "add group" | `/teams/{id}` |
+| GET | `/teams/{id}` | Get team detail (includes members) | "show team", "team details", "team info", "who's on the team" | `/teams/{id}` |
+| PATCH | `/teams/{id}` | Update team (body: name, description, framework) | "update team", "rename team", "change framework" | `/teams/{id}` |
+| DELETE | `/teams/{id}` | Delete team (permanent) | "delete team", "remove team" | — |
+| PUT | `/teams/{id}/mute` | Mute team for current user (idempotent). Muted teams excluded from `GET /teams` unless `include_muted=true`. | "mute team", "hide team", "silence team" | — |
+| DELETE | `/teams/{id}/mute` | Unmute team for current user (idempotent) | "unmute team", "unhide team", "show team again" | — |
+
+`GET /teams` response fields per team: `id`, `name`, `description`,
+`framework`, `organization_name`, `organization_id`, `parent_name`,
+`parent_id`, `is_default`, `is_muted`, `creator` (UserSimple),
+`created_at`, `updated_at`.
+
+Team detail fields: `id`, `name`, `description`, `framework`,
+`creator` (UserSimple), `created_at`, `updated_at`, `members` (TeamMember[]).
+
+TeamMember: `id`, `team` (TeamSimple), `user` (UserSimple), `role` ("member" | "admin").
+
+Mute/unmute response: `{ data: { id, name, is_muted } }`.
+
+### Team Members
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/members` | List members (params: page, per_page, q) | "show members", "who's on the team", "team roster" | `/teams/{id}` |
+| PUT | `/teams/{id}/members` | Add member (body: user_id*, role?: "member"\|"admin") | "add member", "invite to team", "make admin" | `/teams/{id}` |
+| DELETE | `/teams/{id}/members/{user_id}` | Remove member | "remove member", "kick from team" | `/teams/{id}` |
+
+### Team Weekly Board (Items)
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/items` | All team items (params: page, per_page, q, all, include_archived) | "show weekly", "team board", "weekly board", "L10 board" | `/teams/{id}` |
+| POST | `/teams/{id}/items` | Create team item (on_weekly=true) | "add to weekly", "new team task", "create on board" | `/items/{item_id}` |
+| PUT | `/teams/{id}/items/{item_id}` | Add item to board (sets on_weekly=true) | "put on weekly", "add to board", "show on weekly" | `/items/{item_id}` |
+| DELETE | `/teams/{id}/items/{item_id}` | Remove from weekly (sets on_weekly=false, keeps item) | "remove from weekly", "take off board", "hide from weekly" | — |
+| GET | `/teams/{id}/items/{section}` | Items by section (params: page, per_page, q, all, include_archived). Section: `done`, `next`, `blocked`, `parked`. | "show next", "show done", "show issues", "show parked", "priorities", "blockers", "parking lot" | `/teams/{id}` |
+| PUT | `/teams/{id}/items/{section}/{item_id}` | Move item to section on board. Section: `done`, `next`, `blocked`, `parked`. | "move to next", "mark done", "flag as blocked", "park item", "prioritize" | `/items/{item_id}` |
+
+Section values for `{section}`: `done`, `next`, `blocked`, `parked`.
+
+| Section | GET shows | PUT effect |
+|---------|-----------|------------|
+| `next` | Items with status=next. Default: due within 7 days. Pass `?all=true` to skip. | Sets status=next, ensures on_weekly=true, auto-sets due date if null |
+| `done` | Items with status=done. Default: completed within 7 days. Pass `?all=true` to skip. | Sets status=done, records completion timestamp |
+| `blocked` | Items with status=blocked. No time filter. | Sets status=blocked, ensures on_weekly=true |
+| `parked` | Items with status=parked. No time filter. Supports `include_archived`. | Sets status=parked, ensures on_weekly=true |
+
+The `all` param (boolean, default false) on team item endpoints shows all team members' items when true; otherwise only current user's. Note: team projects do NOT use `all` — use `followed_only` and `include_muted` instead.
+
+Due date auto-set: creating an item with `status: "next"` in a team context (or moving an item to the `next` column via `PUT .../items/{section}/{item_id}`) with no explicit `due` date auto-sets `due` to 7 days from now. Explicit `due` values are always preserved.
+
+
+### Team Projects
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/projects` | List team projects (params: page, per_page, q, status, include_muted, followed_only). Default: active, non-parkinglot, non-muted. | "show projects", "team projects", "rocks (EOS)", "execution plan" | `/teams/{id}` |
+| POST | `/teams/{id}/projects` | Create project in team (body: name*, description, due, status, on_weekly, team_id, parent_id, context) | "create project", "new project on team", "add rock" | `/items/{project_id}` |
+| PUT | `/teams/{id}/projects/{project_id}` | Convert item to team project (sets type=TodoList, assigns to team). Idempotent. | "convert to project", "promote to project", "make it a project" | `/items/{project_id}` |
+| PATCH | `/teams/{id}/projects/{project_id}` | Update project (body: name, description, due, status, on_weekly) | "update project", "rename project", "change project status" | `/items/{project_id}` |
+| DELETE | `/teams/{id}/projects/{project_id}` | Remove project from team (clears group_id, keeps project) | "remove project from team", "unlink project", "take off team board" | — |
+
+Default filtering: returns only active, non-parkinglot, non-muted projects. Use `status` to override the active-only filter (e.g. `?status=done`). Use `include_muted=true` to include muted items.
+
+### Team Headlines
+
+Only available for teams using the EOS framework.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/headlines` | List active headlines (params: page, per_page). Active = no expiration AND created within 7 days, OR expires_at > today. When expires_at is set, only expiration matters. | "show headlines", "team headlines", "what's new", "announcements" | `/teams/{id}` |
+| POST | `/teams/{id}/headlines` | Create headline (body: text*, expires_at?) | "add headline", "new headline", "share update", "post announcement" | `/teams/{id}` |
+| PATCH | `/teams/{id}/headlines/{headline_id}` | Update headline (body: text?, expires_at?). Creator or team admin only. | "update headline", "edit headline", "change headline" | `/teams/{id}` |
+| DELETE | `/teams/{id}/headlines/{headline_id}` | Archive headline (soft delete — sets expires_at to today, immediately hidden). Creator or team admin only. | "delete headline", "remove headline", "archive headline" | — |
+
+Headline fields: `id`, `text`, `creator` (UserSimple), `expires_at` (YYYY-MM-DD | null), `created_at`, `updated_at`.
+
+HeadlineCreateRequest: `text` (string, required), `expires_at` (YYYY-MM-DD, optional — if omitted, headline visible for 7 days from creation).
+
+HeadlineUpdateRequest: `text` (string), `expires_at` (YYYY-MM-DD). At least one field required.
+
+### EOS Level 10 (L10)
+
+EOS-friendly URL aliases for the team weekly board. These endpoints return the same data as their generic V2 counterparts but use Level 10 terminology. Only available for EOS teams.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/l10/todos` | List L10 to-dos (alias for `GET /teams/{id}/items/next`; params: page, per_page, q, all) | "show L10 to-dos", "L10 todos", "weekly to-dos" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/done` | List completed L10 to-dos (alias for `GET /teams/{id}/items/done`; params: page, per_page, q, all). Default: completed within 7 days. `all=true` for older. | "show L10 done", "completed to-dos", "L10 completed" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/issues` | List L10 issues (alias for `GET /teams/{id}/items/blocked`; params: page, per_page, q) | "show L10 issues", "IDS list", "L10 blockers" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/parked` | List L10 parking lot (alias for `GET /teams/{id}/items/parked`; params: page, per_page, q) | "show L10 parking lot", "L10 parked", "parked items" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/headlines` | List L10 headlines (alias for `GET /teams/{id}/headlines`; params: page, per_page) | "show L10 headlines", "L10 announcements" | `/teams/{id}` |
+| POST | `/teams/{id}/l10/todos` | Create L10 to-do (body: name*, description?, due?). Status=next, due defaults to 7 days. | "add L10 to-do", "new to-do", "create L10 todo" | `/items/{item_id}` |
+| POST | `/teams/{id}/l10/issues` | Create L10 issue (body: name*, description?, due?). Status=blocked. | "add L10 issue", "raise issue", "new IDS item" | `/items/{item_id}` |
+| POST | `/teams/{id}/l10/headlines` | Create L10 headline (alias for `POST /teams/{id}/headlines`; body: text*, expires_at?) | "add L10 headline", "new L10 headline" | `/teams/{id}` |
+| PUT | `/teams/{id}/l10/todos/{item_id}` | Move item to L10 to-dos. Sets status=next, auto-sets due to 7 days if null. Alias for `PUT /teams/{id}/items/next/{item_id}`. | "move to L10 to-dos", "make it a to-do", "prioritize in L10" | `/items/{item_id}` |
+| PUT | `/teams/{id}/l10/done/{item_id}` | Mark L10 item as done. Sets status=done, records completion. Alias for `PUT /teams/{id}/items/done/{item_id}`. | "mark L10 done", "complete L10 to-do", "L10 done" | `/items/{item_id}` |
+| PUT | `/teams/{id}/l10/issues/{item_id}` | Move item to L10 issues. Sets status=blocked. Alias for `PUT /teams/{id}/items/blocked/{item_id}`. | "move to L10 issues", "flag as issue", "IDS this" | `/items/{item_id}` |
+| PUT | `/teams/{id}/l10/parked/{item_id}` | Park L10 item. Sets status=parked. Alias for `PUT /teams/{id}/items/parked/{item_id}`. | "park L10 item", "move to parking lot", "shelve in L10" | `/items/{item_id}` |
+| DELETE | `/teams/{id}/l10/items/{item_id}` | Remove item from L10 board (sets on_weekly=false, keeps item). Alias for `DELETE /teams/{id}/items/{item_id}`. | "remove from L10", "take off L10 board", "drop from L10" | — |
+
+## Users
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/users/me` | Authenticated user (includes api_token, default_team, current_team). Response wrapped in `{ data: { ... } }`. | "who am I", "my profile", "my token", "my API key" | `/customize` |
+| GET | `/users/search` | Search users (params: q* — min 2 chars, page, per_page). Searches login, email, first_name, last_name. Returns active users visible to current user. | "find user", "search people", "look up user" | — |
+| GET | `/users/{id}` | User profile (no api_token). Returns UserPublic. | "show user", "user profile", "who is this" | `/users/{id}` |
+| GET | `/users/{id}/items` | User's items (requires same-team membership; params: page, per_page, q, status) | "show their tasks", "user's items", "what's assigned to them" | `/users/{id}` |
+
+User fields (`/users/me`): `id`, `login`, `email`, `first_name`, `last_name`,
+`api_token`, `default_team` (TeamSimple | null), `current_team` (TeamSimple | null).
+
+UserPublic fields: `id`, `login`, `email`, `first_name`, `last_name`.
+
+UserSimple fields: `id`, `login`, `first_name`, `last_name`.
+
+TeamSimple: `{ id: integer, name: string }`.
+
+## Day Plans
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/day-plans/today` | Today's plan (auto-creates if none exists) | "show today", "my plan", "daily plan", "prioritizer" | `/day-plans/today` |
+| GET | `/day-plans/today/items` | Today's items (params: page, per_page, q, include_archived) | "today's tasks", "what's on today", "my plan items" | `/day-plans/today` |
+| POST | `/day-plans/today/items` | Create item in today's plan (auto-creates plan) | "add to today", "new task for today", "put on my plan" | `/items/{item_id}` |
+| PUT | `/day-plans/today/items/{item_id}` | Attach existing item to today (auto-creates plan, body: position?) | "attach to today", "add to plan", "link to today" | `/day-plans/today` |
+| PATCH | `/day-plans/today/items/{item_id}` | Toggle completion (body: completed*) | "check off", "mark done for today", "complete for today", "undo" | `/day-plans/today` |
+| DELETE | `/day-plans/today/items/{item_id}` | Remove from plan (keeps item) | "remove from today", "take off plan", "drop from today" | — |
+| GET | `/day-plans/{date}` | Plan by date (YYYY-MM-DD) | "show plan for Monday", "last Friday's plan" | `/day-plans/{date}` |
+| GET | `/day-plans/{date}/items` | Items by date (params: page, per_page, q, include_archived) | "items for that day", "what was on Monday" | `/day-plans/{date}` |
+| POST | `/day-plans/{date}/items` | Create item in date's plan (plan must already exist) | "add to that day's plan" | `/items/{item_id}` |
+| PUT | `/day-plans/{date}/items/{item_id}` | Attach existing item to date (plan must already exist, body: position?) | "attach to that plan" | `/day-plans/{date}` |
+| PATCH | `/day-plans/{date}/items/{item_id}` | Toggle completion (body: completed*) | "check off for that day" | `/day-plans/{date}` |
+| DELETE | `/day-plans/{date}/items/{item_id}` | Remove from plan (keeps item) | "remove from that day" | — |
+
+DayPlan fields: `id`, `date`, `creator` (UserSimple), `items` (DayPlanItem[]).
+
+DayPlanItem fields: Item fields + `completed` (boolean), `position` (integer).
+
+Day plan completion: regular items also get status=done. Recurring/daily items only toggle `completed` for that day — item stays active for tomorrow.
+
+## Result Feed
+
+The "90-second practice" — a daily check-in report where users record what they got done, what's next, and what's blocked.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/result-feed/{date}` | Get check-in for date (auto-creates empty report). `{date}` accepts `YYYY-MM-DD` or literal `today`. | "show my check-in", "90 seconds", "result feed", "daily report", "what did I do", "show check-in for {date}" | — |
+| POST | `/result-feed/{date}/{section}` | Create new item in section (body: name*) | "add done", "add next", "add blocked", "new done item", "got something done" | — |
+| PUT | `/result-feed/{date}/{section}/{item_id}` | Add existing item to section (idempotent) | "add item {id} to done", "put {id} in next", "attach {id} to blocked" | — |
+| DELETE | `/result-feed/{date}/{section}/{item_id}` | Remove item from section (keeps item, does not revert status) | "remove {id} from done", "take {id} off next", "drop {id} from blocked" | — |
+| POST | `/result-feed/{date}/submit` | Submit + share check-in (body: optional team_id, item_ids). Requires ≥1 item in both done and next. Idempotent. | "submit", "finalize", "done for the day", "submit check-in" | — |
+| GET | `/teams/{id}/result-feed` | List team's shared check-ins (params: page, per_page). Reverse chronological. Requires team membership. | "team check-ins", "team feed", "team result feed", "show team check-ins" | — |
+
+ResultFeed fields: `id`, `date`, `is_completed`, `done` (Item[]), `next` (Item[]), `blocked` (Item[]).
+
+TeamResultFeed fields: ResultFeed fields + `user` (UserSimple).
+
+Submit request body (all optional): `team_id` (integer — team to share with), `item_ids` (integer[] — items to highlight).
+
+Section path parameter: `done`, `next`, `blocked`.
+
+Date path parameter: `YYYY-MM-DD` or literal `today` (resolved server-side via user timezone).
+
+Behavioral notes:
+- GET auto-creates an empty report if none exists for the date.
+- PUT (add item) is idempotent — adding an already-present item returns 200.
+- DELETE (remove item) returns 404 if item is not in that section. Does NOT delete the item or revert its status.
+- Submit is idempotent — re-submitting a completed report returns 200.
+- Submit validation: requires ≥1 item in both `done` and `next` (422 otherwise).
+- Adding items triggers status side-effects: done→done, next→next, blocked→blocked.
+- Removing items does NOT revert status side-effects.
+
+## Meetings
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/meetings` | List meetings (params: team_id, page, per_page) | "show meetings", "my meetings", "list 1:1s", "L10s", "team 1:1s" | — |
+| GET | `/meetings/{id}` | Meeting detail (includes blocked, done, next arrays) | "show meeting", "meeting details", "open meeting" | `/meetings/{id}` |
+| GET | `/meetings/{id}/items` | All meeting items (params: creator_id?, page, per_page, q, include_archived) | "meeting items", "what's on the agenda" | `/meetings/{id}` |
+| POST | `/meetings/{id}/items` | Create item in meeting | "add to meeting", "new meeting item" | `/items/{item_id}` |
+| PUT | `/meetings/{id}/items/{item_id}` | Attach existing item | "attach to meeting", "link item to meeting" | `/meetings/{id}` |
+| DELETE | `/meetings/{id}/items/{item_id}` | Remove from meeting (keeps item) | "remove from meeting", "detach from meeting" | — |
+| GET | `/meetings/{id}/items/{section}` | Items by section (params: creator_id?, page, per_page, q, include_archived). Section: `done`, `next`, `blocked`. | "meeting next items", "meeting done items", "meeting blockers", "meeting issues" | `/meetings/{id}` |
+
+MeetingSimple fields: `id`, `type` (one_on_one | project), `date`,
+`person1` (UserSimple), `person2` (UserSimple),
+`project` ({ id, name } | null).
+
+Meeting fields: MeetingSimple + `blocked` (Item[]), `done` (Item[]), `next` (Item[]).
+
+## Sessions
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| POST | `/sessions` | Login via credentials or Google OAuth. No auth required. Returns API token. | "login", "authenticate", "get token" | — |
+| DELETE | `/sessions` | Logout / destroy current session | "logout", "sign out", "end session" | — |
+
+SessionResponse: `api_token` (string), user fields.
+
+## Status Values
+
+`not_started`, `next`, `parked`, `blocked`, `done`, `archived`, `draft`
+
+`draft` is read-only — cannot be set via POST or PATCH (422 if attempted). Only allowed transition: `draft` → `not_started`.
+
+## Core Values
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/core-values` | List all core values for the user's account | "show core values", "list values", "our core values" | — |
+| GET | `/core-values-ratings` | List ratings for a subject (params: subject_id*, page, per_page) | "show ratings", "core value ratings", "ratings for user" | — |
+| POST | `/core-values-ratings` | Create standalone core value ratings (body: subject_id*, ratings[{core_value_id*, score*}]) | "rate core values", "submit ratings", "score values" | — |
+
+CoreValue fields: `id`, `name`, `description`, `position`.
+
+CoreValuesRating fields: `id`, `core_value` ({ id, name }), `score` (integer), `rater` (UserSimple), `review_id` (integer | null), `created_at`.
+
+## Reviews
+
+Performance reviews with self-assessment and reviewer assessment workflow.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/reviews` | List reviews (params: page, per_page, status, q). Excludes archived. | "show reviews", "list reviews", "my reviews", "performance reviews" | — |
+| POST | `/reviews` | Create review (body: reviewee_id*, reviewer_id*, template_id*, review_type?, start_date?, end_date?). Admin/people-ops only. | "create review", "start review", "new performance review" | — |
+| GET | `/reviews/{id}` | Review detail. Assessment visibility depends on requesting user's role. | "show review", "review details", "open review" | — |
+| PATCH | `/reviews/{id}` | Update review (body: review_type?, start_date?, end_date?) | "update review", "change review dates", "edit review" | — |
+| DELETE | `/reviews/{id}` | Archive review (soft delete). Admin/people-ops only. | "archive review", "delete review", "remove review" | — |
+| PUT | `/reviews/{id}/draft-assessment` | Save draft assessment (WIP, does not advance state). Body: AssessmentSubmitRequest. | "save draft", "draft assessment", "save progress" | — |
+| POST | `/reviews/{id}/submit-assessment` | Submit final assessment. Transitions to assessed when both parties submit. Body: AssessmentSubmitRequest. | "submit assessment", "finalize assessment", "submit review" | — |
+| POST | `/reviews/{id}/sign-off` | Sign off review (body: initials*). Must be in assessed state. Reviewer only. | "sign off", "approve review", "finalize review" | — |
+| PUT | `/reviews/{id}/void` | Void review (body: reason*). Admin/people-ops only. Rejects all further actions. | "void review", "cancel review", "invalidate review" | — |
+| PUT | `/reviews/{id}/notes` | Update review notes (body: notes*). Reviewer or people-ops. | "update review notes", "add notes", "edit review notes" | — |
+| POST | `/reviews/{id}/action-items` | Create action item (body: title*, assignee_id*) | "add action item", "create follow-up", "review action item" | — |
+| POST | `/reviews/{id}/attachments` | Upload attachment (multipart/form-data: file*). Beta. | "attach file", "upload to review", "add attachment" | — |
+| DELETE | `/reviews/{id}/attachments/{aid}` | Delete attachment | "remove attachment", "delete file from review" | — |
+| GET | `/reviews/{id}/audit-log` | Audit log entries for review | "review history", "audit log", "review changes" | — |
+
+Review status values: `in_progress`, `assessed`, `signed_off`, `voided`.
+
+ReviewListItem fields: `id`, `reviewee` (UserSimple), `reviewer` (UserSimple), `status`, `review_type` (integer | null), `template` ({ id, name } | null), `start_date`, `end_date`, `created_at`.
+
+ReviewDetail fields: ReviewListItem + `notes`, `void_reason`, `signed_off_at`, `signed_off_initials`, `self_assessment` (Assessment | null), `reviewer_assessment` (Assessment | null), `core_values_ratings` (CoreValuesRatingEntry[]), `attachments` (Attachment[]), `action_items` (ActionItem[]), `updated_at`.
+
+Assessment fields: `respondent_type` ("self" | "reviewer"), `respondent` (UserSimple), `is_draft` (boolean), `responses` ([{ prompt_id, description, response_value, score }]).
+
+AssessmentSubmitRequest: `respondent_type` ("self" | "reviewer"), `assessment_responses` ([{ prompt_id*, response_value?, score? }]), `core_values_ratings?` ([{ core_value_id, score }]).
+
+ActionItem fields: `id`, `title`, `assignee` (UserSimple), `status`, `created_at`.
+
+Attachment fields: `id`, `file_name`, `file_type`, `file_size`, `url`, `created_at`.
+
+AuditLogEntry fields: `id`, `change_type`, `user` (UserSimple), `description`, `created_at`.
+
+### Review Templates
+
+Admin-managed templates that define the prompts used in reviews.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/review-templates` | List review templates (params: page, per_page) | "show templates", "list review templates", "review forms" | — |
+| POST | `/review-templates` | Create template (body: name*, target_role?, reviewer_instructions?). Admin only. | "create template", "new review template", "add review form" | — |
+| PATCH | `/review-templates/{id}` | Update template (body: name?, target_role?, reviewer_instructions?). Admin only. | "update template", "edit review template", "rename template" | — |
+| DELETE | `/review-templates/{id}` | Delete template (permanent). Admin only. | "delete template", "remove review template" | — |
+| POST | `/review-templates/{id}/prompts` | Create assessment prompt (body: description*, answer_type*, hint?, answer_meta_data?). Admin only. | "add prompt", "new question", "add review question" | — |
+| PATCH | `/review-templates/{id}/prompts/{pid}` | Update prompt (body: description?, hint?, answer_type?, answer_meta_data?). Admin only. | "update prompt", "edit question", "change prompt" | — |
+| DELETE | `/review-templates/{id}/prompts/{pid}` | Delete prompt. Admin only. | "delete prompt", "remove question" | — |
+| PUT | `/review-templates/{id}/prompts/positions` | Reorder prompts (body: positions[{id*, position*}]). All prompts must be included. Admin only. | "reorder prompts", "rearrange questions", "sort prompts" | — |
+
+ReviewTemplateListItem fields: `id`, `name`, `target_role` (string | null), `prompt_count` (integer), `created_at`.
+
+ReviewTemplateDetail fields: `id`, `name`, `target_role`, `reviewer_instructions`, `prompts` (AssessmentPrompt[]), `created_at`, `updated_at`.
+
+AssessmentPrompt fields: `id`, `description`, `hint` (string | null), `answer_type` ("range" | "text" | "textarea" | "boolean" | "multiple"), `answer_meta_data` (object | null), `position` (integer).
+
+## Error Responses
+
+All errors return: `{ "error": { "code": "<error_code>", "message": "<human-readable>", "details": { ... } } }`
+
+| Status | Code | Meaning |
+|--------|------|---------|
+| 400 | `bad_request` | Missing or invalid query parameter |
+| 401 | `unauthorized` | Invalid/missing token |
+| 403 | `forbidden` | Not authorized for resource |
+| 404 | `not_found` | Resource not found |
+| 422 | `validation_error` | Validation error (per-field details in `details`) |
+
+## Pagination
+
+Most list endpoints return: `{ data: [...], meta: { page, per_page, total, total_pages } }`
+
+Delete responses return `204 No Content` with empty body.
+
+---
+
+## Glossary
+
+### User Language → API Concept
+
+| User Says | API Concept | Endpoint |
+|-----------|-------------|----------|
+| item, task, action item, to-do, priority | Item (type=Task) | `/items` |
+| project, todo list, TodoList | Item (type=TodoList) | `/items` (type: "TodoList"), `/teams/{id}/projects` |
+| outcome, objective (as item type) | Item (type=Outcome) | `/items` (type: "Outcome") |
+| key result, KR, measure (as item type) | Item (type=KeyResult) | `/items` (type: "KeyResult") |
+| team, group | Team | `/teams` |
+| meeting, weekly meeting, weekly sync, L10, team meeting | Meeting | `/meetings` |
+| 1:1, 1x1, one-on-one | Meeting (type=one_on_one) | `/meetings` |
+| project meeting | Meeting (type=project) | `/meetings` |
+| day plan, daily plan, prioritizer, tasks for today, my plan | Day Plan | `/day-plans/today`, `/day-plans/{date}` |
+| check-in, 90-second practice, result feed, daily report | Result Feed (daily check-in report) | `/result-feed/today`, `/result-feed/{date}` |
+| team check-ins, team feed, team result feed | Team Result Feeds (shared check-ins) | `/teams/{id}/result-feed` |
+| weekly, team weekly, weekly board, Level 10, L10 (EOS) | Team Items (weekly board; called "Level 10" for EOS teams) | `/teams/{id}/items` |
+| issue, blocker, blocked item, challenge | Item with status=blocked | `/teams/{id}/items/blocked` |
+| next, to-do (column), priority for the week | Item with status=next | `/teams/{id}/items/next` |
+| parked, parking lot, park for later | Item with status=parked | `/teams/{id}/items/parked` |
+| done, completed, finished | Item with status=done | `/teams/{id}/items/done` |
+| L10 to-do, weekly to-do | Item with status=next (EOS alias) | `/teams/{id}/l10/todos` |
+| L10 issue, IDS item | Item with status=blocked (EOS alias) | `/teams/{id}/l10/issues` |
+| L10 headline | Headline (EOS alias) | `/teams/{id}/l10/headlines` |
+| L10 done, L10 completed | Item with status=done (EOS alias) | `/teams/{id}/l10/done` |
+| L10 parking lot, L10 parked | Item with status=parked (EOS alias) | `/teams/{id}/l10/parked` |
+| move to L10 to-dos, prioritize in L10 | Move item to to-dos section | `PUT /teams/{id}/l10/todos/{item_id}` |
+| mark L10 done, complete L10 to-do | Mark item done on L10 board | `PUT /teams/{id}/l10/done/{item_id}` |
+| move to L10 issues, IDS this | Move item to issues section | `PUT /teams/{id}/l10/issues/{item_id}` |
+| park in L10, move to parking lot | Park item on L10 board | `PUT /teams/{id}/l10/parked/{item_id}` |
+| remove from L10, take off L10 board | Remove from L10 board | `DELETE /teams/{id}/l10/items/{item_id}` |
+| assignee, assigned to, responsible | Assignee | `/items/{id}/assignees` |
+| creator, item creator, who created this | Creator (`creator` field) | `/items`, `/teams`, `/day-plans` |
+| accountability owner, accountable | Assignee (if any), else Creator | `/items/{id}/assignees`, `creator` field |
+| muted, hidden team, show muted | Muted Team | `GET /teams?include_muted=true` |
+| mute team, hide team, silence team | Mute Team | `PUT /teams/{id}/mute` |
+| unmute team, unhide team, show team again | Unmute Team | `DELETE /teams/{id}/mute` |
+| headline, announcement, team update, news | Headline (EOS only) | `/teams/{id}/headlines` |
+| review, performance review, quarterly review | Review | `/reviews` |
+| review template, review form | Review Template | `/review-templates` |
+| assessment, self-assessment, reviewer assessment | Assessment (within Review) | `/reviews/{id}/submit-assessment`, `/reviews/{id}/draft-assessment` |
+| sign off, approve review, finalize review | Review Sign-off | `POST /reviews/{id}/sign-off` |
+| void review, cancel review | Void Review | `PUT /reviews/{id}/void` |
+| core value, company value | Core Value | `/core-values` |
+| core value rating, value score | Core Values Rating | `/core-values-ratings` |
+| review prompt, review question | Assessment Prompt | `/review-templates/{id}/prompts` |
+| action item (review), follow-up | Review Action Item | `POST /reviews/{id}/action-items` |
+| show archived, include archived | Archived filter | `?include_archived=true` on list endpoints |
+| comment, note | Comment | `/items/{id}/comments` |
+| member, team member | Team Member | `/teams/{id}/members` |
+| child, sub-task, sub-item, nested item | Child Item (parent_id) | `/items/{id}/children` |
+| move, reorder, reparent, nest under | Move Item | `PUT /items/{id}/move` |
+| convert to project, promote to project | Convert Item to Project | `PUT /teams/{id}/projects/{item_id}` |
+| put on weekly, add to board, show on weekly | Set on_weekly=true | `PUT /teams/{id}/items/{item_id}` |
+| remove from weekly, take off board | Set on_weekly=false | `DELETE /teams/{id}/items/{item_id}` |
+| attach, link to meeting | Attach Item to Meeting | `PUT /meetings/{id}/items/{item_id}` |
+| add to plan, add to today, put on my plan | Attach to Day Plan | `PUT /day-plans/today/items/{item_id}` |
+| check off, mark done for today, complete for today | Day Plan Completion | `PATCH /day-plans/today/items/{item_id}` |
+| archive, soft delete, remove item | Archive Item (status→archived) | `DELETE /items/{id}` |
+| search, find, look up | Search (q param) | `GET /items?q=...`, `GET /users/search?q=...` |
+| my token, API key, api token | API Token | `GET /users/me` |
+| admin, team admin, make admin | Team Member Role | `PUT /teams/{id}/members` (role: "admin") |
+| recurring, daily item, repeating task | Recurring Item | Day plan completion doesn't change item status |
+
+### Item Types
+
+| User Language | DB type | POST body |
+|---------------|---------|-----------|
+| task, to-do, action item | Task (default) | `{ "name": "..." }` |
+| project, todo list | TodoList | `{ "name": "...", "type": "TodoList" }` |
+| outcome, objective | Outcome | `{ "name": "...", "type": "Outcome" }` |
+| key result, KR | KeyResult | `{ "name": "...", "type": "KeyResult" }` |
+
+### Context (Where to Create)
+
+| User Says | Context Body | Effect |
+|-----------|-------------|--------|
+| create in team, add to team 42 | `{ "type": "team", "id": 42 }` | Creates in team, sets on_weekly=true |
+| create for meeting, add to meeting 99 | `{ "type": "meeting", "id": 99 }` | Creates and links to meeting |
+| create for today, add to my plan | `{ "type": "day_plan" }` | Creates and adds to today's day plan |
+| _(nothing)_ | _(omit context)_ | Creates as standalone item |
+
+### Smart Text Features
+
+| User Says | Feature | Example | Effect |
+|-----------|---------|---------|--------|
+| assign @john, @username | @-mention auto-assign | `"Fix bug @jdoe"` | Auto-assigns mentioned user |
+| due tomorrow, #tomorrow | Hashtag date shortcut | `"Fix bug #tomorrow"` | Sets due to tomorrow |
+| due next week, #nextweek | Hashtag date shortcut | `"Fix bug #nextweek"` | Sets due to next week |
+| due in a month, #1month | Hashtag date shortcut | `"Fix bug #1month"` | Sets due to 1 month from now |
+
+### Status Aliases
+
+| User Says | API Status | Notes |
+|-----------|-----------|-------|
+| not started, new, fresh | `not_started` | Default for new items |
+| next, to-do, priority, up next | `next` | Prioritized for this period |
+| parked, on hold, deprioritized, later | `parked` | Temporarily shelved |
+| blocked, stuck, issue, waiting | `blocked` | Has a dependency/blocker |
+| done, complete, finished, resolved | `done` | Completed (sets complete date) |
+| archived, deleted, removed | `archived` | Soft-deleted |
+| draft | `draft` | Read-only — cannot be set via API |
+| in progress (review) | `in_progress` | Review: awaiting assessments |
+| assessed (review) | `assessed` | Review: both assessments submitted |
+| signed off (review) | `signed_off` | Review: reviewer approved |
+| voided (review) | `voided` | Review: cancelled with reason |
+
+### Framework Column Names
+
+| API Column | Default | EOS | OKR | 4DX | V2MOM | SRT | SVEP |
+|-----------|---------|-----|-----|-----|-------|-----|------|
+| next | Next | To-Do | Priorities | WIG Actions | Next | Next | Next |
+| done | Done | Done | Done | Done | Done | Done | Done |
+| blocked | Issues | Issues | Issues + Challenges | Blockers | Obstacles | Issues | Issues |
+| parked | Parked | Parked | Park for Later | Parked | Parked | Parked | Parked |
+
+### Key Distinctions
+
+| Concept A | Concept B | Difference |
+|-----------|-----------|------------|
+| Creator (`creator` field) | Assignee (`assignees` array) | Creator = who created the item. Assignees = who's responsible for it. One creator, many assignees. Accountability ownership = assignees if any, otherwise creator. |
+| Archive (`DELETE /items/{id}`) | Delete (`DELETE /teams/{id}`) | Items are soft-deleted (status→archived). Teams are permanently deleted. |
+| Completed (day plan) | Done (item status) | Day plan `completed: true` checks off for that day. Item status `done` marks it globally done. For recurring items only the day plan toggles. |
+| on_weekly (item field) | status (item field) | `on_weekly` controls board visibility. `status` controls the column. An item can be `status: next` but `on_weekly: false`. |
+| One-on-one meeting | Project meeting | `type: "one_on_one"` has person1/person2. `type: "project"` has a project field. Same endpoints. |
+| Team projects (`/teams/{id}/projects`) | Standalone projects (`/projects`) | Team projects are scoped to a team. Standalone are user-level. Same underlying data (type=TodoList). |
+| `DELETE /teams/{id}/projects/{pid}` | `DELETE /projects/{id}` | Team version removes from team (clears group_id). Standalone version archives the project. |
+| Headline (`/teams/{id}/headlines`) | Comment (`/items/{id}/comments`) | Headlines are team-level announcements (EOS only, auto-expire after 7 days). Comments are item-level notes. |
+| Draft assessment | Submitted assessment | Draft saves WIP without advancing state. Submit finalizes and transitions review when both parties submit. |
+| Review archive (`DELETE /reviews/{id}`) | Review void (`PUT /reviews/{id}/void`) | Archive soft-deletes. Void records a reason and blocks all further lifecycle actions. |
+| Core values ratings (standalone) | Core values ratings (in review) | Standalone via `POST /core-values-ratings`. In-review via `core_values_ratings` in AssessmentSubmitRequest. |
