@@ -3,7 +3,7 @@ name: rkit:level10
 description: View and manage EOS Level 10 meeting artifacts — to-dos, done, issues, parked, and headlines. Full L10 workflow with native EOS terminology. Use this skill when users mention "level 10", "L10", "EOS meeting", "EOS to-dos", "EOS issues", "parked items", "done items", or want to work with a team's Level 10 board.
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Bash, Read, AskUserQuestion
+allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---
 
 # rkit:level10
@@ -15,7 +15,7 @@ allowed-tools: Bash, Read, AskUserQuestion
 
 ## Rules
 
-- **Confirm writes**: Before any POST/PUT/PATCH/DELETE, describe the action and ask for confirmation. GET requests execute immediately.
+- **Confirm writes**: Before any POST/PUT/PATCH/DELETE, summarize all planned changes in a single prompt and ask for confirmation. If the command implies multiple related mutations, batch them under one confirmation. GET requests execute immediately.
 - **Show IDs**: Always include entity IDs in output so users can reference them.
 - **Concise output**: Tables and short summaries. No verbose prose.
 - **Direct execution**: Use Bash for all API calls via api.sh. Never use Task agents or subagents.

@@ -81,6 +81,11 @@ run `/rkit:setup`.
 - **GET requests** execute immediately without confirmation.
 - **POST/PUT/PATCH/DELETE** MUST describe the action and ask for
   confirmation before executing.
+- When multiple mutations serve a single user intent (e.g., remove +
+  re-parent), they MUST be batched under one confirmation prompt — no
+  redundant sequential confirmations.
+- Skills MUST use scoped `Bash(command *)` patterns in `allowed-tools`
+  frontmatter rather than blanket `Bash`.
 
 ### V. Show IDs
 
@@ -146,4 +151,4 @@ This constitution supersedes all other practices for `rkit:*` skills.
   principles before merge. The plan-template Constitution Check gate
   enforces this.
 
-**Version**: 1.1.0 | **Ratified**: 2026-02-14 | **Last Amended**: 2026-02-14
+**Version**: 1.1.1 | **Ratified**: 2026-02-14 | **Last Amended**: 2026-03-01

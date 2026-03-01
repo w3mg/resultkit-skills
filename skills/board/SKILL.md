@@ -3,7 +3,7 @@ name: rkit:board
 description: View any item's children as a kanban-style board. Children become columns, grandchildren become items. Supports viewing, filtering by column, moving items between columns, adding items, and removing items. Use this skill when users want to see a board view, manage columns, move items between columns, or work with a hierarchical item structure.
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Bash, Read, AskUserQuestion
+allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---
 
 # rkit:board
@@ -15,7 +15,7 @@ allowed-tools: Bash, Read, AskUserQuestion
 
 ## Rules
 
-- **Confirm writes**: Before any POST/PUT/PATCH/DELETE, describe the action and ask for confirmation. GET requests execute immediately.
+- **Confirm writes**: Before any POST/PUT/PATCH/DELETE, summarize all planned changes in a single prompt and ask for confirmation. If the command implies multiple related mutations, batch them under one confirmation. GET requests execute immediately.
 - **Show IDs**: Always include item IDs in output so users can reference them.
 - **Concise output**: Tables and short summaries. No verbose prose.
 - **Direct execution**: Use Bash for all API calls via api.sh. Never use Task agents or subagents.
@@ -297,25 +297,28 @@ Ask user to choose (1, 2, or 3).
 
 **Option 1 — Remove from all projects**:
 
-Confirm: "Remove **{item_name}** from all projects?"
+Confirm: "Remove **{item_name}** from all projects and add to your day plan?"
+
+If user confirms:
 
 ```bash
 API_SH="<api.sh path from Current State>"
+# Step 1: Remove from all projects
 RESPONSE=$("$API_SH" PUT "/items/ITEM_ID/move" '{"parent_id": null}')
 echo "$RESPONSE"
 ```
 
-If successful, ask: "Add **{item_name}** to your day plan?"
-
-If user says yes:
+If remove succeeded:
 
 ```bash
-API_SH="<api.sh path from Current State>"
+# Step 2: Add to day plan
 RESPONSE=$("$API_SH" PUT "/day-plans/today/items/ITEM_ID")
 echo "$RESPONSE"
 ```
 
-Show confirmation: "**{item_name}** removed from all projects and added to today's plan." (or "removed from all projects." if they declined the day plan offer)
+Show confirmation: "**{item_name}** removed from all projects and added to today's plan."
+
+If user declines, abort — do not remove or move the item.
 
 **Option 2 — Move to another project**:
 

@@ -3,7 +3,7 @@ name: rkit:projects
 description: List active projects for a team and manage project items. View project columns with item counts, add items to specific columns, and batch-add multiple items. Use this skill when users ask about projects, project boards, project columns, want to list team projects, add items to a project, or view project status.
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Bash, Read, AskUserQuestion
+allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---
 
 # rkit:projects
@@ -17,7 +17,7 @@ List active projects for a team. Drill into a project to see its columns and add
 
 ## Rules
 
-- **Confirm writes.** Before any POST, describe the action and ask for confirmation. GET requests execute immediately.
+- **Confirm writes.** Before any POST, summarize all planned changes in a single prompt and ask for confirmation. If the command implies multiple related mutations, batch them under one confirmation. GET requests execute immediately.
 - **Show IDs.** Always include project and item IDs in output.
 - **Concise output.** Tables and short summaries. No filler.
 - **Direct execution.** Use Bash with api.sh for all API calls. Never use Task agents.

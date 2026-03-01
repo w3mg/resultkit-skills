@@ -8,6 +8,7 @@ description: >
   or needs general orientation on the product domain. Also use when someone says "explain concept",
   "domain overview", "product overview", "what does X mean", "EOS vs OKR", or "framework terminology".
   This is a conceptual reference — no code, no implementation details.
+allowed-tools: Read, Glob, Grep
 ---
 
 # ResultMaps Concepts

@@ -3,7 +3,7 @@ name: rkit:1on1
 description: View and manage one-on-one meetings. Shows meetings with items grouped by column (next, done, blocked). Use this skill when users mention 1:1s, one-on-ones, 1-on-1 meetings, want to see their one-on-one agenda, add items to a 1:1, or manage items in a one-on-one meeting.
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Bash, Read, AskUserQuestion
+allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---
 
 # rkit:1on1
@@ -15,7 +15,7 @@ allowed-tools: Bash, Read, AskUserQuestion
 
 ## Rules
 
-- **Confirm writes**: Before any POST/PUT/PATCH/DELETE, describe the action and ask for confirmation. GET requests execute immediately.
+- **Confirm writes**: Before any POST/PUT/PATCH/DELETE, summarize all planned changes in a single prompt and ask for confirmation. If the command implies multiple related mutations, batch them under one confirmation. GET requests execute immediately.
 - **Show IDs**: Always include item and meeting IDs in output so users can reference them.
 - **Concise output**: Tables and short summaries. No verbose prose.
 - **Direct execution**: Use Bash for all API calls via api.sh. Never use Task agents or subagents.

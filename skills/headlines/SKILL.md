@@ -3,7 +3,7 @@ name: rkit:headlines
 description: View and manage EOS headlines (People & Customer Headlines) for a team. List active headlines, add new ones, archive (soft-delete), and update text or expiration. Uses L10-specific API routes for EOS teams. Use this skill when users mention headlines, people headlines, customer headlines, team announcements, or want to add, remove, or update headlines for their team.
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Bash, Read, AskUserQuestion
+allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---
 
 # rkit:headlines
@@ -15,7 +15,7 @@ allowed-tools: Bash, Read, AskUserQuestion
 
 ## Rules
 
-- **Confirm writes**: Before any POST/PATCH/DELETE, describe the action and ask for confirmation. GET requests execute immediately.
+- **Confirm writes**: Before any POST/PATCH/DELETE, summarize all planned changes in a single prompt and ask for confirmation. If the command implies multiple related mutations, batch them under one confirmation. GET requests execute immediately.
 - **Show IDs**: Always include headline IDs in output so users can reference them.
 - **Concise output**: Tables and short summaries. No verbose prose.
 - **Direct execution**: Use Bash for all API calls via api.sh. Never use Task agents or subagents.

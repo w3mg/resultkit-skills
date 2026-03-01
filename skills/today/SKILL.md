@@ -3,7 +3,7 @@ name: rkit:today
 description: View and manage today's day plan — the daily prioritizer. Interprets user intent and routes to the correct API action. Use this skill when users mention their day plan, daily tasks, prioritizer, today's items, checking off tasks, adding tasks to today, or want to manage what they're working on today or any specific date.
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Bash, Read, AskUserQuestion
+allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Bash(date *), Read, Glob, Grep, AskUserQuestion
 ---
 
 # rkit:today
@@ -19,7 +19,7 @@ A single skill that handles all day plan operations by interpreting user intent 
 ## Rules
 
 - **Interpret first, act second.** Read the user's message. Match it against the Tool Routing Table below. Pick the best match. If ambiguous, ask.
-- **Confirm writes.** GET requests execute immediately. POST/PUT/PATCH/DELETE: describe the action and ask for confirmation first.
+- **Confirm writes.** GET requests execute immediately. POST/PUT/PATCH/DELETE: summarize all planned changes in a single prompt and ask for confirmation. Batch related mutations under one confirmation.
 - **Show IDs.** Always include item IDs in output.
 - **Concise output.** Tables and short summaries. No filler.
 - **Direct execution.** Use Bash with api.sh for all API calls. Never use Task agents.

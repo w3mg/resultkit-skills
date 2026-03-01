@@ -3,7 +3,7 @@ name: rkit:braindump
 description: Parse unstructured text (meeting notes, emails, dictation, voice memos, chat, pasted text) into organized action items using the team's management framework. Outputs a structured table with item names, types, status, context, owners, and dates. Use this skill when users paste unstructured text, meeting notes, emails, or voice memo transcripts and want them organized into actionable items.
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Bash, Read, AskUserQuestion
+allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Bash(date *), Read, Glob, Grep, AskUserQuestion
 ---
 
 # rkit:braindump
@@ -18,7 +18,7 @@ Parse unstructured input into organized action items using the team's management
 ## Rules
 
 - **Interpret first, act second.** Read the user's pasted text. Parse it. Present the table. Ask only when truly ambiguous.
-- **Confirm writes.** GET requests execute immediately. POST/PUT/PATCH/DELETE: describe the action and ask for confirmation first.
+- **Confirm writes.** GET requests execute immediately. POST/PUT/PATCH/DELETE: summarize all planned changes in a single prompt and ask for confirmation. Batch related mutations under one confirmation.
 - **Show IDs.** Always include entity IDs in output.
 - **Concise output.** Tables and short summaries. No filler.
 - **Direct execution.** Use Bash with api.sh for all API calls. Never use Task agents.

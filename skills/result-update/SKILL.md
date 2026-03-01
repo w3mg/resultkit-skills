@@ -3,7 +3,7 @@ name: rkit:result-update
 description: Compose and submit your daily check-in — the 90-second update practice. Add and remove items in done/next/blocked sections, then submit to share with your team. Use this skill when users want to write their daily update, compose a check-in, add items to their update, submit their daily report, or share progress with the team.
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Bash, Read, AskUserQuestion
+allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Bash(date *), Read, Glob, Grep, AskUserQuestion
 ---
 
 # rkit:result-update
@@ -19,7 +19,7 @@ A single skill that handles all result update composition operations by interpre
 ## Rules
 
 - **Interpret first, act second.** Read the user's message. Match it against the Tool Routing Table below. Pick the best match. If ambiguous, ask.
-- **Confirm writes.** GET requests execute immediately. POST/PUT/DELETE: describe the action and ask for confirmation first.
+- **Confirm writes.** GET requests execute immediately. POST/PUT/DELETE: summarize all planned changes in a single prompt and ask for confirmation. Batch related mutations under one confirmation.
 - **Show IDs.** Always include item IDs in output.
 - **Concise output.** Tables and short summaries. No filler.
 - **Direct execution.** Use Bash with api.sh for all API calls. Never use Task agents.

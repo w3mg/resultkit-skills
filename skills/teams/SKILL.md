@@ -3,7 +3,7 @@ name: rkit:teams
 description: List your teams and view team members. Shows teams grouped by organization with framework and default team marked. Use this skill when users ask about their teams, want to see who's on a team, list team members, check team frameworks, search for a team by name, or view their organization structure.
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Bash, Read, AskUserQuestion
+allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---
 
 # rkit:teams
