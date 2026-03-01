@@ -33,8 +33,8 @@ Parse the user input to determine which flow to follow:
 | `issues` | View Issues Only |
 | `parked` | View Parked Only |
 | `headlines` | View Headlines Only |
-| `add todo "text"` | Create To-Do |
-| `add issue "text"` | Create Issue |
+| `add todo "text"` *(+ optional description in natural language)* | Create To-Do |
+| `add issue "text"` *(+ optional description in natural language)* | Create Issue |
 | `add headline "text"` | Create Headline |
 | `done {item_id}` | Mark Item Done |
 | `move {item_id} todos` | Move Item to To-Dos |
@@ -186,29 +186,34 @@ Use the same display format as the corresponding section from View L10 Board —
 
 **Trigger**: `add todo "text"` optionally with `--due YYYY-MM-DD`
 
+The API accepts three fields: `name` (required), `description` (optional), and `due` (optional). Users often provide a title and additional context in natural language — extract the title as `name` and any extra detail as `description`. When the user explicitly separates a title from a description (or provides context beyond the title), always include `description` in the POST body.
+
 ### Step 1: Parse and validate
 
-Extract the to-do name (text after `add todo`). If `--due` is provided, use that date.
+Extract the to-do name (the title/short label). If the user provides additional context, detail, or instructions beyond the title, extract that as the description. If `--due` is provided, use that date.
 
 - If text is empty → "To-do name cannot be empty."
 
 ### Step 2: Resolve team, run EOS gate, confirm
 
-Resolve team ID. Run Pre-Flight gate. Describe the action:
+Resolve team ID. Run Pre-Flight gate. Describe the action, including the description if one was extracted:
 
 > Create to-do "**{name}**" for **{team_name}**{due info}?
+> Description: {description}
 
 Wait for confirmation.
 
 ### Step 3: Execute
 
+Build the JSON body with all provided fields:
+
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" POST "/teams/TEAM_ID/l10/todos" '{"name": "TODO_NAME"}')
+RESPONSE=$("$API_SH" POST "/teams/TEAM_ID/l10/todos" '{"name": "TODO_NAME", "description": "DESC_TEXT"}')
 echo "$RESPONSE"
 ```
 
-If `--due` was provided, include `"due": "YYYY-MM-DD"` in the JSON body. Escape any double quotes in the name.
+Only include `description` if one was provided. Only include `due` if `--due` was provided. Escape any double quotes in the name and description.
 
 ### Step 4: Handle response
 
@@ -221,29 +226,34 @@ If `--due` was provided, include `"due": "YYYY-MM-DD"` in the JSON body. Escape 
 
 **Trigger**: `add issue "text"` optionally with `--due YYYY-MM-DD`
 
+The API accepts three fields: `name` (required), `description` (optional), and `due` (optional). Users often provide a title and additional context in natural language — extract the title as `name` and any extra detail as `description`. When the user explicitly separates a title from a description (or provides context beyond the title), always include `description` in the POST body.
+
 ### Step 1: Parse and validate
 
-Extract the issue name (text after `add issue`). If `--due` is provided, use that date.
+Extract the issue name (the title/short label). If the user provides additional context, detail, or instructions beyond the title, extract that as the description. If `--due` is provided, use that date.
 
 - If text is empty → "Issue name cannot be empty."
 
 ### Step 2: Resolve team, run EOS gate, confirm
 
-Resolve team ID. Run Pre-Flight gate. Describe the action:
+Resolve team ID. Run Pre-Flight gate. Describe the action, including the description if one was extracted:
 
 > Create issue "**{name}**" for **{team_name}**{due info}?
+> Description: {description}
 
 Wait for confirmation.
 
 ### Step 3: Execute
 
+Build the JSON body with all provided fields:
+
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" POST "/teams/TEAM_ID/l10/issues" '{"name": "ISSUE_NAME"}')
+RESPONSE=$("$API_SH" POST "/teams/TEAM_ID/l10/issues" '{"name": "ISSUE_NAME", "description": "DESC_TEXT"}')
 echo "$RESPONSE"
 ```
 
-If `--due` was provided, include `"due": "YYYY-MM-DD"` in the JSON body. Escape any double quotes in the name.
+Only include `description` if one was provided. Only include `due` if `--due` was provided. Escape any double quotes in the name and description.
 
 ### Step 4: Handle response
 
