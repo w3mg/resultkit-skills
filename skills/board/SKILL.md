@@ -32,6 +32,7 @@ Parse the user input to determine which flow to follow:
 | `move {item_id} {target_id}` | Move Item |
 | `add {board_id} ...` | Add Item |
 | `remove {item_id}` | Remove Item |
+| `bulk-move {item_ids} {parent_id}` | Bulk Move Items |
 
 If the input doesn't match any pattern, show this usage summary and ask what they'd like to do.
 
@@ -352,6 +353,67 @@ Show confirmation: "Moved **{item_name}** (ID: {item_id}) to item {target_id}."
 
 ---
 
+## Flow: Bulk Move Items
+
+**Trigger**: `bulk-move {item_ids} {parent_id}`
+
+### Step 1: Parse and validate arguments
+
+Extract item IDs (comma-separated) and parent ID from args.
+
+- If no arguments or missing parent ID → show usage:
+  > Usage: `/rkit:board bulk-move {item_ids} {parent_id}`
+  > Example: `/rkit:board bulk-move 1,2,3 100`
+- Parse `item_ids` as a comma-separated list of integers (strip spaces)
+- Parse `parent_id` as a single integer
+
+### Step 2: Confirm the bulk move
+
+Describe the action and warn about side effects:
+
+> Move {count} items under #{parent_id}? (Items will be removed from all weekly boards.)
+
+Wait for confirmation. If user declines, abort.
+
+### Step 3: Execute bulk move
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" PATCH "/items/bulk-move" "{\"item_ids\": [ITEM_IDS], \"parent_id\": PARENT_ID}")
+echo "$RESPONSE"
+```
+
+### Step 4: Handle response
+
+Parse the JSON response from api.sh.
+
+**Error responses** (non-200):
+- `"error": "NO_CONFIG"` or `"error": "NO_TOKEN"` → "Config not found. Run `/rkit:setup` first."
+- `"error": "CURL_FAILED"` → "Network error. Check your connection."
+- `status: 401` → "Unauthorized (401). Run `/rkit:setup` to update your token."
+- `status: 403` → "Access denied to parent item (403)."
+- `status: 404` → "Parent item not found (404)."
+- `status: 422` → Show validation error from response body.
+- Other non-200 → Show status code and error from response body.
+
+**Success (status 200)**:
+
+Extract `body.data.moved`, `body.data.failed`, and `body.data.errors` from the response.
+
+Always show the summary line:
+> Moved {moved} items under #{parent_id}. {failed} failed.
+
+If `failed > 0`, display an error table:
+
+```
+| Item ID | Reason |
+|---------|--------|
+| 42 | forbidden |
+| 99 | not_found |
+```
+
+---
+
 ## Edge Cases
 
 - **Item has no children** → "No children found for item {id}."
@@ -365,6 +427,12 @@ Show confirmation: "Moved **{item_name}** (ID: {item_id}) to item {target_id}."
 - **Duplicate column names** → list matches with IDs, ask user to pick; suggest renaming one to avoid future ambiguity
 - **Item already under target column (move)** → warn and skip
 - **Item not on board (remove)** → "Item {id} is not on this board."
+- **Bulk-move no args** → show usage message with example
+- **Bulk-move parent not found (404)** → "Parent item not found (404)."
+- **Bulk-move access denied (403)** → "Access denied to parent item (403)."
+- **Bulk-move partial failure** → show summary line + error table with per-item reasons
+- **Bulk-move all items fail** → show "Moved 0 items under #{id}. {N} failed." with full error table
+- **Bulk-move self-reference** → item rejected with reason `self_reference` in error table
 
 ## References
 

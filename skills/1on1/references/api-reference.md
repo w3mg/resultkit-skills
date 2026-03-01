@@ -33,6 +33,7 @@ Endpoints that support `q` and `include_archived` are noted below.
 | DELETE | `/items/{id}` | Archive item (soft delete, sets status=archived) | "archive item", "delete task", "remove item", "soft delete" | — |
 | GET | `/items/{id}/children` | List child items as nested tree (params: page, per_page, q, depth). `depth` default 2, range 1-20. | "show sub-tasks", "list children", "nested items", "what's under this" | `/items/{id}` |
 | PUT | `/items/{id}/move` | Reposition item in tree (body: parent_id, left_id, right_id) | "move item", "reparent", "nest under", "reorder" | `/items/{id}` |
+| PATCH | `/items/bulk-move` | Move up to 1000 items under a target parent (body: item_ids, parent_id). Items removed from all weekly boards. | "bulk move", "move items", "move these under", "reparent multiple" | — |
 
 Item fields: `id`, `name`, `description`, `due`, `status`, `on_weekly`,
 `team` (TeamSimple | null), `creator` (UserSimple), `assignees` (UserSimple[]),
@@ -45,6 +46,8 @@ ItemDetail: Item fields + `children` (Item[]).
 ItemTreeNode: Item fields + `children` (ItemTreeNode[]). Returned by `GET /items/{id}/children`. Nested recursively to the requested `depth` (1–20, default 2). Empty array at leaf nodes or max depth.
 
 Move body fields: `parent_id` (integer or null — move under parent or to root), `left_id` (integer — place after sibling), `right_id` (integer — place before sibling). At least one required. If both `left_id` and `right_id` given, `left_id` takes precedence.
+
+Bulk move: `PATCH /items/bulk-move` body: `{ "item_ids": integer[], "parent_id": integer }`. Response: `{ "data": { "moved": integer, "failed": integer, "errors": [{ "id": integer, "reason": string }] } }`. Per-item error reasons: `not_found`, `forbidden`, `self_reference`. Items already under the target parent are silently counted as moved. Duplicate item_ids are deduplicated server-side. Items are removed from all weekly board placements after being moved. Returns 403 if user cannot access the target parent, 404 if target parent not found, 422 for validation errors (empty item_ids, exceeds 1000, missing parent_id).
 
 Smart text: `POST /items` supports `@username` in name to auto-assign, and hashtag date shortcuts (`#tomorrow`, `#nextweek`, `#1month`) to auto-set due date.
 
@@ -432,6 +435,7 @@ Delete responses return `204 No Content` with empty body.
 | member, team member | Team Member | `/teams/{id}/members` |
 | child, sub-task, sub-item, nested item | Child Item (parent_id) | `/items/{id}/children` |
 | move, reorder, reparent, nest under | Move Item | `PUT /items/{id}/move` |
+| bulk move, move items, move these under, reparent multiple, move all to | Bulk Move Items | `PATCH /items/bulk-move` |
 | convert to project, promote to project | Convert Item to Project | `PUT /teams/{id}/projects/{item_id}` |
 | put on weekly, add to board, show on weekly | Set on_weekly=true | `PUT /teams/{id}/items/{item_id}` |
 | remove from weekly, take off board | Set on_weekly=false | `DELETE /teams/{id}/items/{item_id}` |
