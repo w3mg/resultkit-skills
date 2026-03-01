@@ -271,6 +271,17 @@ Meeting fields: MeetingSimple + `blocked` (Item[]), `done` (Item[]), `next` (Ite
 
 SessionResponse: `api_token` (string), user fields.
 
+## Passwords
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| POST | `/passwords/reset` | Trigger password reset email for a user (admin auth required, body: user_id*) | "reset password", "send password reset", "password reset for user" | — |
+| PUT | `/passwords` | Complete password reset (unauthenticated, body: token*, password*). Uses reset token from email link. | "set new password", "complete password reset" | — |
+
+POST /passwords/reset: Admin-only. Sends a password reset email to the specified user. Body: `{ "user_id": integer }`. Response: `{ "data": { "message": "Password reset email sent" } }`. Returns 403 if caller is not admin, 422 if user_id is invalid, user not in account, or user has no email.
+
+PUT /passwords: Unauthenticated — the reset token serves as authentication. Body: `{ "token": string, "password": string }`. Response: `{ "data": { "message": "Password updated successfully" } }`. Returns 422 if token is invalid/expired or fields are missing. This endpoint is used by the browser-based reset flow, not by the CLI skill.
+
 ## Status Values
 
 `not_started`, `next`, `parked`, `blocked`, `done`, `archived`, `draft`
@@ -431,6 +442,8 @@ Delete responses return `204 No Content` with empty body.
 | my token, API key, api token | API Token | `GET /users/me` |
 | admin, team admin, make admin | Team Member Role | `PUT /teams/{id}/members` (role: "admin") |
 | recurring, daily item, repeating task | Recurring Item | Day plan completion doesn't change item status |
+| reset password, send password reset, password reset for user | Password Reset (admin) | `POST /passwords/reset` |
+| set new password, complete password reset | Password Update (unauthenticated) | `PUT /passwords` |
 
 ### Item Types
 
