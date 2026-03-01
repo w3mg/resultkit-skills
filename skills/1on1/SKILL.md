@@ -33,6 +33,7 @@ Parse the user input to determine which flow to follow:
 | `{meeting_id} add "text"` | Add New Item |
 | `{meeting_id} add {item_id}` | Add Existing Item |
 | `{meeting_id} remove {item_id}` | Remove Item |
+| `--team {id}` *(anywhere in args)* | Override team ID for any flow |
 
 If the input doesn't match any pattern, show this usage summary and ask what they'd like to do.
 
@@ -51,13 +52,33 @@ Parse the JSON response from api.sh. Handle these cases:
 
 ---
 
+## Team ID Resolution
+
+1. **`--team {id}` flag** in args → use that team ID
+2. **`default_team_id` in config** → use that
+3. **Neither** → no team filter applied (show all one-on-ones)
+
+---
+
 ## Flow: List One-on-Ones
 
 **Trigger**: No args (or only `--team {id}`)
 
-### Step 1: Fetch meetings
+### Step 1: Resolve team and fetch meetings
 
-Fetch all meetings:
+Resolve team ID using Team ID Resolution.
+
+**If team ID is resolved** — fetch team detail for the team name, then fetch meetings filtered by team:
+
+```bash
+API_SH="<api.sh path from Current State>"
+TEAM=$("$API_SH" GET "/teams/TEAM_ID")
+echo "$TEAM"
+RESPONSE=$("$API_SH" GET "/meetings?team_id=TEAM_ID&per_page=100")
+echo "$RESPONSE"
+```
+
+**If no team ID** — fetch all meetings (no filter):
 
 ```bash
 API_SH="<api.sh path from Current State>"
@@ -68,10 +89,24 @@ echo "$RESPONSE"
 ### Step 2: Filter and display
 
 Filter the response client-side:
-- `type` must be `one_on_one`
-- If `--team {id}` is provided, additionally filter to only meetings where at least one participant belongs to that team
+- `type` must be `one_on_one` (always — exclude project meetings)
 
 Display as a table:
+
+**With team filter:**
+
+```
+## One-on-Ones — {team_name} (ID: {team_id})
+
+| ID | With | Date |
+|----|------|------|
+| 15 | Patrick Angodung | 2026-02-20 |
+| 22 | Mary Mejia | 2026-02-18 |
+
+{count} one-on-ones
+```
+
+**Without team filter:**
 
 ```
 ## One-on-Ones
@@ -82,12 +117,16 @@ Display as a table:
 | 22 | Mary Mejia | 2026-02-18 |
 
 {count} one-on-ones
+
+Tip: Set a default team with `/rkit:setup` to filter by team.
 ```
 
+**Display rules**:
 - `With` column: show the other participant (`person1` or `person2` — whichever is not the current user). Show `first_name last_name`; fall back to `login` if names are empty.
 - `Date` column: show date if present, "—" if null
 
-**Empty result**: "No one-on-ones found."
+**Empty result (with team)**: "No one-on-ones found for {team_name}."
+**Empty result (no team)**: "No one-on-ones found."
 
 ---
 

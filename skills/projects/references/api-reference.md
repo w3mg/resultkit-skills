@@ -248,7 +248,7 @@ Behavioral notes:
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/meetings` | List meetings (paginated) | "show meetings", "my meetings", "list 1:1s", "L10s" | — |
+| GET | `/meetings` | List meetings (params: team_id, page, per_page) | "show meetings", "my meetings", "list 1:1s", "L10s", "team 1:1s" | — |
 | GET | `/meetings/{id}` | Meeting detail (includes blocked, done, next arrays) | "show meeting", "meeting details", "open meeting" | `/meetings/{id}` |
 | GET | `/meetings/{id}/items` | All meeting items (params: creator_id?, page, per_page, q, include_archived) | "meeting items", "what's on the agenda" | `/meetings/{id}` |
 | POST | `/meetings/{id}/items` | Create item in meeting | "add to meeting", "new meeting item" | `/items/{item_id}` |
