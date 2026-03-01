@@ -72,7 +72,7 @@ Replace `TOKEN_HERE` with the actual token.
 
 ### Step 4: List user's teams
 
-Call `GET /teams` (returns authenticated user's teams as a flat array — no pagination):
+Call `GET /teams` (returns teams in standard data envelope):
 
 ```bash
 RESPONSE=$(curl -s -w '\n%{http_code}' \
@@ -85,8 +85,9 @@ echo "Status: $HTTP_CODE"
 echo "$RESP_BODY"
 ```
 
-The response is a flat JSON array (not wrapped in `data`). Each team
-has `is_default` — the default team appears first.
+The response is a standard data envelope: `{ "data": [...] }`. Extract
+the teams array from the `data` field. Each team has `is_default` — the
+default team appears first.
 
 - **Teams found**: Display as table:
 

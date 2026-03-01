@@ -64,9 +64,7 @@ Parse the JSON response from api.sh.
 
 **Success (status 200)**:
 
-The `body` is a **flat JSON array** (not wrapped in `data`/`meta`). Each element is a team object.
-
-**Important**: Because the response is a flat array, access it as `body` directly — not `body.data`.
+Extract the teams array from `body.data` (standard data envelope). Each element is a team object.
 
 - **Empty array** (or no matches with `q`):
   - With search: "No teams matching '{term}'."

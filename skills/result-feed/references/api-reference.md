@@ -77,7 +77,7 @@ Comment fields: `id`, `body`, `author` (UserSimple), `created_at`.
 | PUT | `/teams/{id}/mute` | Mute team for current user (idempotent). Muted teams excluded from `GET /teams` unless `include_muted=true`. | "mute team", "hide team", "silence team" | — |
 | DELETE | `/teams/{id}/mute` | Unmute team for current user (idempotent) | "unmute team", "unhide team", "show team again" | — |
 
-`GET /teams` response fields per team: `id`, `name`, `description`,
+`GET /teams` returns the standard data envelope: `{ "data": [...] }`. Response fields per team: `id`, `name`, `description`,
 `framework`, `organization_name`, `organization_id`, `parent_name`,
 `parent_id`, `is_default`, `is_muted`, `creator` (UserSimple),
 `created_at`, `updated_at`.
@@ -369,6 +369,7 @@ All errors return: `{ "error": { "code": "<error_code>", "message": "<human-read
 | 403 | `forbidden` | Not authorized for resource |
 | 404 | `not_found` | Resource not found |
 | 422 | `validation_error` | Validation error (per-field details in `details`) |
+| 500 | `internal_error` | Internal server error |
 
 ## Pagination
 
