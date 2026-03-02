@@ -122,27 +122,27 @@ Level 10: {team_name} (ID: {team_id})
 
 ## To-Dos ({count} items)
 
-| ID | Name | Creator | Due |
-|----|------|---------|-----|
-| 42 | Fix login bug | Scott Levy | 2026-03-07 |
+| ID | Name | Assignee | Creator | Due |
+|----|------|----------|---------|-----|
+| 42 | Fix login bug | Jane Doe | Scott Levy | 2026-03-07 |
 
 ## Done ({count} items)
 
-| ID | Name | Creator | Due |
-|----|------|---------|-----|
-| 55 | Deploy staging fix | Jane Doe | 2026-02-28 |
+| ID | Name | Assignee | Creator | Due |
+|----|------|----------|---------|-----|
+| 55 | Deploy staging fix | — | Jane Doe | 2026-02-28 |
 
 ## Issues ({count} items)
 
-| ID | Name | Creator | Due |
-|----|------|---------|-----|
-| 88 | Cash flow concern | Patrick A. | — |
+| ID | Name | Assignee | Creator | Due |
+|----|------|----------|---------|-----|
+| 88 | Cash flow concern | Patrick A. | Scott Levy | — |
 
 ## Parked ({count} items)
 
-| ID | Name | Creator | Due |
-|----|------|---------|-----|
-| 73 | Office relocation plan | Scott Levy | — |
+| ID | Name | Assignee | Creator | Due |
+|----|------|----------|---------|-----|
+| 73 | Office relocation plan | — | Scott Levy | — |
 
 ## Headlines ({count} headlines)
 
@@ -153,7 +153,7 @@ Level 10: {team_name} (ID: {team_id})
 
 **Display rules**:
 - Section headers show count from `meta.total`
-- To-Dos, Done, Issues, and Parked: show ID, name, creator (`first_name last_name` from `creator` field; fall back to `login` if names are empty), due date (or "—" if null)
+- To-Dos, Done, Issues, and Parked: show ID, name, assignee (first entry from `assignees` array — `first_name last_name`, fall back to `login` if names are empty, or "—" if array is empty), creator (`first_name last_name` from `creator` field; fall back to `login` if names are empty), due date (or "—" if null)
 - Headlines: show ID, text, creator, expires_at date (or "—" if null)
 - Empty sections show "(empty)"
 - If any section has more items than returned (`meta.total` > returned count), show "Showing {returned} of {total} — more items exist"
