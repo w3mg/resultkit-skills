@@ -278,7 +278,7 @@ Response: `{ data: { logo_url: "/api/v2/teams/{id}/logo" } }`.
 | GET | `/users/{user_id}/feedback` | User feedback/High5s (params: direction* — "given" or "received", page, per_page; requires shared team membership) | "show feedback", "High5s", "kudos", "recognition" | `/users/{user_id}` |
 | GET | `/users/check-login` | Check if login/handle is available (params: login* — 3-40 chars) | "check login", "is handle available", "username taken" | — |
 | GET | `/users/me/preferences` | Get full preferences (profile, notifications, timezone, startup view, API token) | "my preferences", "settings", "notification settings" | `/customize` |
-| PATCH | `/users/me/preferences` | Update preferences (body: login?, time_zone?, notifications?, startup_view_code?, preferred_team_id?, secondary_email?, update_frequency?, unsubscribe_all?, slack_username?) | "update preferences", "change settings", "change timezone" | `/customize` |
+| PATCH | `/users/me/preferences` | Update preferences (body: login?, time_zone?, notifications?, startup_view_code?, preferred_team_id?, secondary_email?, update_frequency?, unsubscribe_all?, slack_username?). Partial update — only sent fields change. Notification booleans represent the logical ON/OFF value (true=on); the API inverts from the raw DB `should_suppress` field. | "update preferences", "change settings", "change timezone", "toggle notifications", "turn off digest", "turn on notifications" | `/customize` |
 | GET | `/users/me/progress` | Personal progress — strategy metrics, practice scorecard, streak totals (params: period? — week/month/quarter) | "my progress", "practice streak", "how am I doing", "scorecard" | — |
 | GET | `/users/me/integrations` | Get third-party integration selections (task_management, sales_revops, team_communication) | "my integrations", "connected apps", "integration settings" | `/customize` |
 | PATCH | `/users/me/integrations` | Update integration selections (body: task_management?, sales_revops?, team_communication?). Set to null to disconnect. | "update integrations", "connect app", "disconnect integration" | `/customize` |
@@ -303,7 +303,7 @@ UserRock fields: `id`, `name`, `status` ("on_track" | "off_track" | "completed" 
 
 FeedbackEntry fields: `id`, `message`, `from_user` (UserSimple + profile_photo_thumb_path), `to_user` (UserSimple + profile_photo_thumb_path), `created_at`.
 
-UserPreferences fields: `profile_photo_thumb_path`, `login`, `first_name`, `last_name`, `email`, `secondary_email`, `time_zone`, `notifications` ({ morning_day_ahead, week_ahead_sunday, end_of_day_digest, weekly_digest_friday }), `update_frequency` ("once_daily" | "every_change"), `unsubscribe_all`, `startup_view_code`, `startup_view_label`, `preferred_team_id`, `slack_username`, `api_token`, `is_coach`.
+UserPreferences fields: `id`, `profile_photo_thumb_path`, `login`, `first_name`, `last_name`, `email`, `secondary_email`, `time_zone`, `notifications` ({ morning_day_ahead, week_ahead_sunday, end_of_day_digest, weekly_digest_friday } — all boolean, true=on, false=off; API inverts the raw DB `should_suppress` field so clients read/write logical on/off values directly), `update_frequency` ("once_daily" | "every_change"), `unsubscribe_all`, `startup_view_code`, `startup_view_label`, `preferred_team_id`, `slack_username`, `api_token`, `is_coach`.
 
 PersonalProgress fields: `strategy` ({ rocks_realized_all_time, milestones_realized_all_time, milestones_realized_this_quarter }), `practice_scorecard` ({ days: [{ date, day_name, completed }] }), `practice_totals` ({ all_time, current_streak, longest_streak }).
 
@@ -629,7 +629,7 @@ Delete responses return `204 No Content` with empty body.
 | recurring, daily item, repeating task | Recurring Item | Day plan completion doesn't change item status |
 | reset password, send password reset, password reset for user | Password Reset (admin) | `POST /passwords/reset` |
 | set new password, complete password reset | Password Update (unauthenticated) | `PUT /passwords` |
-| change password, update my password, new password | Change Password (authenticated) | `POST /users/me/password` |
+| change password, update my password, new password, set password | Change Password (authenticated) | `POST /users/me/password` |
 | seat, position, role on chart, accountability chart | Seat | `/teams/{id}/seats`, `/seats/{id}` |
 | org chart, accountability chart, who does what | Team Seats (chart) | `GET /teams/{id}/seats` |
 | seat owner, who owns the seat, assigned to seat | Seat Owner | `PATCH /seats/{id}` (seat_owner_id) |
@@ -644,17 +644,18 @@ Delete responses return `204 No Content` with empty body.
 | team logo, upload logo | Team Logo | `POST /teams/{id}/logo` |
 | activity log, team activity, membership changes | Team Activity Log | `GET /teams/{id}/activity-logs` |
 | change role, promote to admin, demote, make admin | Change Member Role | `PATCH /teams/{id}/members/{user_id}` |
-| account, my accounts, account membership | Account | `GET /users/me/accounts` |
-| account members, who's in account | Account Members | `GET /accounts/{id}/members` |
-| remove from account, kick from account | Remove Account Member | `DELETE /accounts/{id}/members/{user_id}` |
-| my preferences, settings, notification settings | User Preferences | `GET /users/me/preferences` |
+| account, my accounts, account list, account membership | Account | `GET /users/me/accounts` |
+| account members, who's in account, who's in my account | Account Members | `GET /accounts/{id}/members` |
+| remove from account, kick from account, remove account member | Remove Account Member | `DELETE /accounts/{id}/members/{user_id}` |
+| my preferences, my settings, my profile, settings, notification settings | User Preferences | `GET /users/me/preferences` |
+| update preferences, change timezone, change settings, toggle notifications, turn off digest, turn on notifications | Update Preferences | `PATCH /users/me/preferences` |
 | my progress, practice streak, how am I doing | Personal Progress | `GET /users/me/progress` |
 | my integrations, connected apps | User Integrations | `GET /users/me/integrations` |
-| stats, profile stats, wins, actions done | User Stats | `GET /users/{user_id}/stats` |
+| stats, profile stats, my stats, my wins, wins given, wins received, my score, goals realized, actions done | User Stats | `GET /users/{user_id}/stats` |
 | measurables, scorecard, KPIs, metrics | User Measurables | `GET /users/{user_id}/measurables` |
 | rocks, goals, quarterly priorities | User Rocks | `GET /users/{user_id}/rocks` |
 | feedback, High5s, kudos, recognition | User Feedback | `GET /users/{user_id}/feedback` |
-| check login, is handle available, username taken | Check Login | `GET /users/check-login` |
+| check login, login available, check username, is handle available, username taken | Check Login | `GET /users/check-login` |
 
 ### Item Types
 

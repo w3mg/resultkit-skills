@@ -98,8 +98,53 @@ Mute/unmute response: `{ data: { id, name, is_muted } }`.
 |--------|------|-------------|--------------|---------|
 | GET | `/teams/{id}/members` | List members (params: page, per_page, q) | "show members", "who's on the team", "team roster" | `/teams/{id}` |
 | PUT | `/teams/{id}/members` | Add member (body: user_id*, role?: "member"\|"admin") | "add member", "invite to team", "make admin" | `/teams/{id}` |
+| PATCH | `/teams/{id}/members/{user_id}` | Change member role (body: role* — "admin" or "member"). Admin only. | "change role", "make admin", "promote to admin", "demote member", "change member role" | `/teams/{id}` |
 | DELETE | `/teams/{id}/members/{user_id}` | Remove member | "remove member", "kick from team" | `/teams/{id}` |
 | PATCH | `/teams/{id}/members/{user_id}` | Change member role (body: role* — "admin" or "member"). Admin-only. Cannot demote last admin. | "change role", "promote to admin", "demote member", "make admin" | `/teams/{id}` |
+
+PATCH /teams/{id}/members/{user_id} body: `{ "role": "admin" | "member" }`. Response: `{ "data": { "id", "login", "first_name", "last_name", "email", "role" } }`. Errors: 401 (unauthorized), 403 (not a team admin), 404 (team or user not found), 422 (invalid role).
+
+### Team Activity Logs
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/activity-logs` | Paginated list of membership changes (params: page, per_page). Team member auth required. | "activity logs", "team history", "membership changes", "who joined", "who was removed", "team audit log" | — |
+
+ActivityLogEntry fields: `id`, `action` ("member_added" \| "member_removed" \| "role_changed"), `target_user` (UserSimple), `actor` (UserSimple), `details` (string), `created_at`. Wrapped in standard `{ data: [...], meta: { page, per_page, total, total_pages } }` envelope. Errors: 401, 403 (not a team member), 404 (team not found).
+
+### Team Labels
+
+Admin-only for writes. Labels are organizational tags (name + color) used in the web UI.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/labels` | List team labels (params: page, per_page). Team member auth required. | "team labels", "team tags", "show labels" | — |
+| POST | `/teams/{id}/labels` | Create label (body: name*, color*). Admin only. | "create label", "add label", "new team tag" | — |
+| PATCH | `/teams/{id}/labels/{label_id}` | Update label (body: name?, color?). Admin only. | "update label", "rename label", "change label color" | — |
+| DELETE | `/teams/{id}/labels/{label_id}` | Delete label. Admin only. | "delete label", "remove label" | — |
+
+Label fields: `id`, `name`, `color` (hex string, e.g. "#3b82f6"), `created_at`. Wrapped in standard `{ data: [...], meta }` envelope (list) or `{ data: {...} }` (create/update). Errors: 401, 403 (non-member for GET; non-admin for writes), 404.
+
+### Team Integrations
+
+Admin-only. Webhook configurations (e.g. Slack). Managed via web UI — reference only.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/integrations` | List integrations (params: page, per_page). Admin only. | "team integrations", "slack integration", "team webhook", "team webhook list" | — |
+| POST | `/teams/{id}/integrations` | Create/upsert integration by type (body: type*, name*, webhook_url*). Admin only. | "create integration", "add webhook", "set up slack" | — |
+| PATCH | `/teams/{id}/integrations/{integration_id}` | Update integration (body: name?, webhook_url?). Admin only. | "update integration", "change webhook url" | — |
+| DELETE | `/teams/{id}/integrations/{integration_id}` | Delete integration (disables it). Admin only. | "delete integration", "remove webhook", "disable slack" | — |
+
+Integration fields: `id`, `type` ("slack"; others TBD), `name`, `webhook_url`, `enabled` (boolean), `created_at`, `updated_at`. POST upserts by type — one integration per type per team. Errors: 401, 403 (non-admin), 404.
+
+### Team Logo
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| POST | `/teams/{id}/logo` | Upload team logo (multipart/form-data, field: file*). Admin only. Web UI only — not supported via CLI skill. | "upload logo", "team logo", "set team logo" | — |
+
+Errors: 401, 403 (non-admin), 422 (invalid file).
 
 ### Team Weekly Board (Items)
 
@@ -233,7 +278,7 @@ Response: `{ data: { logo_url: "/api/v2/teams/{id}/logo" } }`.
 | GET | `/users/{user_id}/feedback` | User feedback/High5s (params: direction* — "given" or "received", page, per_page; requires shared team membership) | "show feedback", "High5s", "kudos", "recognition" | `/users/{user_id}` |
 | GET | `/users/check-login` | Check if login/handle is available (params: login* — 3-40 chars) | "check login", "is handle available", "username taken" | — |
 | GET | `/users/me/preferences` | Get full preferences (profile, notifications, timezone, startup view, API token) | "my preferences", "settings", "notification settings" | `/customize` |
-| PATCH | `/users/me/preferences` | Update preferences (body: login?, time_zone?, notifications?, startup_view_code?, preferred_team_id?, secondary_email?, update_frequency?, unsubscribe_all?, slack_username?) | "update preferences", "change settings", "change timezone" | `/customize` |
+| PATCH | `/users/me/preferences` | Update preferences (body: login?, time_zone?, notifications?, startup_view_code?, preferred_team_id?, secondary_email?, update_frequency?, unsubscribe_all?, slack_username?). Partial update — only sent fields change. Notification booleans represent the logical ON/OFF value (true=on); the API inverts from the raw DB `should_suppress` field. | "update preferences", "change settings", "change timezone", "toggle notifications", "turn off digest", "turn on notifications" | `/customize` |
 | GET | `/users/me/progress` | Personal progress — strategy metrics, practice scorecard, streak totals (params: period? — week/month/quarter) | "my progress", "practice streak", "how am I doing", "scorecard" | — |
 | GET | `/users/me/integrations` | Get third-party integration selections (task_management, sales_revops, team_communication) | "my integrations", "connected apps", "integration settings" | `/customize` |
 | PATCH | `/users/me/integrations` | Update integration selections (body: task_management?, sales_revops?, team_communication?). Set to null to disconnect. | "update integrations", "connect app", "disconnect integration" | `/customize` |
@@ -258,7 +303,7 @@ UserRock fields: `id`, `name`, `status` ("on_track" | "off_track" | "completed" 
 
 FeedbackEntry fields: `id`, `message`, `from_user` (UserSimple + profile_photo_thumb_path), `to_user` (UserSimple + profile_photo_thumb_path), `created_at`.
 
-UserPreferences fields: `profile_photo_thumb_path`, `login`, `first_name`, `last_name`, `email`, `secondary_email`, `time_zone`, `notifications` ({ morning_day_ahead, week_ahead_sunday, end_of_day_digest, weekly_digest_friday }), `update_frequency` ("once_daily" | "every_change"), `unsubscribe_all`, `startup_view_code`, `startup_view_label`, `preferred_team_id`, `slack_username`, `api_token`, `is_coach`.
+UserPreferences fields: `id`, `profile_photo_thumb_path`, `login`, `first_name`, `last_name`, `email`, `secondary_email`, `time_zone`, `notifications` ({ morning_day_ahead, week_ahead_sunday, end_of_day_digest, weekly_digest_friday } — all boolean, true=on, false=off; API inverts the raw DB `should_suppress` field so clients read/write logical on/off values directly), `update_frequency` ("once_daily" | "every_change"), `unsubscribe_all`, `startup_view_code`, `startup_view_label`, `preferred_team_id`, `slack_username`, `api_token`, `is_coach`.
 
 PersonalProgress fields: `strategy` ({ rocks_realized_all_time, milestones_realized_all_time, milestones_realized_this_quarter }), `practice_scorecard` ({ days: [{ date, day_name, completed }] }), `practice_totals` ({ all_time, current_streak, longest_streak }).
 
@@ -575,10 +620,16 @@ Delete responses return `204 No Content` with empty body.
 | search, find, look up | Search (q param) | `GET /items?q=...`, `GET /users/search?q=...` |
 | my token, API key, api token | API Token | `GET /users/me` |
 | admin, team admin, make admin | Team Member Role | `PUT /teams/{id}/members` (role: "admin") |
+| activity logs, team history, membership changes, who joined, who was removed, team audit log | Team Activity Logs | `GET /teams/{id}/activity-logs` |
+| team labels, team tags, label, tag | Team Labels | `GET /teams/{id}/labels` |
+| create label, add label, new team tag | Create Team Label | `POST /teams/{id}/labels` |
+| slack integration, team webhook, team integration, webhook | Team Integrations | `GET /teams/{id}/integrations` |
+| change role, change member role, promote to admin, demote member, demote to member | Member Role Change | `PATCH /teams/{id}/members/{user_id}` |
+| upload logo, team logo, set team logo | Team Logo Upload (web UI only) | `POST /teams/{id}/logo` |
 | recurring, daily item, repeating task | Recurring Item | Day plan completion doesn't change item status |
 | reset password, send password reset, password reset for user | Password Reset (admin) | `POST /passwords/reset` |
 | set new password, complete password reset | Password Update (unauthenticated) | `PUT /passwords` |
-| change password, update my password, new password | Change Password (authenticated) | `POST /users/me/password` |
+| change password, update my password, new password, set password | Change Password (authenticated) | `POST /users/me/password` |
 | seat, position, role on chart, accountability chart | Seat | `/teams/{id}/seats`, `/seats/{id}` |
 | org chart, accountability chart, who does what | Team Seats (chart) | `GET /teams/{id}/seats` |
 | seat owner, who owns the seat, assigned to seat | Seat Owner | `PATCH /seats/{id}` (seat_owner_id) |
@@ -593,17 +644,18 @@ Delete responses return `204 No Content` with empty body.
 | team logo, upload logo | Team Logo | `POST /teams/{id}/logo` |
 | activity log, team activity, membership changes | Team Activity Log | `GET /teams/{id}/activity-logs` |
 | change role, promote to admin, demote, make admin | Change Member Role | `PATCH /teams/{id}/members/{user_id}` |
-| account, my accounts, account membership | Account | `GET /users/me/accounts` |
-| account members, who's in account | Account Members | `GET /accounts/{id}/members` |
-| remove from account, kick from account | Remove Account Member | `DELETE /accounts/{id}/members/{user_id}` |
-| my preferences, settings, notification settings | User Preferences | `GET /users/me/preferences` |
+| account, my accounts, account list, account membership | Account | `GET /users/me/accounts` |
+| account members, who's in account, who's in my account | Account Members | `GET /accounts/{id}/members` |
+| remove from account, kick from account, remove account member | Remove Account Member | `DELETE /accounts/{id}/members/{user_id}` |
+| my preferences, my settings, my profile, settings, notification settings | User Preferences | `GET /users/me/preferences` |
+| update preferences, change timezone, change settings, toggle notifications, turn off digest, turn on notifications | Update Preferences | `PATCH /users/me/preferences` |
 | my progress, practice streak, how am I doing | Personal Progress | `GET /users/me/progress` |
 | my integrations, connected apps | User Integrations | `GET /users/me/integrations` |
-| stats, profile stats, wins, actions done | User Stats | `GET /users/{user_id}/stats` |
+| stats, profile stats, my stats, my wins, wins given, wins received, my score, goals realized, actions done | User Stats | `GET /users/{user_id}/stats` |
 | measurables, scorecard, KPIs, metrics | User Measurables | `GET /users/{user_id}/measurables` |
 | rocks, goals, quarterly priorities | User Rocks | `GET /users/{user_id}/rocks` |
 | feedback, High5s, kudos, recognition | User Feedback | `GET /users/{user_id}/feedback` |
-| check login, is handle available, username taken | Check Login | `GET /users/check-login` |
+| check login, login available, check username, is handle available, username taken | Check Login | `GET /users/check-login` |
 
 ### Item Types
 

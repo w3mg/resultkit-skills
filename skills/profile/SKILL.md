@@ -1,6 +1,6 @@
 ---
 name: rkit:profile
-description: View your profile stats, manage preferences, change your password, and manage account members. Use this skill when users ask about their personal stats, wins, goals realized, actions done, want to view or update their preferences (timezone, notifications, startup view), change their account password, or manage account members (list, remove).
+description: View your profile stats, measurables (scorecard), rocks (quarterly goals), feedback (High5s), personal progress dashboard, and third-party integrations. Manage preferences, change your password, and manage account members. Use this skill when users ask about their personal stats, wins, goals realized, actions done, measurables, scorecard, rocks, quarterly goals, feedback, High5s, progress, integrations, want to view or update their preferences (timezone, notifications, startup view), change their account password, or manage account members (list, remove).
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), AskUserQuestion
@@ -35,6 +35,18 @@ View profile stats, manage preferences, change password, and manage account memb
 | `account` | Show current user's accounts with ownership status |
 | `account members [{account_id}]` | List account members (prompts if multiple accounts) |
 | `account members remove {user_id} [{account_id}]` | Remove a member from an account (owner-only, with confirmation) |
+| `measurables` | Show scorecard metrics for current user |
+| `measurables {user_id}` | Show scorecard metrics for another user (must share a team) |
+| `rocks` | Show quarterly rocks for current user |
+| `rocks {year}` | Show rocks for a specific year |
+| `rocks {user_id}` | Show rocks for another user (must share a team) |
+| `feedback given` | Show feedback given by current user |
+| `feedback received` | Show feedback received by current user |
+| `feedback {user_id} given\|received` | Show feedback for another user (must share a team) |
+| `progress` | Show personal progress dashboard (strategy metrics + practice scorecard) |
+| `progress {period}` | Progress filtered to period: `week`, `month`, or `quarter` |
+| `integrations` | Show current third-party integration selections |
+| `integrations set {category} {value}` | Update an integration selection (with confirmation) |
 
 ---
 
@@ -392,6 +404,334 @@ echo "$RESPONSE"
 
 ---
 
+## Flow: Progress
+
+Triggered by: `progress` or `progress {period}`
+
+### Step 1: Resolve api.sh and config
+
+Same checks as Stats Step 1 (api.sh resolution, config check).
+
+### Step 2: Build request
+
+Extract optional `PERIOD` from args (valid values: `week`, `month`, `quarter`). Build URL:
+
+```bash
+API_SH="<api.sh path from Current State>"
+URL="/users/me/progress"
+[ -n "$PERIOD" ] && URL="${URL}?period=${PERIOD}"
+RESPONSE=$("$API_SH" GET "$URL")
+echo "$RESPONSE"
+```
+
+### Step 3: Handle response
+
+**Error responses:**
+- `"error": "NO_CONFIG"` or `"error": "NO_TOKEN"` → "Config not found. Run `/rkit:setup` first."
+- `"error": "CURL_FAILED"` → "Network error. Check your connection."
+- `status: 401` → "Unauthorized (401). Run `/rkit:setup` to update your token."
+- Other non-200 → Show status code and error from response body.
+
+*(403/404 not applicable — endpoint is always `/users/me/progress`; no `{user_id}` param.)*
+
+**Success (status 200):**
+
+Extract from `body.data`. Display:
+
+```
+## My Progress
+
+**Strategy**
+Rocks realized (all time):          {strategy.rocks_realized_all_time}
+Milestones realized (all time):     {strategy.milestones_realized_all_time}
+Milestones realized (this quarter): {strategy.milestones_realized_this_quarter}
+
+**Practice Streak**
+Current streak:  {practice_totals.current_streak} days
+Longest streak:  {practice_totals.longest_streak} days
+All-time days:   {practice_totals.all_time}
+
+**Practice Scorecard**
+{for each entry in practice_scorecard.days: "{day_name} {date}  ✓" or "{day_name} {date}  ✗"}
+```
+
+---
+
+## Flow: Measurables
+
+Triggered by: `measurables` or `measurables {user_id}`
+
+### Step 1: Resolve api.sh and config
+
+Same checks as Stats Step 1.
+
+### Step 2: Resolve user ID
+
+Extract numeric `USER_ID` from args. If a numeric argument is provided, use it. Otherwise: `USER_ID=me`.
+
+### Step 3: Fetch measurables
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" GET "/users/${USER_ID}/measurables")
+echo "$RESPONSE"
+```
+
+### Step 4: Handle response
+
+**Error responses:**
+- `"error": "NO_CONFIG"` or `"error": "NO_TOKEN"` → "Config not found. Run `/rkit:setup` first."
+- `"error": "CURL_FAILED"` → "Network error. Check your connection."
+- `status: 401` → "Unauthorized (401). Run `/rkit:setup` to update your token."
+- `status: 403` → "Access denied (403). You must share a team with user {USER_ID} to view their data."
+- `status: 404` → "User {USER_ID} not found (404)."
+- Other non-200 → Show status code and error.
+
+**Success (status 200):**
+
+Extract from `body.data`. For each measurable, read the most recent entry from the `values` array for `value` and `on_track`.
+
+If array is empty: "No measurables found." — stop.
+
+Header: `## My Measurables` (or `## Measurables for User {USER_ID}` if a specific user ID was given).
+
+```
+| ID  | Name | Target | Latest | On Track |
+|-----|------|--------|--------|----------|
+| {id} | {name} | {target_value} {target_unit} | {latest value or —} | ✓ / ✗ / — |
+
+{N} measurables
+```
+
+- `target_value`: show as-is; if null show "—"; append `target_unit` if present.
+- `on_track` from most recent `values` entry: `true` → ✓, `false` → ✗, null/absent → "—".
+
+---
+
+## Flow: Rocks
+
+Triggered by: `rocks`, `rocks {year}`, or `rocks {user_id}`
+
+### Step 1: Resolve api.sh and config
+
+Same checks as Stats Step 1.
+
+### Step 2: Parse args and build URL
+
+- If arg is a 4-digit integer (e.g., `2025`): set `YEAR=${arg}`, `USER_ID=me`
+- If arg is a non-year integer: set `USER_ID=${arg}`, no year filter
+- If no arg: `USER_ID=me`, no year filter
+
+### Step 3: Paginated fetch
+
+```bash
+API_SH="<api.sh path from Current State>"
+PAGE=1
+ALL_ROCKS="[]"
+TOTAL_PAGES=1
+while [ "$PAGE" -le "$TOTAL_PAGES" ]; do
+  URL="/users/${USER_ID}/rocks?per_page=100&page=${PAGE}"
+  [ -n "$YEAR" ] && URL="${URL}&year=${YEAR}"
+  RESPONSE=$("$API_SH" GET "$URL")
+  # On first page: extract TOTAL_PAGES from body.meta.total_pages
+  # Append body.data items to ALL_ROCKS
+  PAGE=$((PAGE + 1))
+done
+```
+
+### Step 4: Handle response
+
+**Error responses (on first page):**
+- `"error": "NO_CONFIG"` or `"error": "NO_TOKEN"` → "Config not found. Run `/rkit:setup` first."
+- `"error": "CURL_FAILED"` → "Network error. Check your connection."
+- `status: 401` → "Unauthorized (401). Run `/rkit:setup` to update your token."
+- `status: 403` → "Access denied (403). You must share a team with user {USER_ID} to view their data."
+- `status: 404` → "User {USER_ID} not found (404)."
+- Other non-200 → Show status code and error.
+
+**Success (status 200):**
+
+If result is empty: "No rocks found." — stop.
+
+Header: `## My Rocks` / `## Rocks ({YEAR})` / `## Rocks for User {USER_ID}` as appropriate.
+
+```
+| ID  | Rock | Status   | Due        | Milestones | Team |
+|-----|------|----------|------------|------------|------|
+| {id} | {name} | {status_label} | {due_date or —} | {milestones_completed}/{milestones_total} | {team.name} |
+
+{N} rocks
+```
+
+Status labels: `on_track` → "On Track", `off_track` → "Off Track", `completed` → "Done", `dropped` → "Dropped".
+
+---
+
+## Flow: Feedback
+
+Triggered by: `feedback given`, `feedback received`, or `feedback {user_id} given|received`
+
+### Step 1: Resolve api.sh and config
+
+Same checks as Stats Step 1.
+
+### Step 2: Parse args
+
+- Extract `DIRECTION`: first occurrence of "given" or "received" in args.
+- Extract `USER_ID`: first numeric arg, or `me` if none.
+- If `DIRECTION` is missing: use AskUserQuestion to prompt "Which direction?" with options "given" / "received".
+
+### Step 3: Paginated fetch
+
+```bash
+API_SH="<api.sh path from Current State>"
+PAGE=1
+ALL_FEEDBACK="[]"
+TOTAL_PAGES=1
+while [ "$PAGE" -le "$TOTAL_PAGES" ]; do
+  RESPONSE=$("$API_SH" GET "/users/${USER_ID}/feedback?direction=${DIRECTION}&per_page=100&page=${PAGE}")
+  # On first page: extract TOTAL_PAGES from body.meta.total_pages
+  # Append body.data items to ALL_FEEDBACK
+  PAGE=$((PAGE + 1))
+done
+```
+
+### Step 4: Handle response
+
+**Error responses (on first page):**
+- `"error": "NO_CONFIG"` or `"error": "NO_TOKEN"` → "Config not found. Run `/rkit:setup` first."
+- `"error": "CURL_FAILED"` → "Network error. Check your connection."
+- `status: 401` → "Unauthorized (401). Run `/rkit:setup` to update your token."
+- `status: 403` → "Access denied (403). You must share a team with user {USER_ID} to view their data."
+- `status: 404` → "User {USER_ID} not found (404)."
+- Other non-200 → Show status code and error.
+
+**Success (status 200):**
+
+If result is empty: "No feedback found." — stop.
+
+**For `received`:** Header: `## Feedback Received` (or `## Feedback Received by User {USER_ID}`).
+
+```
+| ID  | From | Message | Date |
+|-----|------|---------|------|
+| {id} | {from_user.first_name} {from_user.last_name} | {message truncated at 60 chars} | {created_at, date only} |
+
+{N} items
+```
+
+**For `given`:** Header: `## Feedback Given` (or `## Feedback Given by User {USER_ID}`).
+
+```
+| ID  | To | Message | Date |
+|-----|-----|---------|------|
+| {id} | {to_user.first_name} {to_user.last_name} | {message truncated at 60 chars} | {created_at, date only} |
+
+{N} items
+```
+
+---
+
+## Flow: View Integrations
+
+Triggered by: `integrations`
+
+### Step 1: Resolve api.sh and config
+
+Same checks as Stats Step 1.
+
+### Step 2: Fetch integrations
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" GET "/users/me/integrations")
+echo "$RESPONSE"
+```
+
+### Step 3: Handle response
+
+**Error responses:**
+- `"error": "NO_CONFIG"` or `"error": "NO_TOKEN"` → "Config not found. Run `/rkit:setup` first."
+- `"error": "CURL_FAILED"` → "Network error. Check your connection."
+- `status: 401` → "Unauthorized (401). Run `/rkit:setup` to update your token."
+- Other non-200 → Show status code and error.
+
+**Success (status 200):**
+
+Extract from `body.data`. Each category has `selected` (string or null) and `options` (array of strings).
+
+```
+## My Integrations
+
+Task Management:   {task_management.selected or —}    (options: {task_management.options, comma-joined})
+Sales / RevOps:    {sales_revops.selected or —}        (options: {sales_revops.options, comma-joined})
+Team Comms:        {team_communication.selected or —}  (options: {team_communication.options, comma-joined})
+```
+
+---
+
+## Flow: Update Integrations
+
+Triggered by: `integrations set {category} {value}`
+
+### Step 1: Resolve api.sh and config
+
+Same checks as Stats Step 1.
+
+### Step 2: Validate args
+
+Extract `CATEGORY` and `VALUE` from args (the two words following `set`).
+
+- If `CATEGORY` is not one of `task_management`, `sales_revops`, `team_communication`:
+  "Unknown category '{CATEGORY}'. Valid categories: task_management, sales_revops, team_communication." — stop.
+- If `VALUE` is missing: "Usage: `/rkit:profile integrations set {category} {value}`" — stop.
+
+### Step 3: Translate value
+
+- If `VALUE` is `none` or `null`: treat as JSON `null` (disconnects the integration).
+- Otherwise: treat as a quoted string value.
+
+### Step 4: Fetch current integrations
+
+```bash
+API_SH="<api.sh path from Current State>"
+CURRENT_RESP=$("$API_SH" GET "/users/me/integrations")
+```
+
+Extract the current `selected` value for `CATEGORY` from `body.data.{CATEGORY}.selected` (show "—" if null).
+
+### Step 5: Confirm
+
+Use AskUserQuestion:
+
+```
+Update {category}: '{current_value or —}' → '{VALUE}'?
+Confirm?
+```
+
+If user declines: "Cancelled." — stop.
+
+### Step 6: Send PATCH
+
+```bash
+# null value:
+BODY="{\"${CATEGORY}\": null}"
+# string value:
+BODY="{\"${CATEGORY}\": \"${VALUE}\"}"
+
+RESPONSE=$("$API_SH" PATCH "/users/me/integrations" "$BODY")
+echo "$RESPONSE"
+```
+
+### Step 7: Handle response
+
+- `status: 401` → "Unauthorized (401). Run `/rkit:setup` to update your token."
+- `status: 422` → Show validation error from `body.errors` or `body.error.message`.
+- Other non-200 → Show status code and error.
+- `status: 200` → "Integrations updated."
+
+---
+
 ## Edge Cases
 
 - **No config**: "Config not found. Run `/rkit:setup` first."
@@ -408,6 +748,19 @@ echo "$RESPONSE"
 - **Account member removal — not owner (403)**: "Access denied (403). Only the account owner can remove members."
 - **Account member removal — remove owner (422)**: "Cannot remove the account owner."
 - **Account member removal — user not in account**: "User {id} is not a member of account {account_id}."
+- **Progress — invalid period**: The API returns an error; show the status code and error message from response body.
+- **Measurables — 403 (no shared team)**: "Access denied (403). You must share a team with user {id} to view their data."
+- **Measurables — 404**: "User {id} not found (404)."
+- **Measurables — empty list**: "No measurables found."
+- **Rocks — 403 (no shared team)**: "Access denied (403). You must share a team with user {id} to view their data."
+- **Rocks — 404**: "User {id} not found (404)."
+- **Rocks — empty list**: "No rocks found."
+- **Feedback — direction missing**: Prompt user with AskUserQuestion for "given" or "received".
+- **Feedback — 403 (no shared team)**: "Access denied (403). You must share a team with user {id} to view their data."
+- **Feedback — 404**: "User {id} not found (404)."
+- **Feedback — empty list**: "No feedback found."
+- **Integrations set — invalid category**: "Unknown category '{cat}'. Valid categories: task_management, sales_revops, team_communication."
+- **Integrations set — missing value**: "Usage: `/rkit:profile integrations set {category} {value}`"
 
 ## References
 
