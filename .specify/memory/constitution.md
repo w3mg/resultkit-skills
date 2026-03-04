@@ -132,7 +132,7 @@ Show what matters: names, statuses, IDs, dates.
 ## Skill Development Workflow
 
 - Each skill has a spec in `specs/NNN-name/spec.md`.
-- Built skill source files go in `skills/rkit/`.
+- Built skill source files go in `skills/{skill-name}/` (e.g., `skills/profile/`, `skills/teams/`).
 - The shared API script lives at `scripts/api.sh`.
 - Skills are deployed to `~/.claude/skills/` via `scripts/install.sh`.
 - All skills use the `rkit:` namespace prefix.
@@ -151,4 +151,4 @@ This constitution supersedes all other practices for `rkit:*` skills.
   principles before merge. The plan-template Constitution Check gate
   enforces this.
 
-**Version**: 1.1.1 | **Ratified**: 2026-02-14 | **Last Amended**: 2026-03-01
+**Version**: 1.1.2 | **Ratified**: 2026-02-14 | **Last Amended**: 2026-03-04
