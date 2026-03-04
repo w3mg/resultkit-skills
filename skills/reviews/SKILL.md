@@ -27,8 +27,10 @@ Parse the JSON response from api.sh. Handle these cases:
 - `"error": "NO_CONFIG"` or `"error": "NO_TOKEN"` → "Config not found. Run `/rkit:setup` first."
 - `"error": "CURL_FAILED"` → "Network error. Check your connection."
 - `status: 401` → "Unauthorized (401). Run `/rkit:setup` to update your token."
+- `status: 400` on template PATCH → If error message contains "owning team": "Cannot change owning team after creation." Otherwise show the API's error message.
 - `status: 403` → Review-specific messages:
   - Sign-off actions: "You must be the reviewer to sign off."
+  - Template create/update/delete actions: "Admin on the owning team required."
   - Create/void/archive actions: "Admin/people-ops permissions required."
   - Assessment actions: Show the API's error message.
 - `status: 404` → "Not found (404)."
@@ -61,6 +63,10 @@ Parse the user input to determine which flow to follow:
 | `{id} archive` | Archive Review |
 | `values` | List Core Values |
 | `rate {user_id}` | Rate Core Values |
+| `templates` or `templates list` | List Templates |
+| `templates create` | Create Template |
+| `templates {id} update` | Update Template |
+| `templates {id} delete` | Delete Template |
 | `--team {id}` *(anywhere in args)* | Override team ID for any flow |
 
 If the input doesn't match any pattern, show this usage summary and ask what they'd like to do.
@@ -367,10 +373,12 @@ echo "$TEMPLATES"
 
 Display template table:
 
-| ID | Name | Prompts |
-|----|------|---------|
-| 5 | Q1 2026 Review | 8 |
-| 3 | Annual Review | 12 |
+| ID | Name | Prompts | Owning Team |
+|----|------|---------|-------------|
+| 5 | Q1 2026 Review | 8 | Engineering |
+| 3 | Annual Review | 12 | — |
+
+Display `owning_team.name` for each template, or "—" if `owning_team` is null.
 
 Prompt: "Select a template ID:"
 
@@ -565,6 +573,192 @@ echo "$RESPONSE"
 
 ---
 
+## Flow: List Templates
+
+**Trigger**: `templates` or `templates list`
+
+### Step 1: Fetch templates
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" GET "/review-templates?per_page=50")
+echo "$RESPONSE"
+```
+
+### Step 2: Display templates
+
+Display as a table:
+
+```
+## Review Templates
+
+| ID | Name | Prompts | Owning Team |
+|----|------|---------|-------------|
+| 5  | Q1 2026 Review | 8 | Engineering |
+| 3  | Annual Review | 12 | — |
+
+{count} templates
+```
+
+**Display rules**:
+- `Owning Team`: show `owning_team.name`; show "—" if `owning_team` is null.
+
+**Empty result**: "No templates found."
+
+---
+
+## Flow: Create Template
+
+**Trigger**: `templates create`
+
+### Step 1: Collect template details
+
+Prompt for each field via AskUserQuestion:
+
+1. **Name** (required): "Enter template name:"
+2. **Target role** (optional): "Enter target role (or leave blank to omit):"
+3. **Reviewer instructions** (optional): "Enter reviewer instructions (or leave blank to omit):"
+4. **Owning team ID** (optional): "Enter owning team ID (or leave blank — API defaults to your current team):"
+
+### Step 2: Confirm and create
+
+```
+Create template?
+- Name: {name}
+- Target role: {target_role | "—"}
+- Reviewer instructions: {reviewer_instructions | "—"}
+- Owning team ID: {owning_team_id | "API default"}
+```
+
+Wait for confirmation. Build request body with only provided fields (omit blank optional fields). Then:
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" POST "/review-templates" 'REQUEST_BODY')
+echo "$RESPONSE"
+```
+
+### Step 3: Handle response
+
+- **Status 201**: Display template detail:
+
+```
+## Template #{id} created
+
+**Name**: {name} | **ID**: {id}
+**Owning Team**: {owning_team.name | "—"} (ID: {owning_team.id | "—"})
+**Shared With**: {shared_with_teams names joined by ", " | "None"}
+```
+
+- **Status 403** → "Admin on the owning team required."
+- **Error** → use Error Handling above
+
+---
+
+## Flow: Update Template
+
+**Trigger**: `templates {id} update`
+
+### Step 1: Fetch current template
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" GET "/review-templates/TEMPLATE_ID")
+echo "$RESPONSE"
+```
+
+Show current values:
+
+```
+## Template #{id}: {name}
+
+**Owning Team**: {owning_team.name | "—"}
+**Shared With**: {shared_with_teams names | "None"}
+**Target Role**: {target_role | "—"}
+**Reviewer Instructions**: {reviewer_instructions | "—"}
+```
+
+### Step 2: Collect updates
+
+Prompt for each field via AskUserQuestion (show current value as context; blank = keep unchanged):
+
+1. **Name** (current: "{name}"): "New name (or leave blank to keep):"
+2. **Target role** (current: "{target_role | "—"}"): "New target role (or leave blank to keep):"
+3. **Reviewer instructions** (current: "{reviewer_instructions | "—"}"): "New reviewer instructions (or leave blank to keep):"
+4. **Share with team IDs**: "Team IDs to share with, comma-separated (enter 'none' to remove all sharing, or leave blank to keep unchanged):"
+
+Sharing input logic:
+- `none` → send `"shared_with_team_ids": []`
+- blank → omit `shared_with_team_ids` from request body
+- comma-separated IDs → send `"shared_with_team_ids": [id1, id2, ...]`
+
+### Step 3: Confirm and update
+
+Show summary of changes. Wait for confirmation. Build request body with only changed fields. Then:
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" PATCH "/review-templates/TEMPLATE_ID" 'REQUEST_BODY')
+echo "$RESPONSE"
+```
+
+### Step 4: Handle response
+
+- **Status 200**: Display updated template detail:
+
+```
+## Template #{id} updated
+
+**Name**: {name} | **ID**: {id}
+**Owning Team**: {owning_team.name | "—"} (ID: {owning_team.id | "—"})
+**Shared With**: {shared_with_teams names joined by ", " | "None"}
+```
+
+- **Status 400** → use Error Handling above (400 on template PATCH)
+- **Status 403** → "Admin on the owning team required."
+- **Error** → use Error Handling above
+
+---
+
+## Flow: Delete Template
+
+**Trigger**: `templates {id} delete`
+
+### Step 1: Fetch template
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" GET "/review-templates/TEMPLATE_ID")
+echo "$RESPONSE"
+```
+
+Show:
+
+```
+Template #{id}: {name}
+Owning Team: {owning_team.name | "—"}
+```
+
+### Step 2: Confirm and delete
+
+> Delete template #{id} "{name}" (Owning team: {owning_team.name | "—"})? This is permanent.
+
+Wait for confirmation. Then:
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" DELETE "/review-templates/TEMPLATE_ID")
+echo "$RESPONSE"
+```
+
+### Step 3: Handle response
+
+- **Status 200/204**: "Template #{id} deleted."
+- **Status 403** → "Admin on the owning team required."
+- **Error** → use Error Handling above
+
+---
+
 ## Edge Cases
 
 - **No config** → "Config not found. Run `/rkit:setup` first."
@@ -581,6 +775,10 @@ echo "$RESPONSE"
 - **Non-admin creates/voids/archives** → "Admin/people-ops permissions required."
 - **No core values defined** → "No core values defined for your organization."
 - **Names empty** → Fall back to `login` field for all user name displays.
+- **Template `owning_team` is null** → Display "—" in all template listings and detail views; no error.
+- **Template `shared_with_teams` is empty** → Display "None" in template detail views.
+- **PATCH template with `owning_team_id`** → API returns 400; display "Cannot change owning team after creation."
+- **Non-admin on owning team attempts template create/update/delete** → "Admin on the owning team required."
 
 ## References
 

@@ -475,18 +475,18 @@ Admin-managed templates that define the prompts used in reviews.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/review-templates` | List review templates (params: page, per_page) | "show templates", "list review templates", "review forms" | — |
-| POST | `/review-templates` | Create template (body: name*, target_role?, reviewer_instructions?). Admin only. | "create template", "new review template", "add review form" | — |
-| PATCH | `/review-templates/{id}` | Update template (body: name?, target_role?, reviewer_instructions?). Admin only. | "update template", "edit review template", "rename template" | — |
-| DELETE | `/review-templates/{id}` | Delete template (permanent). Admin only. | "delete template", "remove review template" | — |
+| GET | `/review-templates` | List review templates (params: page, per_page). Team-scoped: non-admins see only templates owned by or shared with their team; account admins see all. | "show templates", "list review templates", "review forms", "list templates" | — |
+| POST | `/review-templates` | Create template (body: name*, target_role?, reviewer_instructions?, owning_team_id?). Admin on owning team (team admin or account admin). | "create template", "new review template", "add review form" | — |
+| PATCH | `/review-templates/{id}` | Update template (body: name?, target_role?, reviewer_instructions?, shared_with_team_ids? — replace-all). owning_team_id is rejected (400). Admin on owning team. | "update template", "edit review template", "rename template", "share template", "manage template sharing" | — |
+| DELETE | `/review-templates/{id}` | Delete template (permanent). Admin on owning team. | "delete template", "remove review template" | — |
 | POST | `/review-templates/{id}/prompts` | Create assessment prompt (body: description*, answer_type*, hint?, answer_meta_data?). Admin only. | "add prompt", "new question", "add review question" | — |
 | PATCH | `/review-templates/{id}/prompts/{pid}` | Update prompt (body: description?, hint?, answer_type?, answer_meta_data?). Admin only. | "update prompt", "edit question", "change prompt" | — |
 | DELETE | `/review-templates/{id}/prompts/{pid}` | Delete prompt. Admin only. | "delete prompt", "remove question" | — |
 | PUT | `/review-templates/{id}/prompts/positions` | Reorder prompts (body: positions[{id*, position*}]). All prompts must be included. Admin only. | "reorder prompts", "rearrange questions", "sort prompts" | — |
 
-ReviewTemplateListItem fields: `id`, `name`, `target_role` (string | null), `prompt_count` (integer), `created_at`.
+ReviewTemplateListItem fields: `id`, `name`, `target_role` (string | null), `prompt_count` (integer), `created_at`, `owning_team` (`{ id, name }` | null).
 
-ReviewTemplateDetail fields: `id`, `name`, `target_role`, `reviewer_instructions`, `prompts` (AssessmentPrompt[]), `created_at`, `updated_at`.
+ReviewTemplateDetail fields: `id`, `name`, `target_role`, `reviewer_instructions`, `prompts` (AssessmentPrompt[]), `created_at`, `updated_at`, `owning_team` (`{ id, name }` | null), `shared_with_teams` (`[{ id, name }]`).
 
 AssessmentPrompt fields: `id`, `description`, `hint` (string | null), `answer_type` ("range" | "text" | "textarea" | "boolean" | "multiple"), `answer_meta_data` (object | null), `position` (integer).
 

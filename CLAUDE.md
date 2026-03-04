@@ -91,6 +91,9 @@ Never do these piecemeal. Never forget the version bump. One shot, every time.
 - Markdown (SKILL.md skill format) + Bash 5.x (api.sh) + Claude Code skill runtime, `allowed-tools` frontmatter (018-collapse-confirmations)
 - N/A (fire-and-forget API call) (021-password-reset)
 - Bash 5.x (api.sh), Markdown (SKILL.md — Claude Code skill runtime) + `scripts/api.sh` (shared API caller), curl, jq (022-teams-envelope-fix)
+- Bash 5.x + Markdown (Claude Code skill format) + `scripts/api.sh` (shared API caller), `jq`, `curl` (026-users-mgmt-api)
+- N/A — all data via ResultMaps V2 API (026-users-mgmt-api)
+- Bash 5.x (embedded scripts in SKILL.md), Markdown (Claude Code skill runtime) + `scripts/api.sh` (shared API caller), `jq`, `curl` (027-review-template-teams)
 
 ## Recent Changes
 - 014-result-feed-skill: Added Bash 5.x (api.sh), Markdown (SKILL.md — Claude Code skill runtime) + curl, jq, `scripts/api.sh` (shared API caller)

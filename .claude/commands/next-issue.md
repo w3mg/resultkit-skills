@@ -9,7 +9,7 @@ description: Pull the oldest open GitHub issue and kick off a spec with /speckit
 Run:
 
 ```bash
-gh issue list --repo w3mg/resultkit-skills --state open --sort created --json number,title,body,labels --limit 1 --jq '.[0]'
+gh issue list --repo w3mg/resultkit-skills --state open --json number,title,body,labels --limit 30 --jq 'sort_by(.number) | .[0]'
 ```
 
 If no issues are returned, tell the user there are no open issues and stop.

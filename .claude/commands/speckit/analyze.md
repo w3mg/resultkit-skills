@@ -1,5 +1,5 @@
 ---
-description: Perform a non-destructive cross-artifact consistency and quality analysis across spec.md, plan.md, and tasks.md after task generation.
+description: Perform a cross-artifact consistency and quality analysis across spec.md, plan.md, and tasks.md after task generation, then automatically fix all findings.
 ---
 
 ## User Input
@@ -12,11 +12,9 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Goal
 
-Identify inconsistencies, duplications, ambiguities, and underspecified items across the three core artifacts (`spec.md`, `plan.md`, `tasks.md`) before implementation. This command MUST run only after `/speckit.tasks` has successfully produced a complete `tasks.md`.
+Identify inconsistencies, duplications, ambiguities, and underspecified items across the three core artifacts (`spec.md`, `plan.md`, `tasks.md`) before implementation, then automatically fix all findings. This command MUST run only after `/speckit.tasks` has successfully produced a complete `tasks.md`.
 
 ## Operating Constraints
-
-**STRICTLY READ-ONLY**: Do **not** modify any files. Output a structured analysis report. Offer an optional remediation plan (user must explicitly approve before any follow-up editing commands would be invoked manually).
 
 **Constitution Authority**: The project constitution (`.specify/memory/constitution.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `/speckit.analyze`.
 
@@ -154,13 +152,20 @@ Output a Markdown report (no file writes) with the following structure:
 
 At end of report, output a concise Next Actions block:
 
-- If CRITICAL issues exist: Recommend resolving before `/speckit.implement`
-- If only LOW/MEDIUM: User may proceed, but provide improvement suggestions
-- Provide explicit command suggestions: e.g., "Run /speckit.specify with refinement", "Run /speckit.plan to adjust architecture", "Manually edit tasks.md to add coverage for 'performance-metrics'"
+- If CRITICAL issues exist: Note these will be fixed before proceeding to `/speckit:implement`
+- If only LOW/MEDIUM: Note fixes will be applied now
+- List which files will be modified
 
-### 8. Offer Remediation
+### 8. Auto-Fix All Issues
 
-Ask the user: "Would you like me to suggest concrete remediation edits for the top N issues?" (Do NOT apply them automatically.)
+After the report, automatically remediate every finding. For each issue:
+
+1. **Determine the fix**: Based on the Recommendation column and your analysis, derive the exact edit needed.
+2. **Ask only when necessary**: If a fix requires a judgment call that cannot be inferred from the artifacts (e.g., which of two conflicting values is correct, or what the intended wording of an ambiguous requirement should be), ask the user a targeted question before applying that fix. Batch all questions together in a single `AskUserQuestion` call before making any edits.
+3. **Apply fixes**: Edit the affected files directly using the Edit tool. Group changes by file to minimize round-trips.
+4. **Report what was fixed**: After all edits, output a concise **Remediation Summary** listing each finding ID, what was changed, and which file was modified.
+
+If there are zero findings, skip this step and output: "No issues found — artifacts are clean. Ready for `/speckit:implement`."
 
 ## Operating Principles
 
@@ -173,11 +178,11 @@ Ask the user: "Would you like me to suggest concrete remediation edits for the t
 
 ### Analysis Guidelines
 
-- **NEVER modify files** (this is read-only analysis)
 - **NEVER hallucinate missing sections** (if absent, report them accurately)
 - **Prioritize constitution violations** (these are always CRITICAL)
 - **Use examples over exhaustive rules** (cite specific instances, not generic patterns)
 - **Report zero issues gracefully** (emit success report with coverage statistics)
+- **Fix, don't propose**: After the report, apply edits directly — do not ask for permission to fix
 
 ## Context
 
