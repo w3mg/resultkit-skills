@@ -99,6 +99,7 @@ Mute/unmute response: `{ data: { id, name, is_muted } }`.
 | GET | `/teams/{id}/members` | List members (params: page, per_page, q) | "show members", "who's on the team", "team roster" | `/teams/{id}` |
 | PUT | `/teams/{id}/members` | Add member (body: user_id*, role?: "member"\|"admin") | "add member", "invite to team", "make admin" | `/teams/{id}` |
 | DELETE | `/teams/{id}/members/{user_id}` | Remove member | "remove member", "kick from team" | `/teams/{id}` |
+| PATCH | `/teams/{id}/members/{user_id}` | Change member role (body: role* — "admin" or "member"). Admin-only. Cannot demote last admin. | "change role", "promote to admin", "demote member", "make admin" | `/teams/{id}` |
 
 ### Team Weekly Board (Items)
 
@@ -174,6 +175,50 @@ EOS-friendly URL aliases for the team weekly board. These endpoints return the s
 | PUT | `/teams/{id}/l10/parked/{item_id}` | Park L10 item. Sets status=parked. Alias for `PUT /teams/{id}/items/parked/{item_id}`. | "park L10 item", "move to parking lot", "shelve in L10" | `/items/{item_id}` |
 | DELETE | `/teams/{id}/l10/items/{item_id}` | Remove item from L10 board (sets on_weekly=false, keeps item). Alias for `DELETE /teams/{id}/items/{item_id}`. | "remove from L10", "take off L10 board", "drop from L10" | — |
 
+### Team Activity Logs
+
+Team membership change audit trail. Any team member can view.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/activity-logs` | List membership change events (params: page, per_page). Actions: member_added, member_removed, role_changed. | "team activity", "audit log", "membership changes", "who joined" | — |
+
+ActivityLog fields: `id`, `action` ("member_added" | "member_removed" | "role_changed"), `target_user` (UserSimple), `actor` (UserSimple), `details` (string), `created_at`.
+
+### Team Labels
+
+Team-scoped colored labels. Any member can view; admin-only for create/update/delete.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/labels` | List team labels (paginated) | "show labels", "team labels", "list tags" | — |
+| POST | `/teams/{id}/labels` | Create label (body: name*, color?). Admin-only. Name max 50 chars, unique per team. Color hex `#xxxxxx`. | "create label", "add label", "new tag" | — |
+| PATCH | `/teams/{id}/labels/{label_id}` | Update label (body: name?, color?). Admin-only. | "update label", "rename label", "change label color" | — |
+| DELETE | `/teams/{id}/labels/{label_id}` | Delete label (permanent). Admin-only. | "delete label", "remove label", "remove tag" | — |
+
+Label fields: `id`, `name`, `color` (hex string), `created_at`.
+
+### Team Integrations
+
+Webhook integrations (Slack/Discord). Admin-only for all operations.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/integrations` | List configured integrations (admin-only, paginated) | "show integrations", "list webhooks", "team integrations" | — |
+| POST | `/teams/{id}/integrations` | Create or update integration (body: type*, webhook_url*, name?). Admin-only. Upsert: one per type per team. | "add integration", "connect Slack", "set up webhook" | — |
+| PATCH | `/teams/{id}/integrations/{integration_id}` | Update integration (body: name?, webhook_url?). Admin-only. | "update integration", "change webhook", "update Slack" | — |
+| DELETE | `/teams/{id}/integrations/{integration_id}` | Delete integration (permanent). Admin-only. | "delete integration", "remove webhook", "disconnect Slack" | — |
+
+Integration fields: `id`, `type` ("slack" | "discord"), `name`, `webhook_url`, `enabled` (boolean), `created_at`, `updated_at`.
+
+### Team Logo
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| POST | `/teams/{id}/logo` | Upload team logo (multipart/form-data: file*). Admin-only. Max 2MB, JPEG/PNG/WebP. | "upload logo", "set team logo", "change team image" | — |
+
+Response: `{ data: { logo_url: "/api/v2/teams/{id}/logo" } }`.
+
 ## Users
 
 | Method | Path | Description | User Phrases | Web URL |
@@ -182,6 +227,17 @@ EOS-friendly URL aliases for the team weekly board. These endpoints return the s
 | GET | `/users/search` | Search users (params: q* — min 2 chars, page, per_page). Searches login, email, first_name, last_name. Returns active users visible to current user. | "find user", "search people", "look up user" | — |
 | GET | `/users/{id}` | User profile (no api_token). Returns UserPublic. | "show user", "user profile", "who is this" | `/users/{id}` |
 | GET | `/users/{id}/items` | User's items (requires same-team membership; params: page, per_page, q, status) | "show their tasks", "user's items", "what's assigned to them" | `/users/{id}` |
+| GET | `/users/{user_id}/stats` | User profile stats (supports `me` as ID; requires shared team membership) | "show stats", "user stats", "profile stats", "how am I doing" | `/users/{user_id}` |
+| GET | `/users/{user_id}/measurables` | User scorecard metrics with periodic data (params: period?, year?, active_only?; requires shared team membership) | "show measurables", "scorecard", "metrics", "KPIs" | `/users/{user_id}` |
+| GET | `/users/{user_id}/rocks` | User rocks/goals with milestone progress (params: year?, page, per_page; requires shared team membership) | "show rocks", "my rocks", "goals", "quarterly priorities" | `/users/{user_id}` |
+| GET | `/users/{user_id}/feedback` | User feedback/High5s (params: direction* — "given" or "received", page, per_page; requires shared team membership) | "show feedback", "High5s", "kudos", "recognition" | `/users/{user_id}` |
+| GET | `/users/check-login` | Check if login/handle is available (params: login* — 3-40 chars) | "check login", "is handle available", "username taken" | — |
+| GET | `/users/me/preferences` | Get full preferences (profile, notifications, timezone, startup view, API token) | "my preferences", "settings", "notification settings" | `/customize` |
+| PATCH | `/users/me/preferences` | Update preferences (body: login?, time_zone?, notifications?, startup_view_code?, preferred_team_id?, secondary_email?, update_frequency?, unsubscribe_all?, slack_username?) | "update preferences", "change settings", "change timezone" | `/customize` |
+| GET | `/users/me/progress` | Personal progress — strategy metrics, practice scorecard, streak totals (params: period? — week/month/quarter) | "my progress", "practice streak", "how am I doing", "scorecard" | — |
+| GET | `/users/me/integrations` | Get third-party integration selections (task_management, sales_revops, team_communication) | "my integrations", "connected apps", "integration settings" | `/customize` |
+| PATCH | `/users/me/integrations` | Update integration selections (body: task_management?, sales_revops?, team_communication?). Set to null to disconnect. | "update integrations", "connect app", "disconnect integration" | `/customize` |
+| POST | `/users/me/password` | Change password (body: current_password?, password*, password_confirmation*). current_password required unless OAuth-only user. | "change password", "update password", "new password" | `/customize` |
 
 User fields (`/users/me`): `id`, `login`, `email`, `first_name`, `last_name`,
 `api_token`, `default_team` (TeamSimple | null), `current_team` (TeamSimple | null).
@@ -191,6 +247,34 @@ UserPublic fields: `id`, `login`, `email`, `first_name`, `last_name`.
 UserSimple fields: `id`, `login`, `first_name`, `last_name`.
 
 TeamSimple: `{ id: integer, name: string }`.
+
+UserStats fields: `wins_given`, `wins_received`, `goals_aspired`, `goals_realized`, `actions_done`.
+
+UserMeasurable fields: `id`, `name`, `target_value`, `target_unit`, `owner` (UserSimple), `is_archived`, `values` ([{ date, value, on_track, percent_change }]).
+
+Measurables params: `period` ("week" | "month", default "week"), `year` (default current), `active_only` (default true).
+
+UserRock fields: `id`, `name`, `status` ("on_track" | "off_track" | "completed" | "dropped"), `due_date`, `team` (TeamSimple), `milestones_total`, `milestones_completed`, `created_at`.
+
+FeedbackEntry fields: `id`, `message`, `from_user` (UserSimple + profile_photo_thumb_path), `to_user` (UserSimple + profile_photo_thumb_path), `created_at`.
+
+UserPreferences fields: `profile_photo_thumb_path`, `login`, `first_name`, `last_name`, `email`, `secondary_email`, `time_zone`, `notifications` ({ morning_day_ahead, week_ahead_sunday, end_of_day_digest, weekly_digest_friday }), `update_frequency` ("once_daily" | "every_change"), `unsubscribe_all`, `startup_view_code`, `startup_view_label`, `preferred_team_id`, `slack_username`, `api_token`, `is_coach`.
+
+PersonalProgress fields: `strategy` ({ rocks_realized_all_time, milestones_realized_all_time, milestones_realized_this_quarter }), `practice_scorecard` ({ days: [{ date, day_name, completed }] }), `practice_totals` ({ all_time, current_streak, longest_streak }).
+
+UserIntegrations fields: `task_management` ({ selected, options }), `sales_revops` ({ selected, options }), `team_communication` ({ selected, options }).
+
+## Account Management
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/users/me/accounts` | List accounts the user belongs to (includes is_owner flag) | "my accounts", "list accounts", "which accounts" | — |
+| GET | `/accounts/{account_id}/members` | List account members (params: page, per_page). Any account member can view. | "account members", "who's in account", "list users in account" | — |
+| DELETE | `/accounts/{account_id}/members/{user_id}` | Remove member from account. Account owner only. Cannot remove owner. | "remove from account", "kick from account", "remove account member" | — |
+
+UserAccount fields: `id`, `name`, `is_owner` (boolean).
+
+AccountMember fields: `id`, `login`, `first_name`, `last_name`, `email`, `profile_photo_thumb_path`, `is_owner` (boolean).
 
 ## Day Plans
 
@@ -361,6 +445,51 @@ ReviewTemplateDetail fields: `id`, `name`, `target_role`, `reviewer_instructions
 
 AssessmentPrompt fields: `id`, `description`, `hint` (string | null), `answer_type` ("range" | "text" | "textarea" | "boolean" | "multiple"), `answer_meta_data` (object | null), `position` (integer).
 
+## Seats (Accountability Chart)
+
+Seats represent positions on a team's accountability chart. Each seat can have an owner, aligned measures, aligned goals, and URL links. Seats form a hierarchy (parent/child) within a team.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/seats` | Get team accountability chart — full hierarchical tree (params: include_archived?) | "show org chart", "accountability chart", "team seats", "who does what" | `/teams/{id}` |
+| POST | `/seats` | Create seat (body: name*, team_id or parent_id, accountabilities?, notes?, seat_owner_id?, associated_team_id?). Root requires team_id; child requires parent_id. One root per team. | "create seat", "add position", "new role on chart" | — |
+| GET | `/seats/{id}` | Get seat detail (children as SeatSimple, one level deep) | "show seat", "seat details", "position details" | — |
+| PATCH | `/seats/{id}` | Update seat (body: name?, accountabilities?, notes?, seat_owner_id?, associated_team_id?). Owner changes cascade to aligned measures/goals. | "update seat", "rename seat", "change seat owner", "assign seat" | — |
+| DELETE | `/seats/{id}` | Archive seat and all descendants (soft delete). Cannot archive root seat. | "archive seat", "delete seat", "remove position" | — |
+| PUT | `/seats/{id}/restore` | Restore archived seat (children remain archived, restore individually) | "restore seat", "unarchive seat", "bring back seat" | — |
+| PUT | `/seats/{id}/move` | Re-parent seat (body: parent_id*). Validates no circular refs, same group. Cannot move root. | "move seat", "reparent seat", "reorganize chart" | — |
+
+Seat fields: `id`, `name`, `accountabilities` (string | null, HTML sanitized), `notes` (string | null, HTML sanitized), `parent` (SeatSimple | null), `creator` (UserSimple), `seat_owner` (UserSimple | null), `team` (TeamSimple + framework), `associated_team` (TeamSimple | null), `measures` ([{ id, name, description }]), `goals` ([{ id, name, description }]), `links` ([{ id, title, url }]), `children` (Seat[] in tree, SeatSimple[] in detail), `created_at`, `updated_at`.
+
+SeatSimple: `{ id: integer, name: string }`.
+
+### Seat Measures
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/seats/{id}/measures` | List measures aligned to seat | "seat measures", "show KPIs for seat", "aligned measures" | — |
+| PUT | `/seats/{id}/measures` | Align measure to seat (body: measure_id*). Moves alignment if already aligned elsewhere. | "align measure", "add KPI to seat", "link measure" | — |
+| DELETE | `/seats/{id}/measures/{measure_id}` | Remove measure alignment | "remove measure", "unlink KPI", "detach measure" | — |
+
+### Seat Goals
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/seats/{id}/goals` | List goals aligned to seat | "seat goals", "show rocks for seat", "aligned goals" | — |
+| PUT | `/seats/{id}/goals` | Align goal to seat (body: goal_id*). Moves alignment if already aligned elsewhere. | "align goal", "add rock to seat", "link goal" | — |
+| DELETE | `/seats/{id}/goals/{goal_id}` | Remove goal alignment | "remove goal", "unlink rock", "detach goal" | — |
+
+### Seat Links
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/seats/{id}/links` | List URL links on seat | "seat links", "show links", "resources for seat" | — |
+| POST | `/seats/{id}/links` | Create link (body: url*, title?). URL must be http/https. Title defaults to URL. | "add link", "attach URL", "add resource" | — |
+| PATCH | `/seats/{id}/links/{link_id}` | Update link (body: url?, title?). Set title to null to reset to URL. | "update link", "rename link", "change URL" | — |
+| DELETE | `/seats/{id}/links/{link_id}` | Delete link (permanent) | "delete link", "remove link", "remove URL" | — |
+
+SeatLink fields: `id`, `title`, `url`.
+
 ## Error Responses
 
 All errors return: `{ "error": { "code": "<error_code>", "message": "<human-readable>", "details": { ... } } }`
@@ -449,6 +578,32 @@ Delete responses return `204 No Content` with empty body.
 | recurring, daily item, repeating task | Recurring Item | Day plan completion doesn't change item status |
 | reset password, send password reset, password reset for user | Password Reset (admin) | `POST /passwords/reset` |
 | set new password, complete password reset | Password Update (unauthenticated) | `PUT /passwords` |
+| change password, update my password, new password | Change Password (authenticated) | `POST /users/me/password` |
+| seat, position, role on chart, accountability chart | Seat | `/teams/{id}/seats`, `/seats/{id}` |
+| org chart, accountability chart, who does what | Team Seats (chart) | `GET /teams/{id}/seats` |
+| seat owner, who owns the seat, assigned to seat | Seat Owner | `PATCH /seats/{id}` (seat_owner_id) |
+| seat measure, KPI for seat, aligned measure | Seat Measure | `/seats/{id}/measures` |
+| seat goal, rock for seat, aligned goal | Seat Goal | `/seats/{id}/goals` |
+| seat link, URL on seat, resource link | Seat Link | `/seats/{id}/links` |
+| move seat, reparent seat, reorganize chart | Move Seat | `PUT /seats/{id}/move` |
+| archive seat, delete seat, remove position | Archive Seat | `DELETE /seats/{id}` |
+| restore seat, unarchive seat | Restore Seat | `PUT /seats/{id}/restore` |
+| label, tag, team label | Team Label | `/teams/{id}/labels` |
+| integration, webhook, Slack integration, Discord integration | Team Integration | `/teams/{id}/integrations` |
+| team logo, upload logo | Team Logo | `POST /teams/{id}/logo` |
+| activity log, team activity, membership changes | Team Activity Log | `GET /teams/{id}/activity-logs` |
+| change role, promote to admin, demote, make admin | Change Member Role | `PATCH /teams/{id}/members/{user_id}` |
+| account, my accounts, account membership | Account | `GET /users/me/accounts` |
+| account members, who's in account | Account Members | `GET /accounts/{id}/members` |
+| remove from account, kick from account | Remove Account Member | `DELETE /accounts/{id}/members/{user_id}` |
+| my preferences, settings, notification settings | User Preferences | `GET /users/me/preferences` |
+| my progress, practice streak, how am I doing | Personal Progress | `GET /users/me/progress` |
+| my integrations, connected apps | User Integrations | `GET /users/me/integrations` |
+| stats, profile stats, wins, actions done | User Stats | `GET /users/{user_id}/stats` |
+| measurables, scorecard, KPIs, metrics | User Measurables | `GET /users/{user_id}/measurables` |
+| rocks, goals, quarterly priorities | User Rocks | `GET /users/{user_id}/rocks` |
+| feedback, High5s, kudos, recognition | User Feedback | `GET /users/{user_id}/feedback` |
+| check login, is handle available, username taken | Check Login | `GET /users/check-login` |
 
 ### Item Types
 
