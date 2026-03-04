@@ -1,6 +1,6 @@
 ---
 name: rkit:teams
-description: List your teams and view team members. Shows teams grouped by organization with framework and default team marked. Use this skill when users ask about their teams, want to see who's on a team, list team members, check team frameworks, search for a team by name, or view their organization structure.
+description: List your teams, view team members, change member roles, and view team activity logs. Use this skill when users ask about their teams, want to see who's on a team, list team members, check team frameworks, search for a team by name, change a member's role (admin/member), view membership history, or view their organization structure.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
@@ -8,7 +8,7 @@ allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQues
 
 # rkit:teams
 
-List teams and view team members. Read-only.
+List teams, view team members, change member roles, and view activity logs.
 
 ## Current State
 
@@ -17,8 +17,8 @@ List teams and view team members. Read-only.
 
 ## Rules
 
-- **GET only.** This skill only reads data — no confirmation needed.
-- **Show IDs.** Always include team and member IDs in output.
+- **Confirm writes.** Role change (PATCH) requires confirmation before executing. Activity logs and all list operations are GET — no confirmation needed.
+- **Show IDs.** Always include team, member, and user IDs in output.
 - **Concise output.** Tables and short summaries. No filler.
 - **Direct execution.** Use Bash with api.sh for all API calls. Never use Task agents.
 
@@ -32,6 +32,8 @@ List teams and view team members. Read-only.
 | `all q "term"` | Search including muted teams |
 | `members` | List members of the default team |
 | `members {team_id}` | List members of the specified team |
+| `role {user_id} {role} [team_id]` | Change a member's role (`admin` or `member`) on a team |
+| `logs [team_id]` | View team activity logs (membership changes) |
 
 ---
 
@@ -153,6 +155,109 @@ Extract `body.data` array (members) and `body.meta` (pagination).
 
 ---
 
+---
+
+## Flow: Change Member Role
+
+Triggered by: `role {user_id} {role} [team_id]`
+
+### Step 1: Validate args
+
+- Extract `user_id` and `role` from args (both required).
+- If either missing: "Usage: `/rkit:teams role {user_id} {role} [team_id]`\n  Example: `/rkit:teams role 42 admin`" — stop.
+- If `role` is not `admin` or `member`: "Invalid role '{role}'. Use 'admin' or 'member'." — stop.
+- Resolve team ID: use provided `team_id` arg if present, else `default_team_id` from config. If neither: "No team specified and no default configured. Run `/rkit:setup`." — stop.
+
+### Step 2: Fetch current member info
+
+```bash
+API_SH="<api.sh path>"
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/members?per_page=100")
+```
+
+Find the member with `user.id == user_id` in the `body.data` array.
+
+- If 401: "Unauthorized (401). Run `/rkit:setup` to update your token." — stop.
+- If 403: "Access denied (403). Only team admins can change roles." — stop.
+- If 404: "Team TEAM_ID not found (404)." — stop.
+- If member not found in data: "User USER_ID is not a member of team TEAM_ID." — stop.
+
+### Step 3: Confirm
+
+Show the member's current state and proposed change, then ask for confirmation:
+
+```
+Change Jane Doe (ID: 42) from member to admin on team #345?
+```
+
+Use AskUserQuestion with Yes/No options. If user declines: "Role change cancelled." — stop.
+
+### Step 4: Execute role change
+
+```bash
+RESPONSE=$("$API_SH" PATCH "/teams/TEAM_ID/members/USER_ID" '{"role":"ROLE"}')
+```
+
+### Step 5: Handle response
+
+- If 401: "Unauthorized (401). Run `/rkit:setup` to update your token."
+- If 403: "Access denied (403). Only team admins can change roles."
+- If 404: "Team or member not found (404)."
+- If 422: Show validation error from response body.
+- If 200: Display result:
+
+  ```
+  Changed role: Jane Doe (ID: 42) is now admin on team #345.
+  ```
+
+  Display user name (`first_name last_name`, fallback to `login`), user ID, new role, and team ID.
+
+---
+
+## Flow: View Activity Logs
+
+Triggered by: `logs [team_id]`
+
+### Step 1: Resolve team ID
+
+- Use provided `team_id` arg if present, else `default_team_id` from config.
+- If neither: "No team specified and no default configured. Run `/rkit:setup`." — stop.
+
+### Step 2: Fetch activity logs (all pages)
+
+```bash
+API_SH="<api.sh path>"
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/activity-logs?per_page=25")
+```
+
+If `meta.total_pages > 1`, fetch remaining pages and combine results.
+
+### Step 3: Handle response
+
+- If 401: "Unauthorized (401). Run `/rkit:setup` to update your token."
+- If 403: "Access denied (403). You must be a team member to view activity logs."
+- If 404: "Team TEAM_ID not found (404)."
+- If `data` is empty: "No activity logs found for team #TEAM_ID."
+- If 200 with entries: Display as table:
+
+  ```
+  ## Activity Logs — Team #345
+
+  | Date       | Action        | Target              | Actor           |
+  |------------|---------------|---------------------|-----------------|
+  | 2026-02-15 | member_added  | Jane Doe (ID: 42)   | Admin (ID: 1)   |
+  | 2026-02-10 | role_changed  | John Smith (ID: 55) | Admin (ID: 1)   |
+
+  2 entries  (page 1 of 1)
+  ```
+
+  - `Date`: `created_at` formatted as `YYYY-MM-DD`
+  - `Target`: `target_user.first_name last_name (ID: target_user.id)`, fallback to `login`
+  - `Actor`: `actor.first_name last_name (ID: actor.id)`, fallback to `login`
+  - Show total count and page info at bottom
+
+---
+
 ## Edge Cases
 
 - **No config**: "Config not found. Run `/rkit:setup` first."
@@ -162,6 +267,14 @@ Extract `body.data` array (members) and `body.meta` (pagination).
 - **Team not found (404) on members**: "Team {id} not found (404)."
 - **No members**: "No members found for team {id}."
 - **Member with empty names**: Fall back to `login`.
+- **Role change — missing args**: Show usage message.
+- **Role change — invalid role**: "Invalid role '{role}'. Use 'admin' or 'member'."
+- **Role change — user not a member**: "User {id} is not a member of team {team_id}."
+- **Role change — not admin (403)**: "Access denied (403). Only team admins can change roles."
+- **Role change — user changes own role**: API decides; show its response.
+- **Activity logs — no entries**: "No activity logs found for team #{id}."
+- **Activity logs — not a member (403)**: "Access denied (403). You must be a team member to view activity logs."
+- **Activity logs — paginated results**: Fetch all pages and combine before displaying.
 
 ## References
 
