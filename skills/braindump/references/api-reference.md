@@ -98,8 +98,53 @@ Mute/unmute response: `{ data: { id, name, is_muted } }`.
 |--------|------|-------------|--------------|---------|
 | GET | `/teams/{id}/members` | List members (params: page, per_page, q) | "show members", "who's on the team", "team roster" | `/teams/{id}` |
 | PUT | `/teams/{id}/members` | Add member (body: user_id*, role?: "member"\|"admin") | "add member", "invite to team", "make admin" | `/teams/{id}` |
+| PATCH | `/teams/{id}/members/{user_id}` | Change member role (body: role* — "admin" or "member"). Admin only. | "change role", "make admin", "promote to admin", "demote member", "change member role" | `/teams/{id}` |
 | DELETE | `/teams/{id}/members/{user_id}` | Remove member | "remove member", "kick from team" | `/teams/{id}` |
 | PATCH | `/teams/{id}/members/{user_id}` | Change member role (body: role* — "admin" or "member"). Admin-only. Cannot demote last admin. | "change role", "promote to admin", "demote member", "make admin" | `/teams/{id}` |
+
+PATCH /teams/{id}/members/{user_id} body: `{ "role": "admin" | "member" }`. Response: `{ "data": { "id", "login", "first_name", "last_name", "email", "role" } }`. Errors: 401 (unauthorized), 403 (not a team admin), 404 (team or user not found), 422 (invalid role).
+
+### Team Activity Logs
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/activity-logs` | Paginated list of membership changes (params: page, per_page). Team member auth required. | "activity logs", "team history", "membership changes", "who joined", "who was removed", "team audit log" | — |
+
+ActivityLogEntry fields: `id`, `action` ("member_added" \| "member_removed" \| "role_changed"), `target_user` (UserSimple), `actor` (UserSimple), `details` (string), `created_at`. Wrapped in standard `{ data: [...], meta: { page, per_page, total, total_pages } }` envelope. Errors: 401, 403 (not a team member), 404 (team not found).
+
+### Team Labels
+
+Admin-only for writes. Labels are organizational tags (name + color) used in the web UI.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/labels` | List team labels (params: page, per_page). Team member auth required. | "team labels", "team tags", "show labels" | — |
+| POST | `/teams/{id}/labels` | Create label (body: name*, color*). Admin only. | "create label", "add label", "new team tag" | — |
+| PATCH | `/teams/{id}/labels/{label_id}` | Update label (body: name?, color?). Admin only. | "update label", "rename label", "change label color" | — |
+| DELETE | `/teams/{id}/labels/{label_id}` | Delete label. Admin only. | "delete label", "remove label" | — |
+
+Label fields: `id`, `name`, `color` (hex string, e.g. "#3b82f6"), `created_at`. Wrapped in standard `{ data: [...], meta }` envelope (list) or `{ data: {...} }` (create/update). Errors: 401, 403 (non-member for GET; non-admin for writes), 404.
+
+### Team Integrations
+
+Admin-only. Webhook configurations (e.g. Slack). Managed via web UI — reference only.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/integrations` | List integrations (params: page, per_page). Admin only. | "team integrations", "slack integration", "team webhook", "team webhook list" | — |
+| POST | `/teams/{id}/integrations` | Create/upsert integration by type (body: type*, name*, webhook_url*). Admin only. | "create integration", "add webhook", "set up slack" | — |
+| PATCH | `/teams/{id}/integrations/{integration_id}` | Update integration (body: name?, webhook_url?). Admin only. | "update integration", "change webhook url" | — |
+| DELETE | `/teams/{id}/integrations/{integration_id}` | Delete integration (disables it). Admin only. | "delete integration", "remove webhook", "disable slack" | — |
+
+Integration fields: `id`, `type` ("slack"; others TBD), `name`, `webhook_url`, `enabled` (boolean), `created_at`, `updated_at`. POST upserts by type — one integration per type per team. Errors: 401, 403 (non-admin), 404.
+
+### Team Logo
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| POST | `/teams/{id}/logo` | Upload team logo (multipart/form-data, field: file*). Admin only. Web UI only — not supported via CLI skill. | "upload logo", "team logo", "set team logo" | — |
+
+Errors: 401, 403 (non-admin), 422 (invalid file).
 
 ### Team Weekly Board (Items)
 
@@ -575,6 +620,12 @@ Delete responses return `204 No Content` with empty body.
 | search, find, look up | Search (q param) | `GET /items?q=...`, `GET /users/search?q=...` |
 | my token, API key, api token | API Token | `GET /users/me` |
 | admin, team admin, make admin | Team Member Role | `PUT /teams/{id}/members` (role: "admin") |
+| activity logs, team history, membership changes, who joined, who was removed, team audit log | Team Activity Logs | `GET /teams/{id}/activity-logs` |
+| team labels, team tags, label, tag | Team Labels | `GET /teams/{id}/labels` |
+| create label, add label, new team tag | Create Team Label | `POST /teams/{id}/labels` |
+| slack integration, team webhook, team integration, webhook | Team Integrations | `GET /teams/{id}/integrations` |
+| change role, change member role, promote to admin, demote member, demote to member | Member Role Change | `PATCH /teams/{id}/members/{user_id}` |
+| upload logo, team logo, set team logo | Team Logo Upload (web UI only) | `POST /teams/{id}/logo` |
 | recurring, daily item, repeating task | Recurring Item | Day plan completion doesn't change item status |
 | reset password, send password reset, password reset for user | Password Reset (admin) | `POST /passwords/reset` |
 | set new password, complete password reset | Password Update (unauthenticated) | `PUT /passwords` |
