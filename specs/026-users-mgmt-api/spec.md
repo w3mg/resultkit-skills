@@ -2,7 +2,7 @@
 
 **Feature Branch**: `026-users-mgmt-api`
 **Created**: 2026-03-04
-**Status**: Draft
+**Status**: Complete
 **Input**: GitHub Issue #16 — API Change Handoff: Users Management API (030)
 
 ## User Scenarios & Testing *(mandatory)*
