@@ -146,6 +146,8 @@ echo "$RESPONSE"
 
 The response includes `next`, `done`, and `blocked` arrays directly.
 
+Before rendering, filter each array: **exclude any item where `status == "archived"`**. Items with null or missing `status` are treated as active and kept.
+
 Display format:
 
 ```
@@ -169,6 +171,8 @@ Display format:
 ```
 
 **Display rules**:
+- **Archived items**: Exclude any item with `status: "archived"` from all three columns before rendering. Items with null/missing `status` are treated as active.
+- `{count}` in each column header reflects the filtered count (non-archived items only), not the raw API count.
 - Each item shows: ID, name, creator (`first_name last_name` from `creator` field; fall back to `login` if names empty), due date (or "—" if null)
 - Empty columns show "(empty)"
 - Column order: next, done, blocked (always this order)
@@ -195,6 +199,8 @@ Replace `COLUMN` with:
 ### Step 2: Display column
 
 Use same display format as a single section from View Detail — column header, item table, overflow indicator if more than 50 items.
+
+> **Note**: `GET /meetings/{id}/items/{section}` excludes archived items by API default (`include_archived` defaults to `false`). No client-side filtering is needed for this flow.
 
 ---
 
@@ -330,6 +336,7 @@ echo "$RESPONSE"
 - **No one-on-ones** → "No one-on-ones found."
 - **Meeting not found (404)** → "Meeting {id} not found."
 - **All columns empty** → show all three column headers with "(empty)"
+- **All items in a column are archived** → that column shows "(empty)" after filtering; apply to all three columns independently
 - **Item already in target column (move)** → warn and skip
 - **Item not found (add existing)** → "Item {id} not found."
 - **Creator names empty** → fall back to `login` field
