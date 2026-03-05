@@ -28,6 +28,7 @@ View and manage the team accountability chart.
 | Input | Behavior |
 |-------|----------|
 | *(no args)* | View accountability chart tree for default team |
+| `--include-archived` | Include archived seats in chart view |
 | `{id}` | View seat detail by ID |
 | `--team {id}` | Use specified team instead of default |
 | `create "NAME" [--parent {id}]` | Create a new seat |
@@ -40,6 +41,7 @@ View and manage the team accountability chart.
 | `align-goal {id} --goal {gid}` | Align a goal to a seat |
 | `remove-goal {id} --goal {gid}` | Remove a goal from a seat |
 | `add-link {id} --url "..." [--title "..."]` | Add a link to a seat |
+| `update-link {id} --link {lid} [--url "..."] [--title "..."]` | Update an existing link on a seat |
 | `remove-link {id} --link {lid}` | Remove a link from a seat |
 
 ---
@@ -62,13 +64,16 @@ Use Team ID Resolution above.
 
 ### Step 2: Fetch seats tree
 
+If `--include-archived` is present in args, append `?include_archived=true` to the URL.
+
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/seats")
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/seats")           # without --include-archived
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/seats?include_archived=true")  # with --include-archived
 echo "$RESPONSE"
 ```
 
-Replace `TEAM_ID` with actual value.
+Replace `TEAM_ID` with actual value. Use the appropriate URL based on whether `--include-archived` was provided.
 
 ### Step 3: Handle response
 
@@ -92,6 +97,11 @@ Extract `body.data` array. This is the root-level seats array — each seat has 
   Then render the tree recursively. For each seat node, output one line:
   ```
   {prefix}{connector} {name} ({owner}) [ID: {id}]
+  ```
+
+  When `--include-archived` was provided and a seat node has `archived: true`, append ` [archived]` to the line:
+  ```
+  {prefix}{connector} {name} ({owner}) [ID: {id}] [archived]
   ```
 
   Where:
@@ -201,13 +211,21 @@ Ask for confirmation before proceeding.
 
 ### Step 4: Execute
 
+Use two distinct request bodies depending on whether `--parent` was provided:
+
+**Root seat** (no `--parent` flag):
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" POST "/seats" '{"name":"NAME","team_id":TEAM_ID,"parent_id":PARENT_ID}')
+RESPONSE=$("$API_SH" POST "/seats" '{"name":"NAME","group_id":TEAM_ID}')
 echo "$RESPONSE"
 ```
 
-Omit `parent_id` from the JSON body if no `--parent` flag was provided.
+**Child seat** (with `--parent {id}`):
+```bash
+API_SH="<api.sh path>"
+RESPONSE=$("$API_SH" POST "/seats" '{"name":"NAME","parent_id":PARENT_ID}')
+echo "$RESPONSE"
+```
 
 ### Step 5: Handle response
 
@@ -229,7 +247,7 @@ Extract seat ID and any combination of flags: `--name`, `--owner`, `--notes`, `-
 
 Map flags to API fields:
 - `--name "..."` → `"name": "..."`
-- `--owner {uid}` → `"seat_owner_id": {uid}`
+- `--owner {uid}` → `"accountability_owner_id": {uid}`
 - `--notes "..."` → `"notes": "..."`
 - `--accountabilities "..."` → `"accountabilities": "..."`
 - `--associated-team {tid}` → `"associated_team_id": {tid}`
@@ -238,6 +256,9 @@ Map flags to API fields:
 
 Describe the changes:
 > **Update seat** [ID: {id}]: {list of changes}
+
+If `--owner` flag is present, append to the confirm message:
+> Note: changing the owner will reassign all aligned measures and goals to the new owner.
 
 Ask for confirmation.
 
@@ -264,7 +285,7 @@ Triggered when: first arg is `delete`.
 
 ### Step 2: Confirm
 
-> **Archive seat** [ID: {id}]? This will remove it from the chart.
+> **Archive seat** [ID: {id}]? This will archive this seat AND all its descendants. This cannot be undone without restoring each seat individually.
 
 Ask for confirmation.
 
@@ -321,7 +342,7 @@ Triggered when: first arg is `restore`.
 
 ### Step 2: Confirm
 
-> **Restore seat** [ID: {id}]?
+> **Restore seat** [ID: {id}]? Only this seat will be restored — descendant seats remain archived and must be restored individually.
 
 Ask for confirmation.
 
@@ -464,6 +485,39 @@ Omit `title` from body if not provided (API defaults to URL).
 ### Step 4: Handle response
 
 - **201**: Show the created link (ID, Title, URL).
+- Other errors: Handle per Error Handling table.
+
+---
+
+## Flow: Update Link
+
+Triggered when: first arg is `update-link`.
+
+### Step 1: Parse args
+
+Extract seat ID, `--link {lid}`, and optional `--url "..."` and/or `--title "..."` from args.
+
+If neither `--url` nor `--title` is provided, error: "At least one of `--url` or `--title` is required. Usage: `/rkit:seats update-link {id} --link {lid} [--url \"...\"] [--title \"...\"]`"
+
+### Step 2: Confirm
+
+> **Update link** [ID: {lid}] on seat [ID: {id}]: {list of changes}?
+
+Ask for confirmation.
+
+### Step 3: Execute
+
+```bash
+API_SH="<api.sh path>"
+RESPONSE=$("$API_SH" PATCH "/seats/SEAT_ID/links/LID" '{"url":"URL","title":"TITLE"}')
+echo "$RESPONSE"
+```
+
+Include only provided fields in the JSON body (omit `url` if not given, omit `title` if not given).
+
+### Step 4: Handle response
+
+- **200**: Show the updated link (ID, Title, URL).
 - Other errors: Handle per Error Handling table.
 
 ---

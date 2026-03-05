@@ -94,6 +94,8 @@ Never do these piecemeal. Never forget the version bump. One shot, every time.
 - Bash 5.x + Markdown (Claude Code skill format) + `scripts/api.sh` (shared API caller), `jq`, `curl` (026-users-mgmt-api)
 - N/A — all data via ResultMaps V2 API (026-users-mgmt-api)
 - Bash 5.x (embedded scripts in SKILL.md), Markdown (Claude Code skill runtime) + `scripts/api.sh` (shared API caller), `jq`, `curl` (027-review-template-teams)
+- Bash 5.x (scripts), Markdown (Claude Code skill runtime) + `scripts/api.sh` (shared API caller), `jq`, `curl` (029-v2-seat-api)
+- `~/.config/resultkit/config.json` (read-only at skill runtime) (029-v2-seat-api)
 
 ## Recent Changes
 - 014-result-feed-skill: Added Bash 5.x (api.sh), Markdown (SKILL.md — Claude Code skill runtime) + curl, jq, `scripts/api.sh` (shared API caller)
