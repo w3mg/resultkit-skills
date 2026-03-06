@@ -176,9 +176,9 @@ Extract `body.data` object. Display:
 | {id} | {title} | {url} |
 
 **Direct Reports** ({count}):
-| ID | Name | Owner |
-|----|------|-------|
-| {id} | {name} | {owner or Vacant} |
+| ID | Name |
+|----|------|
+| {id} | {name} |
 ```
 
 - If `seat_owner` is null → show "Vacant" for Owner
@@ -216,7 +216,7 @@ Use two distinct request bodies depending on whether `--parent` was provided:
 **Root seat** (no `--parent` flag):
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" POST "/seats" '{"name":"NAME","group_id":TEAM_ID}')
+RESPONSE=$("$API_SH" POST "/seats" '{"name":"NAME","team_id":TEAM_ID}')
 echo "$RESPONSE"
 ```
 
@@ -247,7 +247,7 @@ Extract seat ID and any combination of flags: `--name`, `--owner`, `--notes`, `-
 
 Map flags to API fields:
 - `--name "..."` → `"name": "..."`
-- `--owner {uid}` → `"accountability_owner_id": {uid}`
+- `--owner {uid}` → `"seat_owner_id": {uid}`
 - `--notes "..."` → `"notes": "..."`
 - `--accountabilities "..."` → `"accountabilities": "..."`
 - `--associated-team {tid}` → `"associated_team_id": {tid}`

@@ -497,9 +497,9 @@ Seats represent positions on a team's accountability chart. Each seat can have a
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/teams/{id}/seats` | Get team accountability chart — full hierarchical tree (params: include_archived) | "show org chart", "accountability chart", "team seats", "who does what" | `/teams/{id}` |
-| POST | `/seats` | Create seat (body: name*, group_id or parent_id, accountabilities?, notes?, accountability_owner_id?, associated_team_id?). Root requires group_id; child requires parent_id. One root per team. | "create seat", "add position", "new role on chart" | — |
+| POST | `/seats` | Create seat (body: name*, team_id or parent_id, accountabilities?, notes?, seat_owner_id?, associated_team_id?). Root requires team_id; child requires parent_id. One root per team. | "create seat", "add position", "new role on chart" | — |
 | GET | `/seats/{id}` | Get seat detail (children as SeatSimple, one level deep) | "show seat", "seat details", "position details" | — |
-| PATCH | `/seats/{id}` | Update seat (body: name?, accountabilities?, notes?, accountability_owner_id?, associated_team_id?). Owner changes cascade to aligned measures/goals. | "update seat", "rename seat", "change seat owner", "assign seat" | — |
+| PATCH | `/seats/{id}` | Update seat (body: name?, accountabilities?, notes?, seat_owner_id?, associated_team_id?). Owner changes cascade to aligned measures/goals. | "update seat", "rename seat", "change seat owner", "assign seat" | — |
 | DELETE | `/seats/{id}` | Archive seat and all descendants (soft delete). Cannot archive root seat. | "archive seat", "delete seat", "remove position" | — |
 | PUT | `/seats/{id}/restore` | Restore archived seat (children remain archived, restore individually) | "restore seat", "unarchive seat", "bring back seat" | — |
 | PUT | `/seats/{id}/move` | Re-parent seat (body: parent_id*). Validates no circular refs, same group. Cannot move root. | "move seat", "reparent seat", "reorganize chart" | — |
@@ -632,7 +632,7 @@ Delete responses return `204 No Content` with empty body.
 | change password, update my password, new password, set password | Change Password (authenticated) | `POST /users/me/password` |
 | seat, position, role on chart, accountability chart | Seat | `/teams/{id}/seats`, `/seats/{id}` |
 | org chart, accountability chart, who does what | Team Seats (chart) | `GET /teams/{id}/seats` |
-| seat owner, who owns the seat, assigned to seat | Seat Owner | `PATCH /seats/{id}` (accountability_owner_id) |
+| seat owner, who owns the seat, assigned to seat | Seat Owner | `PATCH /seats/{id}` (seat_owner_id) |
 | seat measure, KPI for seat, aligned measure | Seat Measure | `/seats/{id}/measures` |
 | seat goal, rock for seat, aligned goal | Seat Goal | `/seats/{id}/goals` |
 | seat link, URL on seat, resource link | Seat Link | `/seats/{id}/links` |
