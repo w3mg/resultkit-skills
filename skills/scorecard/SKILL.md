@@ -33,6 +33,8 @@ View and manage the team weekly KPI scorecard.
 | `--include-archived` | Include archived measures in list view |
 | `--team {id}` | Use specified team instead of default |
 | `record "NAME" VALUE [date=YYYY-MM-DD]` | Record a weekly value for a measure |
+| `note "NAME" "TEXT" [date=YYYY-MM-DD]` | Record a per-week note for a measure |
+| `note clear "NAME" [date=YYYY-MM-DD]` | Clear the note for a measure's week |
 | `add "NAME" [unit=...] [direction=...] [target=...]` | Create a new measure |
 | `update "NAME" [name=...] [unit=...] [direction=...] [target=...]` | Update measure fields |
 | `archive "NAME"` | Archive (soft-delete) a measure |
@@ -187,7 +189,7 @@ ID   Name                  Unit  Dir     Target  Owner       {H1}    {H2}    {H3
 ...
 ```
 
-Use jq to extract and format each row:
+Use jq to extract and format each row, appending `*` to cells that have a note:
 
 ```bash
 echo "$RESPONSE" | jq -r \
@@ -195,6 +197,7 @@ echo "$RESPONSE" | jq -r \
   '.body.data[] |
    . as $m |
    ($m.histories | map({(.date): (.value // "—")}) | add // {}) as $h |
+   ($m.histories | map({(.date): .note}) | add // {}) as $notes |
    [
      ($m.id | tostring),
      ($m.name + (if $m.is_archived then " [archived]" else "" end)),
@@ -202,14 +205,35 @@ echo "$RESPONSE" | jq -r \
      $m.direction,
      ($m.target_value // "—"),
      (if $m.owner then ($m.owner.first_name + " " + $m.owner.last_name[0:1] + ".") else "(none)" end),
-     ($h[$w1] // "—"),
-     ($h[$w2] // "—"),
-     ($h[$w3] // "—"),
-     ($h[$w4] // "—")
+     (($h[$w1] // "—") + (if $notes[$w1] then "*" else "" end)),
+     (($h[$w2] // "—") + (if $notes[$w2] then "*" else "" end)),
+     (($h[$w3] // "—") + (if $notes[$w3] then "*" else "" end)),
+     (($h[$w4] // "—") + (if $notes[$w4] then "*" else "" end))
    ] | @tsv'
 ```
 
 Format the tsv output as a readable table. Align columns by padding with spaces. Display the header row with column names and separator line before the data rows.
+
+After the table, collect all non-null notes across the four displayed weeks from all measures and print as footnotes:
+
+```bash
+echo "$RESPONSE" | jq -r \
+  --arg w1 "$W1" --arg w2 "$W2" --arg w3 "$W3" --arg w4 "$W4" \
+  --arg h1 "$H1" --arg h2 "$H2" --arg h3 "$H3" --arg h4 "$H4" \
+  '[.body.data[] | .histories[] | select(.note != null) |
+    {date, note}] |
+   unique_by(.date) |
+   map(. as $e |
+     (if $e.date == $w1 then $h1
+      elif $e.date == $w2 then $h2
+      elif $e.date == $w3 then $h3
+      elif $e.date == $w4 then $h4
+      else $e.date end) as $label |
+     "* \($label): \($e.note)") |
+   .[]'
+```
+
+If that produces no output, print nothing extra.
 
 ---
 
@@ -280,6 +304,131 @@ STATUS=$(echo "$RESPONSE" | jq -r '.status // "error"')
 - **403**: "You don't have permission to record values for this team."
 - **404**: "Measure ID {MEASURE_ID} not found."
 - Other: "API error ($STATUS): $(echo "$RESPONSE" | jq -r '.body.error.message // ""')"
+
+---
+
+## Flow: Record Note
+
+Triggered when: first arg is `note` AND second arg is NOT `clear`.
+
+### Step 1: Parse args
+
+Extract:
+- `NAME` = arg 2 (measure name, required)
+- `TEXT` = arg 3 (note text, required)
+- `DATE` = from `date=YYYY-MM-DD` if present in args (optional)
+
+If NAME is missing: "Usage: `/rkit:scorecard note \"Measure Name\" \"Note text\" [date=YYYY-MM-DD]`" and stop.
+If TEXT is missing: "Note text is required. Usage: `/rkit:scorecard note \"Name\" \"Note text\"`" and stop.
+
+### Step 2: Validate note (client-side)
+
+Check note length:
+```bash
+if [ "${#TEXT}" -gt 255 ]; then
+  echo "Note is too long (max 255 characters). Got ${#TEXT} characters."
+  # stop
+fi
+```
+
+### Step 3: Compute date
+
+If `date=YYYY-MM-DD` was provided, use that.
+
+Otherwise compute current Monday:
+```bash
+TODAY=$(date +%Y-%m-%d)
+DOW=$(date +%u)
+OFFSET=$((DOW - 1))
+NOTE_DATE=$(date -d "$TODAY - ${OFFSET} days" +%Y-%m-%d 2>/dev/null)
+if [ -z "$NOTE_DATE" ]; then
+  NOTE_DATE=$(date -v-${OFFSET}d +%Y-%m-%d)
+fi
+```
+
+### Step 4: Resolve measure name
+
+Use Measure Name Resolution. Stop on disambiguation or no-match.
+
+Extract `MEASURE_ID` and `MEASURE_NAME` from the matched measure.
+
+### Step 5: Confirm
+
+```
+Record note for "{MEASURE_NAME}" (ID: {MEASURE_ID}) for week of {NOTE_DATE}:
+  "{TEXT}"
+[y/N]
+```
+
+Ask for confirmation using AskUserQuestion. If user says anything other than `y`/`yes`, cancel and show "Cancelled."
+
+### Step 6: Execute
+
+```bash
+API_SH="<resolved api.sh path>"
+RESPONSE=$("$API_SH" POST "/measures/$MEASURE_ID/history/note" \
+  "{\"date\": \"$NOTE_DATE\", \"note\": \"$TEXT\"}")
+STATUS=$(echo "$RESPONSE" | jq -r '.status // "error"')
+```
+
+### Step 7: Handle response
+
+- **200**: Show: "Noted: {MEASURE_NAME} (ID: {MEASURE_ID}) — week of {NOTE_DATE}\n  \"{TEXT}\""
+- **401**: "Unauthorized. Run `/rkit:setup` to update your token."
+- **403**: "You don't have permission to record notes for this measure."
+- **404**: "Measure ID {MEASURE_ID} not found."
+- **422**: Show API error message: `$(echo "$RESPONSE" | jq -r '.body.error.message // "Validation error"')`
+- **Other**: "API error ($STATUS): $(echo "$RESPONSE" | jq -r '.body.error.message // ""')"
+
+---
+
+## Flow: Clear Note
+
+Triggered when: first arg is `note` AND second arg is `clear`.
+
+### Step 1: Parse args
+
+Extract:
+- `NAME` = arg 3 (measure name, required)
+- `DATE` = from `date=YYYY-MM-DD` if present in args (optional)
+
+If NAME is missing: "Usage: `/rkit:scorecard note clear \"Measure Name\" [date=YYYY-MM-DD]`" and stop.
+
+### Step 2: Compute date
+
+Same Monday-default logic as Flow: Record Note (Step 3).
+
+### Step 3: Resolve measure name
+
+Use Measure Name Resolution. Stop on disambiguation or no-match.
+
+Extract `MEASURE_ID` and `MEASURE_NAME`.
+
+### Step 4: Confirm
+
+```
+Clear note for "{MEASURE_NAME}" (ID: {MEASURE_ID}) for week of {NOTE_DATE}? [y/N]
+```
+
+Ask for confirmation using AskUserQuestion. If user says anything other than `y`/`yes`, cancel and show "Cancelled."
+
+### Step 5: Execute
+
+```bash
+API_SH="<resolved api.sh path>"
+RESPONSE=$("$API_SH" POST "/measures/$MEASURE_ID/history/note" \
+  "{\"date\": \"$NOTE_DATE\", \"note\": null}")
+STATUS=$(echo "$RESPONSE" | jq -r '.status // "error"')
+```
+
+### Step 6: Handle response
+
+- **200**: "Note cleared: {MEASURE_NAME} (ID: {MEASURE_ID}) — week of {NOTE_DATE}"
+- **401**: "Unauthorized. Run `/rkit:setup` to update your token."
+- **403**: "You don't have permission to modify notes for this measure."
+- **404**: "Measure ID {MEASURE_ID} not found."
+- **422**: Show API error message: `$(echo "$RESPONSE" | jq -r '.body.error.message // "Validation error"')`
+- **Other**: "API error ($STATUS): $(echo "$RESPONSE" | jq -r '.body.error.message // ""')"
 
 ---
 

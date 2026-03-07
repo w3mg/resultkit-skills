@@ -546,10 +546,11 @@ Team scorecard measures are KPIs tracked weekly on a team's scorecard. Each meas
 | PATCH | `/measures/{id}` | Update measure fields (body: measure wrapper with name?, unit?, direction?, target_value?, archived?). Use `archived: true` to soft-archive, `archived: false` to restore. | "update measure", "rename KPI", "change target", "edit measurable", "restore measure" | — |
 | DELETE | `/measures/{id}` | Archive a measure (soft-delete, idempotent). Sets is_archived=true. | "archive measure", "delete KPI", "remove measurable", "hide measure" | — |
 | POST | `/measures/{id}/history` | Record a weekly value for a measure (body: date*, value*). Upserts by (measure_id, date). Date must be a Monday. | "record value", "log KPI", "enter score", "record measurable", "update scorecard value", "fill in weekly number" | — |
+| POST | `/measures/{id}/history/note` | Record or clear a per-week text note on a history slot (body: date*, note — string ≤255 chars or null/empty to clear). Upserts; clearing a slot with no note is a no-op. | "add note", "record note", "annotate week", "note this week", "clear note", "remove note", "weekly note" | — |
 
 Measure fields: `id`, `name`, `description` (string | null), `unit` (string, e.g. `"#"`, `"$"`, `"%"`), `direction` (`"higher"` | `"lower"`), `target_value` (numeric string | null), `owner` (UserSimple | null), `is_archived` (boolean), `histories` (MeasureHistory[]).
 
-MeasureHistory fields: `id` (integer | null — null if no value recorded), `date` (YYYY-MM-DD, always a Monday), `value` (numeric string | null), `target_value` (numeric string | null).
+MeasureHistory fields: `id` (integer | null — null if no value recorded), `date` (YYYY-MM-DD, always a Monday), `value` (numeric string | null), `target_value` (numeric string | null), `note` (string | null — null if no note recorded for this slot).
 
 **Response envelopes**:
 - `GET /teams/{id}/measures` → `{ "data": Measure[], "meta": { "year": int, "date_range": { "start": string, "end": string } } }` — returns 52 weekly history slots per year per measure
@@ -557,6 +558,7 @@ MeasureHistory fields: `id` (integer | null — null if no value recorded), `dat
 - `PATCH /measures/{id}` → `{ "data": Measure }` (200, no histories field)
 - `DELETE /measures/{id}` → `{ "data": Measure }` (200, is_archived: true, no histories field)
 - `POST /measures/{id}/history` → `{ "data": { "id": int, "measure_id": int, "date": string, "value": string, "target_value": string | null } }` (200, upsert)
+- `POST /measures/{id}/history/note` → `{ "data": { "id": int|null, "measure_id": int, "date": string, "note": string|null } }` (200, upsert; id is null when note is cleared)
 
 **Validation**: `name` must not be blank (422). `value` must be a numeric string (422). `date` must be a valid ISO date (Monday preferred). `direction` must be `"higher"` or `"lower"`.
 
