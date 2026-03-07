@@ -275,7 +275,7 @@ STATUS=$(echo "$RESPONSE" | jq -r '.status // "error"')
 
 ### Step 7: Handle response
 
-- **200**: "Recorded: {MEASURE_NAME} — {VALUE} for week of {RECORD_DATE}."
+- **200**: Extract `HISTORY_ID=$(echo "$RESPONSE" | jq -r '.body.data.id // "?"')`, then show: "Recorded: {MEASURE_NAME} — {VALUE} for week of {RECORD_DATE} (history ID: {HISTORY_ID})."
 - **422**: Show API error message: `$(echo "$RESPONSE" | jq -r '.body.error.message // .body // "Validation error"')`
 - **403**: "You don't have permission to record values for this team."
 - **404**: "Measure ID {MEASURE_ID} not found."

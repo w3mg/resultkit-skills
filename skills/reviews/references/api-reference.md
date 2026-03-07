@@ -535,6 +535,31 @@ SeatSimple: `{ id: integer, name: string }`.
 
 SeatLink fields: `id`, `title`, `url`.
 
+## Team Scorecard Measures
+
+Team scorecard measures are KPIs tracked weekly on a team's scorecard. Each measure can have a target, unit, direction (higher/lower is better), and an optional owner. Weekly history values are recorded against Monday dates.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/measures` | List all measures for a team with weekly history (params: year?, include_archived?, owner_id?) | "show scorecard", "list measures", "team KPIs", "team measurables", "scorecard measures", "weekly metrics", "what are our KPIs" | `/teams/{id}` |
+| POST | `/teams/{id}/measures` | Create a new measure (body: measure wrapper with name*, unit?, direction?, target_value?, owner_id?) | "add measure", "create KPI", "new measurable", "add scorecard item", "create metric" | — |
+| PATCH | `/measures/{id}` | Update measure fields (body: measure wrapper with name?, unit?, direction?, target_value?, archived?). Use `archived: true` to soft-archive, `archived: false` to restore. | "update measure", "rename KPI", "change target", "edit measurable", "restore measure" | — |
+| DELETE | `/measures/{id}` | Archive a measure (soft-delete, idempotent). Sets is_archived=true. | "archive measure", "delete KPI", "remove measurable", "hide measure" | — |
+| POST | `/measures/{id}/history` | Record a weekly value for a measure (body: date*, value*). Upserts by (measure_id, date). Date must be a Monday. | "record value", "log KPI", "enter score", "record measurable", "update scorecard value", "fill in weekly number" | — |
+
+Measure fields: `id`, `name`, `description` (string | null), `unit` (string, e.g. `"#"`, `"$"`, `"%"`), `direction` (`"higher"` | `"lower"`), `target_value` (numeric string | null), `owner` (UserSimple | null), `is_archived` (boolean), `histories` (MeasureHistory[]).
+
+MeasureHistory fields: `id` (integer | null — null if no value recorded), `date` (YYYY-MM-DD, always a Monday), `value` (numeric string | null), `target_value` (numeric string | null).
+
+**Response envelopes**:
+- `GET /teams/{id}/measures` → `{ "data": Measure[], "meta": { "year": int, "date_range": { "start": string, "end": string } } }` — returns 52 weekly history slots per year per measure
+- `POST /teams/{id}/measures` → `{ "data": Measure }` (201, histories is empty array)
+- `PATCH /measures/{id}` → `{ "data": Measure }` (200, no histories field)
+- `DELETE /measures/{id}` → `{ "data": Measure }` (200, is_archived: true, no histories field)
+- `POST /measures/{id}/history` → `{ "data": { "id": int, "measure_id": int, "date": string, "value": string, "target_value": string | null } }` (200, upsert)
+
+**Validation**: `name` must not be blank (422). `value` must be a numeric string (422). `date` must be a valid ISO date (Monday preferred). `direction` must be `"higher"` or `"lower"`.
+
 ## Error Responses
 
 All errors return: `{ "error": { "code": "<error_code>", "message": "<human-readable>", "details": { ... } } }`
