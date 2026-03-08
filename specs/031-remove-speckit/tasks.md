@@ -67,7 +67,7 @@ N/A — each user story is independent and requires no shared foundation beyond 
 **Purpose**: Publish the fix and verify end-to-end
 
 - [X] T012 Bump version in `.claude-plugin/plugin.json` (patch bump)
-- [ ] T013 Commit all changes (deleted files + CLAUDE.md update + version bump) with a descriptive message
+- [X] T013 Commit all changes (deleted files + CLAUDE.md update + version bump) with a descriptive message
 - [ ] T014 Push branch, merge to main, and publish (`/ship-it`)
 - [ ] T015 [P] Verify: outside the repo, run `/plugin marketplace update` and confirm no `speckit:*` commands appear from the rkit plugin; also confirm all `rkit:*` skills load correctly (FR-003)
 - [ ] T016 [P] Verify: inside the repo, confirm `/speckit:specify` still works via `example-skills` plugin and `.specify/` directory is untouched
