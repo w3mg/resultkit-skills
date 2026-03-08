@@ -32,7 +32,16 @@ Update to latest: `/plugin marketplace update`
 - `scripts/api.sh` — Master API caller script (source of truth)
 - `specs/` — Spec-kit-inspired feature specs (one per skill)
 - `skills/` — Plugin skills (SKILL.md + scripts + references)
+- `.specify/commands/` — Dev-only commands (speckit, next-issue) — symlinked into `.claude/commands/` at session start, never distributed via plugin
 - `scripts/install.sh` — Legacy install (deprecated)
+
+## Developer Setup
+
+Dev-only commands (`/speckit:*`, `/next-issue`) are stored in `.specify/commands/` and symlinked into `.claude/commands/` automatically on session start via `.claude/hooks/setup-symlinks.sh`. The symlinks are gitignored so they never appear in the plugin distribution.
+
+**Speckit source**: All `speckit:*` skills are provided by the `example-skills@anthropic-agent-skills` plugin — not by this repo. Do NOT re-add `.claude/commands/speckit/` to the repo. If speckit commands are missing in a dev session, ensure `example-skills@anthropic-agent-skills` is installed.
+
+**See [`docs/dev-setup.md`](docs/dev-setup.md)** for full details on: how the symlinks work, how to add new dev-only commands, and how the plugin distribution boundary is maintained.
 
 ## Skill Namespace
 
@@ -99,6 +108,7 @@ Never do these piecemeal. Never forget the version bump. One shot, every time.
 - Bash 5.x, Markdown (Claude Code skill runtime) + `scripts/api.sh` (shared API caller), `jq`, `curl` (030-seats-field-renames)
 - Bash 5.x + Markdown (Claude Code skill runtime) + `scripts/api.sh` (shared API caller), `jq`, `curl` (001-scorecard-skill)
 - Bash 5.x + jq, curl, `scripts/api.sh` (shared API caller) (001-fix-measure-history)
+- Bash 5.x, JSON (plugin manifest), Markdown (Claude Code skill format) + Claude Code plugin system, `.claude-plugin/plugin.json` manifest (031-remove-speckit)
 
 ## Recent Changes
 - 014-result-feed-skill: Added Bash 5.x (api.sh), Markdown (SKILL.md — Claude Code skill runtime) + curl, jq, `scripts/api.sh` (shared API caller)
