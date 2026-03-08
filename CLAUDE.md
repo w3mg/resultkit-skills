@@ -32,12 +32,12 @@ Update to latest: `/plugin marketplace update`
 - `scripts/api.sh` — Master API caller script (source of truth)
 - `specs/` — Spec-kit-inspired feature specs (one per skill)
 - `skills/` — Plugin skills (SKILL.md + scripts + references)
-- `.specify/commands/` — Dev-only commands (speckit, next-issue, ship-it, close-issue) — symlinked into `.claude/commands/` at session start, never distributed via plugin
+- `.specify/commands/` — Dev-only commands (speckit, next-issue, ship-it, close-issue, sync-plugin) — symlinked into `.claude/commands/` at session start, never distributed via plugin
 - `scripts/install.sh` — Legacy install (deprecated)
 
 ## Developer Setup
 
-Dev-only commands (`/speckit:*`, `/next-issue`, `/ship-it`, `/close-issue`) are stored in `.specify/commands/` and symlinked into `.claude/commands/` automatically on session start via `.claude/hooks/setup-symlinks.sh`. The symlinks are gitignored so they never appear in the plugin distribution.
+Dev-only commands (`/speckit:*`, `/next-issue`, `/ship-it`, `/close-issue`, `/sync-plugin`) are stored in `.specify/commands/` and symlinked into `.claude/commands/` automatically on session start via `.claude/hooks/setup-symlinks.sh`. The symlinks are gitignored so they never appear in the plugin distribution.
 
 **Speckit source**: All `speckit:*` skills are provided by the `example-skills@anthropic-agent-skills` plugin — not by this repo. Do NOT re-add `.claude/commands/speckit/` to the repo. If speckit commands are missing in a dev session, ensure `example-skills@anthropic-agent-skills` is installed.
 

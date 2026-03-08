@@ -12,3 +12,4 @@ Thumbs.db
 .claude/commands/next-issue.md
 .claude/commands/ship-it.md
 .claude/commands/close-issue.md
+.claude/commands/sync-plugin.md

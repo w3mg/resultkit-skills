@@ -8,6 +8,7 @@
 #   .claude/commands/next-issue.md  -> .specify/commands/next-issue.md
 #   .claude/commands/ship-it.md     -> .specify/commands/ship-it.md
 #   .claude/commands/close-issue.md -> .specify/commands/close-issue.md
+#   .claude/commands/sync-plugin.md -> .specify/commands/sync-plugin.md
 
 set -euo pipefail
 
@@ -54,5 +55,6 @@ setup_dir_symlink  "$PROJECT_DIR/.claude/commands/speckit"          "$PROJECT_DI
 setup_file_symlink "$PROJECT_DIR/.claude/commands/next-issue.md"   "$PROJECT_DIR/.specify/commands/next-issue.md"
 setup_file_symlink "$PROJECT_DIR/.claude/commands/ship-it.md"      "$PROJECT_DIR/.specify/commands/ship-it.md"
 setup_file_symlink "$PROJECT_DIR/.claude/commands/close-issue.md"  "$PROJECT_DIR/.specify/commands/close-issue.md"
+setup_file_symlink "$PROJECT_DIR/.claude/commands/sync-plugin.md"  "$PROJECT_DIR/.specify/commands/sync-plugin.md"
 
 exit 0
