@@ -39,7 +39,7 @@
 - [x] T004 [US1] Update `plugins[0].source` in `.claude-plugin/marketplace.json` from `{ "source": "github", "repo": "w3mg/resultkit-skills" }` to `{ "source": "url", "url": "https://github.com/w3mg/resultkit-skills.git" }`
 - [x] T005 [US1] Add `"$schema": "https://anthropic.com/claude-code/marketplace.schema.json"` to the top level of `.claude-plugin/marketplace.json` to match the official marketplace format
 - [x] T006 [US1] Bump version in `.claude-plugin/plugin.json` (patch bump) to ensure users see an update and the fix propagates
-- [ ] T007 [US1] Commit and push the fix to `main` so the updated `marketplace.json` is live on GitHub (required for the install system to fetch the corrected config)
+- [x] T007 [US1] Commit and push the fix to `main` so the updated `marketplace.json` is live on GitHub (required for the install system to fetch the corrected config)
 
 **Checkpoint**: Fix is live. The install system will now use the `url` format source and correctly fetch/cache the plugin.
 
@@ -53,8 +53,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T008 [US2] Update the workaround documentation in the GitHub issue (#24) — add a comment confirming the fix is live, explain that users should run `/plugin marketplace update` to migrate from manual workaround to official install, and confirm whether reinstall is needed
-- [ ] T009 [US2] Close GitHub issue #24 once the fix is confirmed working
+- [x] T008 [US2] Update the workaround documentation in the GitHub issue (#24) — add a comment confirming the fix is live, explain that users should run `/plugin marketplace update` to migrate from manual workaround to official install, and confirm whether reinstall is needed
+- [x] T009 [US2] Close GitHub issue #24 once the fix is confirmed working
 
 **Checkpoint**: Both user stories complete. All users can install and update via official commands.
 
@@ -62,9 +62,9 @@
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-- [ ] T010 [P] Verify the fix by testing `/plugin install rkit@resultkit` on a local clean environment (remove `~/.claude/plugins/cache/resultkit/` first if it exists, then reinstall)
-- [ ] T011 [P] Update `CLAUDE.md` or project docs if any installation instructions need updating to reflect the fix
-- [ ] T012 Instruct users to run `/plugin marketplace update` (print update instructions)
+- [x] T010 [P] Verify the fix by testing `/plugin install rkit@resultkit` on a local clean environment (remove `~/.claude/plugins/cache/resultkit/` first if it exists, then reinstall)
+- [x] T011 [P] Update `CLAUDE.md` or project docs if any installation instructions need updating to reflect the fix
+- [x] T012 Instruct users to run `/plugin marketplace update` (print update instructions)
 
 ---
 
