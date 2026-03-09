@@ -580,9 +580,21 @@ StrategyNode fields: `id`, `name` (string | null), `description` (string | null)
 
 StrategyAssignee fields: `id`, `first_name` (string | null), `last_name` (string | null).
 
-**Framework object types**: EOS → yearly_goal → rock → milestone (note: EOS uses "milestone" where OKR uses "key_result"). OKR → objective → rock → key_result; focus_area as root-level container. 4DX → similar to OKR.
+**Supported frameworks**: EOS, OKR, 4DX. SRT and V2MOM are **not yet supported** (returns 400 error).
 
-**Create request**: `name` (required). `parent_id` + `parent_type` to create as child (use `object_type` value from GET response as `parent_type`). `is_focus_area: true` for OKR/4DX root-level result area. Without `parent_id`, creates at root level.
+**Framework hierarchy and type inference** (POST auto-infers type from position):
+- **EOS**: root → yearly_goal; under yearly_goal → rock; under rock → milestone (3 levels)
+- **OKR**: root → focus_area; under focus_area → objective; under objective → key_result (3 levels)
+- **4DX**: root → focus_area; under focus_area → objective (WIG); under objective → key_result (lead measure); under key_result → action (4 levels)
+- Creating under a leaf node (milestone, key_result in EOS/OKR, action in 4DX) → 422 error.
+
+**GET filtering rules**: EOS: yearly goals by `year`, rocks by `quarter` (persistent active rocks always included, realized persistent excluded). OKR: focus areas included if they have qualifying children, objectives "pulled up" if any child key result is in range. 4DX: same as OKR for L1-L3, actions filtered by year/quarter.
+
+**Authorization**: Root-level creation requires team admin. Child creation requires team admin or node-level assignment on the parent (assignee of the parent or any ancestor).
+
+**Mutation route aliases**: Team-less routes (preferred): `PUT /strategy/align`, `PATCH /strategy/{objectType}/{objectId}`, `DELETE /strategy/{objectType}/{objectId}`. Team-scoped routes also exist: `PUT /teams/:id/strategy`, `PATCH /teams/:id/strategy`, `DELETE /teams/:id/strategy`.
+
+**Create request**: `name` (required). `parent_id` + `parent_type` to create as child (use `object_type` value from GET response as `parent_type`, or `"Goal"`/`"Item"`). Without `parent_id`, creates at root level.
 
 **Align request**: `object_id`, `object_type`, `parent_id`, `parent_type` (all required). Uses `object_type` values from GET response.
 
@@ -701,6 +713,11 @@ Delete responses return `204 No Content` with empty body.
 | move seat, reparent seat, reorganize chart | Move Seat | `PUT /seats/{id}/move` |
 | archive seat, delete seat, remove position | Archive Seat | `DELETE /seats/{id}` |
 | restore seat, unarchive seat | Restore Seat | `PUT /seats/{id}/restore` |
+| strategy, strategy tree, goals and rocks, OKRs, annual goals, team objectives | Strategy Tree | `GET /teams/{id}/strategy` |
+| create goal, add rock, new objective, add key result, create focus area | Create Strategy Object | `POST /teams/{id}/strategy` |
+| update goal, rename rock, change objective status, mark goal complete | Update Strategy Object | `PATCH /strategy/{objectType}/{objectId}` |
+| align rock to goal, link key result, connect objective, move under goal | Align Strategy Object | `PUT /strategy/align` |
+| detach rock, unlink objective, remove from goal, archive goal | Detach Strategy Object | `DELETE /strategy/{objectType}/{objectId}` |
 | label, tag, team label | Team Label | `/teams/{id}/labels` |
 | integration, webhook, Slack integration, Discord integration | Team Integration | `/teams/{id}/integrations` |
 | team logo, upload logo | Team Logo | `POST /teams/{id}/logo` |
