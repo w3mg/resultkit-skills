@@ -562,6 +562,41 @@ MeasureHistory fields: `id` (integer | null — null if no value recorded), `dat
 
 **Validation**: `name` must not be blank (422). `value` must be a numeric string (422). `date` must be a valid ISO date (Monday preferred). `direction` must be `"higher"` or `"lower"`.
 
+## Strategy
+
+Unified strategy tree API. Returns goals, rocks, objectives, key results, focus areas, and milestones as a nested tree whose shape depends on the team's management framework (EOS, OKR, or 4DX). Objects not linked to any parent appear in the `unaligned` list.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/strategy` | Get team strategy tree (params: year?, quarter? — default current; use `"All"` or `0` for all) | "show strategy", "strategy tree", "goals and rocks", "team objectives", "OKRs", "V2MOM", "show rocks", "annual goals", "quarterly priorities" | `/teams/{id}` |
+| POST | `/teams/{id}/strategy` | Create a strategy object (body: name*, description?, status?, due?, assignees?, parent_id?, parent_type?, is_focus_area?) | "create goal", "add rock", "new objective", "add key result", "create focus area", "add milestone" | `/teams/{id}` |
+| PATCH | `/strategy/{objectType}/{objectId}` | Update a strategy object (body: name?, description?, status?, due?, assignees?). Assignees array replaces all existing. | "update goal", "rename rock", "change objective status", "edit key result", "mark goal complete" | — |
+| DELETE | `/strategy/{objectType}/{objectId}` | Detach object from parent (body: parent_id*, parent_type*, also_archive?). Object is kept unless `also_archive: true`. | "remove rock from goal", "unlink objective", "detach key result", "archive goal" | — |
+| PUT | `/strategy/align` | Link an object to a parent in the strategy tree (body: object_id*, object_type*, parent_id*, parent_type*) | "align rock to goal", "link key result", "connect objective", "move under goal" | — |
+
+StrategyResponse: `{ "data": { "framework": string, "strategy": StrategyNode[], "unaligned": StrategyNode[] } }`
+
+StrategyNode fields: `id`, `name` (string | null), `description` (string | null), `status` (active | complete | archived | deferred | review | draft | cancelled | at_risk | off_track), `object_type` (yearly_goal | rock | focus_area | objective | key_result | milestone | action), `type` (integer for Goals: 0=objective/WIG, 1=rock, 2=yearly; string for Items: KeyResult, ResultArea), `color` (string | null), `assignees` (StrategyAssignee[]), `creator` (StrategyAssignee | null), `due` (YYYY-MM-DD | null), `children` (StrategyNode[]), `inherited` (boolean), `inherited_from` ({ team_id, team_name } | null).
+
+StrategyAssignee fields: `id`, `first_name` (string | null), `last_name` (string | null).
+
+**Framework object types**: EOS → yearly_goal → rock → milestone (note: EOS uses "milestone" where OKR uses "key_result"). OKR → objective → rock → key_result; focus_area as root-level container. 4DX → similar to OKR.
+
+**Create request**: `name` (required). `parent_id` + `parent_type` to create as child (use `object_type` value from GET response as `parent_type`). `is_focus_area: true` for OKR/4DX root-level result area. Without `parent_id`, creates at root level.
+
+**Align request**: `object_id`, `object_type`, `parent_id`, `parent_type` (all required). Uses `object_type` values from GET response.
+
+**Delete request**: `parent_id`, `parent_type` (required) — specifies which parent link to remove. `also_archive` (boolean, default false) — when true, also archives the object.
+
+**Response envelopes**:
+- `GET /teams/{id}/strategy` → `{ "data": { "framework": string, "strategy": StrategyNode[], "unaligned": StrategyNode[] } }` (200)
+- `POST /teams/{id}/strategy` → `{ "data": { "id": int, "object_type": string } }` (201)
+- `PATCH /strategy/{objectType}/{objectId}` → 200
+- `DELETE /strategy/{objectType}/{objectId}` → 204 No Content
+- `PUT /strategy/align` → 200
+
+**Inherited nodes**: Nodes with `inherited: true` come from a parent team and are read-only. `inherited_from` contains the source `team_id` and `team_name`.
+
 ## Error Responses
 
 All errors return: `{ "error": { "code": "<error_code>", "message": "<human-readable>", "details": { ... } } }`
