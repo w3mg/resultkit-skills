@@ -110,6 +110,8 @@ Never do these piecemeal. Never forget the version bump. One shot, every time.
 - Bash 5.x + jq, curl, `scripts/api.sh` (shared API caller) (001-fix-measure-history)
 - JSON (configuration file) + Claude Code plugin system (Claude Code production) (001-fix-plugin-install)
 - Bash 5.x, JSON (plugin manifest), Markdown (Claude Code skill format) + Claude Code plugin system, `.claude-plugin/plugin.json` manifest (031-remove-speckit)
+- Bash 5.x, Markdown (Claude Code skill runtime) + `scripts/api.sh` (shared API caller), `curl`, `jq` (033-team-logo-url-27)
+- Bash 5.x, Markdown (Claude Code skill runtime) + `scripts/api.sh` (shared API caller), `curl`, `jq`, `date` (034-monthly-measure-entry-29)
 
 ## Recent Changes
 - 014-result-feed-skill: Added Bash 5.x (api.sh), Markdown (SKILL.md — Claude Code skill runtime) + curl, jq, `scripts/api.sh` (shared API caller)
