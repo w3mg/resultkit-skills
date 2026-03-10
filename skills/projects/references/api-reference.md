@@ -142,9 +142,10 @@ Integration fields: `id`, `type` ("slack"; others TBD), `name`, `webhook_url`, `
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| POST | `/teams/{id}/logo` | Upload team logo (multipart/form-data, field: file*). Admin only. Web UI only — not supported via CLI skill. | "upload logo", "team logo", "set team logo" | — |
+| POST | `/teams/{id}/logo` | Set team logo URL (body: logo_url* — must be `https://cdn.filestackcontent.com/` URL). Admin-only. Upserts (replaces previous). | "upload logo", "team logo", "set team logo" | — |
+| DELETE | `/teams/{id}/logo` | Remove team logo. Admin-only. Idempotent (200 even if no logo). | "remove logo", "delete team logo", "clear team logo" | — |
 
-Errors: 401, 403 (non-admin), 422 (invalid file).
+Response: `{ data: { logo_url: "https://cdn.filestackcontent.com/..." | null } }`. Errors: 403 (non-admin), 404 (team not found), 422 (invalid URL — POST only).
 
 ### Team Weekly Board (Items)
 
@@ -260,9 +261,10 @@ Integration fields: `id`, `type` ("slack" | "discord"), `name`, `webhook_url`, `
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| POST | `/teams/{id}/logo` | Upload team logo (multipart/form-data: file*). Admin-only. Max 2MB, JPEG/PNG/WebP. | "upload logo", "set team logo", "change team image" | — |
+| POST | `/teams/{id}/logo` | Set team logo URL (body: logo_url* — must be `https://cdn.filestackcontent.com/` URL). Admin-only. Upserts (replaces previous). | "upload logo", "set team logo", "change team image" | — |
+| DELETE | `/teams/{id}/logo` | Remove team logo. Admin-only. Idempotent (200 even if no logo). | "remove logo", "delete team logo", "clear team logo" | — |
 
-Response: `{ data: { logo_url: "/api/v2/teams/{id}/logo" } }`.
+Response: `{ data: { logo_url: "https://cdn.filestackcontent.com/..." | null } }`. Errors: 403 (non-admin), 404 (team not found), 422 (invalid URL — POST only).
 
 ## Users
 
@@ -699,7 +701,7 @@ Delete responses return `204 No Content` with empty body.
 | create label, add label, new team tag | Create Team Label | `POST /teams/{id}/labels` |
 | slack integration, team webhook, team integration, webhook | Team Integrations | `GET /teams/{id}/integrations` |
 | change role, change member role, promote to admin, demote member, demote to member | Member Role Change | `PATCH /teams/{id}/members/{user_id}` |
-| upload logo, team logo, set team logo | Team Logo Upload (web UI only) | `POST /teams/{id}/logo` |
+| upload logo, team logo, set team logo, remove logo, delete logo | Team Logo | `POST /teams/{id}/logo`, `DELETE /teams/{id}/logo` |
 | recurring, daily item, repeating task | Recurring Item | Day plan completion doesn't change item status |
 | reset password, send password reset, password reset for user | Password Reset (admin) | `POST /passwords/reset` |
 | set new password, complete password reset | Password Update (unauthenticated) | `PUT /passwords` |
@@ -720,7 +722,7 @@ Delete responses return `204 No Content` with empty body.
 | detach rock, unlink objective, remove from goal, archive goal | Detach Strategy Object | `DELETE /strategy/{objectType}/{objectId}` |
 | label, tag, team label | Team Label | `/teams/{id}/labels` |
 | integration, webhook, Slack integration, Discord integration | Team Integration | `/teams/{id}/integrations` |
-| team logo, upload logo | Team Logo | `POST /teams/{id}/logo` |
+| team logo, upload logo, remove logo, delete logo | Team Logo | `POST /teams/{id}/logo`, `DELETE /teams/{id}/logo` |
 | activity log, team activity, membership changes | Team Activity Log | `GET /teams/{id}/activity-logs` |
 | change role, promote to admin, demote, make admin | Change Member Role | `PATCH /teams/{id}/members/{user_id}` |
 | account, my accounts, account list, account membership | Account | `GET /users/me/accounts` |
