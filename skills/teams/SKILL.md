@@ -1,6 +1,6 @@
 ---
 name: rkit:teams
-description: List your teams, view team members, change member roles, and view team activity logs. Use this skill when users ask about their teams, want to see who's on a team, list team members, check team frameworks, search for a team by name, change a member's role (admin/member), view membership history, or view their organization structure.
+description: List your teams, view team members, change member roles, manage team logos, and view team activity logs. Use this skill when users ask about their teams, want to see who's on a team, list team members, check team frameworks, search for a team by name, change a member's role (admin/member), set or remove a team logo, view membership history, or view their organization structure.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
@@ -17,7 +17,7 @@ List teams, view team members, change member roles, and view activity logs.
 
 ## Rules
 
-- **Confirm writes.** Role change (PATCH) requires confirmation before executing. Activity logs and all list operations are GET — no confirmation needed.
+- **Confirm writes.** Role change (PATCH), set logo (POST), and remove logo (DELETE) require confirmation before executing. Activity logs and all list operations are GET — no confirmation needed.
 - **Show IDs.** Always include team, member, and user IDs in output.
 - **Concise output.** Tables and short summaries. No filler.
 - **Direct execution.** Use Bash with api.sh for all API calls. Never use Task agents.
@@ -34,6 +34,8 @@ List teams, view team members, change member roles, and view activity logs.
 | `members {team_id}` | List members of the specified team |
 | `role {user_id} {role} [team_id]` | Change a member's role (`admin` or `member`) on a team |
 | `logs [team_id]` | View team activity logs (membership changes) |
+| `logo set {url} [team_id]` | Set logo for a team (admin only) |
+| `logo remove [team_id]` | Remove logo for a team (admin only) |
 
 ---
 
@@ -79,21 +81,22 @@ Extract the teams array from `body.data` (standard data envelope). Each element 
 
   ### {organization_name}
 
-  | ID | Name | Framework | |
-  |----|------|-----------|-|
-  | 345 | Engineering | eos | (default) |
-  | 412 | Product | okr | |
+  | ID | Name | Framework | Logo | |
+  |----|------|-----------|------|-|
+  | 345 | Engineering | eos | abc123handle | (default) |
+  | 412 | Product | okr | — | |
 
   ### {another_org}
 
-  | ID | Name | Framework | |
-  |----|------|-----------|-|
-  | 500 | Sales | srt | |
+  | ID | Name | Framework | Logo | |
+  |----|------|-----------|------|-|
+  | 500 | Sales | srt | — | |
 
   {count} teams
   ```
 
   - `Framework` column: show value or "—" if null
+  - `Logo` column: show the Filestack handle (last path segment of `logo_url`, e.g. `abc123handle`) or "—" if `logo_url` is null. Extract handle with `echo "$logo_url" | sed 's|.*/||'`
   - Mark the team matching `default_team_id` from config with `(default)`
   - If `all` was used, mark muted teams with `(muted)`
   - If only one organization, still show the org header
@@ -214,6 +217,101 @@ RESPONSE=$("$API_SH" PATCH "/teams/TEAM_ID/members/USER_ID" '{"role":"ROLE"}')
 
 ---
 
+## Flow: Set Logo
+
+Triggered by: `logo set {url} [team_id]` or `set logo {url} [team_id]`
+
+### Step 1: Resolve team ID and URL
+
+- Extract URL arg (required). If missing: "Usage: `/rkit:teams logo set {url} [team_id]`\n  URL must be a Filestack CDN URL (https://cdn.filestackcontent.com/...)." — stop.
+- If `team_id` provided in args → use it; else use `default_team_id` from config. If neither: "No team specified and no default configured. Run `/rkit:setup`." — stop.
+
+### Step 2: Fetch team name for confirmation
+
+```bash
+API_SH="<api.sh path>"
+TEAM_RESPONSE=$("$API_SH" GET "/teams/TEAM_ID")
+```
+
+- If 404: "Team TEAM_ID not found (404)." — stop.
+- Extract `body.data.name` for display in confirmation.
+
+### Step 3: Confirm
+
+Show the proposed action and ask for confirmation:
+
+```
+Set logo for team #345 (Engineering) to: https://cdn.filestackcontent.com/abc123handle?
+```
+
+Use AskUserQuestion with Yes/No options. If user declines: "Logo set cancelled." — stop.
+
+### Step 4: Execute
+
+```bash
+RESPONSE=$("$API_SH" POST "/teams/TEAM_ID/logo" '{"logo_url":"URL"}')
+```
+
+### Step 5: Handle response
+
+- If 200: Display result:
+  ```
+  Logo set for team #345 (Engineering): https://cdn.filestackcontent.com/abc123handle
+  ```
+- If 403: "Access denied (403). Only team admins can set the logo."
+- If 422: "Invalid URL (422). Logo URL must start with `https://cdn.filestackcontent.com/`."
+- If 404: "Team TEAM_ID not found (404)."
+- Other: Show status code and error from response body.
+
+---
+
+## Flow: Remove Logo
+
+Triggered by: `logo remove [team_id]` or `remove logo [team_id]`
+
+### Step 1: Resolve team ID
+
+- If `team_id` provided in args → use it; else use `default_team_id` from config.
+- If neither: "No team specified and no default configured. Run `/rkit:setup`." — stop.
+
+### Step 2: Fetch team name for confirmation
+
+```bash
+API_SH="<api.sh path>"
+TEAM_RESPONSE=$("$API_SH" GET "/teams/TEAM_ID")
+```
+
+- If 404: "Team TEAM_ID not found (404)." — stop.
+- Extract `body.data.name` for display in confirmation.
+
+### Step 3: Confirm
+
+Show the proposed action and ask for confirmation:
+
+```
+Remove logo for team #345 (Engineering)?
+```
+
+Use AskUserQuestion with Yes/No options. If user declines: "Logo removal cancelled." — stop.
+
+### Step 4: Execute
+
+```bash
+RESPONSE=$("$API_SH" DELETE "/teams/TEAM_ID/logo")
+```
+
+### Step 5: Handle response
+
+- If 200: Display result:
+  ```
+  Logo removed for team #345 (Engineering).
+  ```
+- If 403: "Access denied (403). Only team admins can remove the logo."
+- If 404: "Team TEAM_ID not found (404)."
+- Other: Show status code and error from response body.
+
+---
+
 ## Flow: View Activity Logs
 
 Triggered by: `logs [team_id]`
@@ -272,6 +370,13 @@ If `meta.total_pages > 1`, fetch remaining pages and combine results.
 - **Role change — user not a member**: "User {id} is not a member of team {team_id}."
 - **Role change — not admin (403)**: "Access denied (403). Only team admins can change roles."
 - **Role change — user changes own role**: API decides; show its response.
+- **Set logo — missing URL arg**: Show usage message with Filestack URL requirement.
+- **Set logo — non-Filestack URL (422)**: "Invalid URL (422). Logo URL must start with `https://cdn.filestackcontent.com/`."
+- **Set logo — not admin (403)**: "Access denied (403). Only team admins can set the logo."
+- **Set logo — team not found (404)**: "Team {id} not found (404)."
+- **Remove logo — not admin (403)**: "Access denied (403). Only team admins can remove the logo."
+- **Remove logo — team not found (404)**: "Team {id} not found (404)."
+- **Remove logo — no logo set**: Still returns 200 (endpoint is idempotent); confirm success normally.
 - **Activity logs — no entries**: "No activity logs found for team #{id}."
 - **Activity logs — not a member (403)**: "Access denied (403). You must be a team member to view activity logs."
 - **Activity logs — paginated results**: Fetch all pages and combine before displaying.

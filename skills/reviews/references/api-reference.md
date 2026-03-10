@@ -82,11 +82,11 @@ Comment fields: `id`, `body`, `author` (UserSimple), `created_at`.
 
 `GET /teams` returns the standard data envelope: `{ "data": [...] }`. Response fields per team: `id`, `name`, `description`,
 `framework`, `organization_name`, `organization_id`, `parent_name`,
-`parent_id`, `is_default`, `is_muted`, `creator` (UserSimple),
+`parent_id`, `is_default`, `is_muted`, `logo_url` (string | null — Filestack CDN URL or null if no logo set), `creator` (UserSimple),
 `created_at`, `updated_at`.
 
 Team detail fields: `id`, `name`, `description`, `framework`,
-`creator` (UserSimple), `created_at`, `updated_at`, `members` (TeamMember[]).
+`logo_url` (string | null — Filestack CDN URL or null if no logo set), `creator` (UserSimple), `created_at`, `updated_at`, `members` (TeamMember[]).
 
 TeamMember: `id`, `team` (TeamSimple), `user` (UserSimple), `role` ("member" | "admin").
 

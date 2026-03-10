@@ -34,9 +34,9 @@ skills/teams/references/api-reference.md  ← synced copy (via /sync-plugin)
 
 **Purpose**: Confirm live API matches the documented contracts before writing any code.
 
-- [ ] T001 Call `GET /teams` via `scripts/api.sh` and confirm `logo_url` field is present in team objects (null or string)
-- [ ] T002 [P] Call `POST /teams/{id}/logo` with JSON body `{"logo_url":"https://cdn.filestackcontent.com/test"}` via `scripts/api.sh` and confirm 200 or 403 response shape
-- [ ] T003 [P] Call `DELETE /teams/{id}/logo` via `scripts/api.sh` and confirm endpoint exists (200 or 403 response, not 404)
+- [x] T001 Call `GET /teams` via `scripts/api.sh` and confirm `logo_url` field is present in team objects (null or string)
+- [x] T002 [P] Call `POST /teams/{id}/logo` with JSON body `{"logo_url":"https://cdn.filestackcontent.com/test"}` via `scripts/api.sh` and confirm 200 or 403 response shape
+- [x] T003 [P] Call `DELETE /teams/{id}/logo` via `scripts/api.sh` and confirm endpoint exists (200 or 403 response, not 404)
 
 ---
 
@@ -46,9 +46,9 @@ skills/teams/references/api-reference.md  ← synced copy (via /sync-plugin)
 
 **⚠️ CRITICAL**: Phases 3–5 can begin after this phase is complete.
 
-- [ ] T004 Add `logo_url` (string | null) to the team response fields description in `api-reference.md` (under Teams section, near `GET /teams` response description)
-- [ ] T005 Add `POST /teams/{id}/logo` endpoint row to the Teams endpoint table in `api-reference.md` (JSON body, Filestack CDN URL validation, upsert, admin-only)
-- [ ] T006 Add `DELETE /teams/{id}/logo` endpoint row to the Teams endpoint table in `api-reference.md` (removes logo, idempotent, admin-only)
+- [x] T004 Add `logo_url` (string | null) to the team response fields description in `api-reference.md` for both `GET /teams` (list) and `GET /teams/{id}` (detail) response shapes
+- [x] T005 Add `POST /teams/{id}/logo` endpoint row to the Teams endpoint table in `api-reference.md` (JSON body, Filestack CDN URL validation, upsert, admin-only)
+- [x] T006 Add `DELETE /teams/{id}/logo` endpoint row to the Teams endpoint table in `api-reference.md` (removes logo, idempotent, admin-only)
 
 **Checkpoint**: `api-reference.md` fully documents all 4 logo-related endpoint changes — ready for skill updates.
 
@@ -62,7 +62,7 @@ skills/teams/references/api-reference.md  ← synced copy (via /sync-plugin)
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Add `Logo` column to the team list table in `skills/teams/SKILL.md` (Flow: List Teams → Step 3 display format): show Filestack handle (last path segment of `logo_url`) or "—" if null
+- [x] T007 [US1] Add `Logo` column to the team list table in `skills/teams/SKILL.md` (Flow: List Teams → Step 3 display format): show Filestack handle (last path segment of `logo_url`) or "—" if null
 
 **Checkpoint**: `/rkit:teams` output shows logo status. US1 is independently testable.
 
@@ -76,9 +76,9 @@ skills/teams/references/api-reference.md  ← synced copy (via /sync-plugin)
 
 ### Implementation for User Story 2
 
-- [ ] T008 [US2] Add `logo set {url} [team_id]` argument pattern to the Argument Parsing table in `skills/teams/SKILL.md`
-- [ ] T009 [US2] Add `## Flow: Set Logo` section to `skills/teams/SKILL.md` with steps: (1) resolve team ID from args or default config, (2) validate URL arg present, (3) show confirmation with team name+ID and URL, (4) execute `POST /teams/TEAM_ID/logo` with JSON body `{"logo_url":"URL"}`, (5) handle 200/403/422/404 responses
-- [ ] T010 [US2] Add set-logo edge cases to the Edge Cases section in `skills/teams/SKILL.md`: missing URL arg, non-Filestack URL (422), not admin (403), team not found (404)
+- [x] T008 [US2] Add `logo set {url} [team_id]` argument pattern to the Argument Parsing table in `skills/teams/SKILL.md`
+- [x] T009 [US2] Add `## Flow: Set Logo` section to `skills/teams/SKILL.md` with steps: (1) resolve team ID from args or default config, (2) validate URL arg present, (3) show confirmation with team name+ID and URL, (4) execute `POST /teams/TEAM_ID/logo` with JSON body `{"logo_url":"URL"}`, (5) handle 200/403/422/404 responses; **also update `allowed-tools` frontmatter** to include scoped `Bash(scripts/api.sh *)` pattern if not already present (Constitution IV)
+- [x] T010 [US2] Add set-logo edge cases to the Edge Cases section in `skills/teams/SKILL.md`: missing URL arg, non-Filestack URL (422), not admin (403), team not found (404)
 
 **Checkpoint**: `/rkit:teams logo set` works for admins. US2 independently testable.
 
@@ -92,9 +92,9 @@ skills/teams/references/api-reference.md  ← synced copy (via /sync-plugin)
 
 ### Implementation for User Story 3
 
-- [ ] T011 [US3] Add `logo remove [team_id]` argument pattern to the Argument Parsing table in `skills/teams/SKILL.md` (after T008 completes)
-- [ ] T012 [US3] Add `## Flow: Remove Logo` section to `skills/teams/SKILL.md` with steps: (1) resolve team ID from args or default config, (2) show confirmation with team name+ID, (3) execute `DELETE /teams/TEAM_ID/logo`, (4) handle 200/403/404 responses
-- [ ] T013 [US3] Add remove-logo edge cases to the Edge Cases section in `skills/teams/SKILL.md`: not admin (403), team not found (404), no logo set (still 200 — idempotent) (after T010 completes)
+- [x] T011 [US3] Add `logo remove [team_id]` argument pattern to the Argument Parsing table in `skills/teams/SKILL.md` (after T008 completes)
+- [x] T012 [US3] Add `## Flow: Remove Logo` section to `skills/teams/SKILL.md` with steps: (1) resolve team ID from args or default config, (2) show confirmation with team name+ID, (3) execute `DELETE /teams/TEAM_ID/logo`, (4) handle 200/403/404 responses
+- [x] T013 [US3] Add remove-logo edge cases to the Edge Cases section in `skills/teams/SKILL.md`: not admin (403), team not found (404), no logo set (still 200 — idempotent) (after T010 completes)
 
 **Checkpoint**: All three user stories functional. Full logo management available.
 

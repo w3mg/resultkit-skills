@@ -17,7 +17,7 @@ An rkit skill user who runs a command that displays team information (e.g., boar
 
 **Acceptance Scenarios**:
 
-1. **Given** a team has a logo configured, **When** a skill displays team info, **Then** the `logo_url` value is shown alongside the team name.
+1. **Given** a team has a logo configured, **When** a skill displays team info, **Then** the Filestack handle (last path segment of `logo_url`) is shown alongside the team name — not the full URL.
 2. **Given** a team has no logo set, **When** a skill displays team info, **Then** no logo URL is shown (field is omitted or labeled "none").
 
 ---
@@ -65,9 +65,9 @@ An admin user asks rkit to remove the logo from a team. The skill calls the dele
 
 ### Functional Requirements
 
-- **FR-001**: `api-reference.md` MUST document `logo_url: string | null` as a field in the team object returned by `GET /api/v2/teams` and `GET /api/v2/teams/:id`.
-- **FR-002**: `api-reference.md` MUST document `POST /api/v2/teams/:id/logo` accepting a JSON body `{ "logo_url": "..." }` with the Filestack CDN URL prefix requirement, upsert behavior, and admin-only authorization.
-- **FR-003**: `api-reference.md` MUST document `DELETE /api/v2/teams/:id/logo` as a new endpoint that removes the stored logo URL, noting idempotent behavior and admin-only authorization.
+- **FR-001**: `api-reference.md` MUST document `logo_url: string | null` as a field in the team object returned by `GET /api/v2/teams/{id}` and `GET /api/v2/teams`.
+- **FR-002**: `api-reference.md` MUST document `POST /api/v2/teams/{id}/logo` accepting a JSON body `{ "logo_url": "..." }` with the Filestack CDN URL prefix requirement, upsert behavior, and admin-only authorization.
+- **FR-003**: `api-reference.md` MUST document `DELETE /api/v2/teams/{id}/logo` as a new endpoint that removes the stored logo URL, noting idempotent behavior and admin-only authorization.
 - **FR-004**: Any rkit skill that displays team information MUST show `logo_url` when present in the API response.
 - **FR-005**: rkit MUST support setting a team logo via a natural language command, accepting a Filestack CDN URL and confirming success.
 - **FR-006**: rkit MUST support removing a team logo via a natural language command and confirming success.
