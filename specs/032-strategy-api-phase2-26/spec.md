@@ -82,12 +82,12 @@ A user asks Claude to show their team strategy board. When the team uses the 4DX
 - **FR-002**: Skills MUST NOT include `object_type` in the body when calling `POST /api/v2/teams/:id/strategy`.
 - **FR-003**: Skills MUST include `is_focus_area: true` in POST body when creating a root-level OKR or 4DX result area.
 - **FR-004**: Skills MUST NOT include `link_type` in the body when calling PUT strategy alignment endpoints.
-- **FR-005**: Skills MUST use `PUT /api/v2/strategy/align` (team-less) for aligning strategy objects, or the team-scoped equivalent — both are valid.
+- **FR-005**: Skills MUST prefer `PUT /api/v2/strategy/align` (team-less) for aligning strategy objects. Team-scoped equivalents remain valid but are deprecated going forward.
 - **FR-006**: Skills MUST include `parent_id` and `parent_type` in the body when calling DELETE strategy endpoints.
 - **FR-007**: Skills MUST NOT send `?action=` query parameter on DELETE calls.
 - **FR-008**: Skills MUST default to unlink (no `also_archive`) on DELETE; only include `also_archive: true` when the user explicitly requests archiving.
 - **FR-009**: Skills MUST handle `object_type: 'action'` in GET responses without errors (4DX leaf nodes).
-- **FR-010**: Skills MUST handle `inherited: true` on strategy nodes without errors; inherited nodes should be displayed as read-only.
+- **FR-010**: Skills MUST handle `inherited: true` on strategy nodes without errors; inherited nodes MUST display an `[inherited]` label and MUST NOT offer edit or mutate actions (create, update, delete, align) for those nodes.
 
 ### Key Entities
 

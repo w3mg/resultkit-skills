@@ -81,7 +81,7 @@ skills/strategy/                        # NEW — integrate from 001-strategy-sk
 
 ### Phase A: Update api-reference.md
 
-Add a Strategy section documenting all 8 Phase 2 endpoints. Reference `contracts/strategy-endpoints.md` for content. Include:
+Add a Strategy section documenting all 8 Phase 2 endpoint variants (5 distinct routes, some with both team-less and team-scoped forms). Reference `contracts/strategy-endpoints.md` for content. Include:
 - GET /teams/{id}/strategy (no `cascade` param)
 - POST /teams/{id}/strategy (no `object_type`, add `is_focus_area`)
 - PUT /strategy/align (team-less, no `link_type`)

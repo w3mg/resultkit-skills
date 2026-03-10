@@ -5,6 +5,8 @@
 
 **Key context**: The `rkit:strategy` skill exists on `origin/001-strategy-skill` and is already Phase 2 compliant. Tasks focus on (1) integrating that skill into main, (2) documenting strategy endpoints in `api-reference.md`, and (3) verifying each user story acceptance scenario is met.
 
+**Terminology note**: "Detach" (used in Phase 3 tasks) = the user-facing label for the unlink operation that issues a DELETE API call. The spec uses "Delete" and "remove" for the same action.
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
@@ -16,7 +18,7 @@
 
 **Purpose**: Bring the strategy skill from `origin/001-strategy-skill` into this branch so all Phase 2 flows are available for verification.
 
-- [ ] T001 Cherry-pick `skills/strategy/` directory from `origin/001-strategy-skill` into `skills/strategy/` on this branch (use `git checkout origin/001-strategy-skill -- skills/strategy/`)
+- [x] T001 Cherry-pick `skills/strategy/` directory from `origin/001-strategy-skill` into `skills/strategy/` on this branch (use `git checkout origin/001-strategy-skill -- skills/strategy/`)
 
 **Checkpoint**: `ls skills/strategy/SKILL.md` succeeds
 
@@ -28,8 +30,8 @@
 
 **⚠️ CRITICAL**: No user story verification can begin until this phase is complete.
 
-- [ ] T002 Add Strategy section to `api-reference.md` after the Teams section, documenting all 8 Phase 2 endpoints per `contracts/strategy-endpoints.md` — include: `GET /teams/{id}/strategy` (no `cascade`), `POST /teams/{id}/strategy` (no `object_type`, add `is_focus_area`), `PUT /strategy/align` (no `link_type`), `PATCH /strategy/{type}/{id}`, `DELETE /strategy/{type}/{id}` (requires `parent_id`+`parent_type` in body, `also_archive` replaces `?action=`), and note team-scoped equivalents
-- [ ] T003 [P] Add `strategy` skill entry to `.claude-plugin/plugin.json` skills list (following the same pattern as existing skills like `board`, `today`, `teams`)
+- [x] T002 Add Strategy section to `api-reference.md` after the Teams section, documenting all 8 Phase 2 endpoints per `contracts/strategy-endpoints.md` — include: `GET /teams/{id}/strategy` (no `cascade`), `POST /teams/{id}/strategy` (no `object_type`, add `is_focus_area`), `PUT /strategy/align` (no `link_type`), `PATCH /strategy/{type}/{id}`, `DELETE /strategy/{type}/{id}` (requires `parent_id`+`parent_type` in body, `also_archive` replaces `?action=`), and note team-scoped equivalents
+- [x] T003 [P] Add `strategy` skill entry to `.claude-plugin/plugin.json` skills list (following the same pattern as existing skills like `board`, `today`, `teams`) — satisfied by skills/strategy/ directory presence (plugin.json uses directory auto-discovery)
 
 **Checkpoint**: `api-reference.md` contains a Strategy section; `plugin.json` lists the strategy skill
 
@@ -41,8 +43,8 @@
 
 **Independent Test**: Locate the Detach flow in SKILL.md — confirm `DELETE /strategy/$OBJECT_TYPE/$OBJECT_ID` call includes `parent_id`, `parent_type` in body JSON; confirm no `?action=` appears anywhere in the delete call; confirm `also_archive` is included only when `--archive` flag is set.
 
-- [ ] T004 [US1] Audit `skills/strategy/SKILL.md` "Flow: Detach Strategy Object" section — verify DELETE endpoint is `/strategy/$OBJECT_TYPE/$OBJECT_ID`, body includes `parent_id`, `parent_type`, `also_archive`, and no `?action=` param appears; fix if needed
-- [ ] T005 [US1] Verify inherited node guard in detach flow: confirm `inherited: true` check blocks detach with error message before reaching DELETE call in `skills/strategy/SKILL.md`
+- [x] T004 [US1] Audit `skills/strategy/SKILL.md` "Flow: Detach Strategy Object" section — verify DELETE endpoint is `/strategy/$OBJECT_TYPE/$OBJECT_ID`, body includes `parent_id`, `parent_type`, `also_archive`, and no `?action=` param appears; fix if needed — PASS, no fix needed
+- [x] T005 [US1] Verify inherited node guard in detach flow: confirm `inherited: true` check blocks detach with error message before reaching DELETE call in `skills/strategy/SKILL.md` — PASS, guard exists
 
 **Checkpoint**: DELETE call in SKILL.md passes all Phase 2 requirements for US1
 
@@ -54,7 +56,7 @@
 
 **Independent Test**: Locate the Create flow in SKILL.md — confirm the POST body JSON does not contain `object_type`; confirm `is_focus_area` is included when `--focus-area` flag is set.
 
-- [ ] T006 [US2] Audit `skills/strategy/SKILL.md` "Flow: Create Strategy Object" section — verify POST body omits `object_type` entirely; verify `is_focus_area: true` is included when `--focus-area` flag is used; fix if needed
+- [x] T006 [US2] Audit `skills/strategy/SKILL.md` "Flow: Create Strategy Object" section — verify POST body omits `object_type` entirely; verify `is_focus_area: true` is included when `--focus-area` flag is used; fix if needed — PASS, no fix needed
 
 **Checkpoint**: POST call in SKILL.md passes Phase 2 requirements for US2
 
@@ -66,7 +68,7 @@
 
 **Independent Test**: Locate the Align flow in SKILL.md — confirm endpoint is `/strategy/align` (not `/teams/$TEAM_ID/strategy`); confirm body contains `object_id`, `object_type`, `parent_id`, `parent_type` — no `link_type`.
 
-- [ ] T007 [US3] Audit `skills/strategy/SKILL.md` "Flow: Align Strategy Object" section — verify PUT endpoint is `/strategy/align`, body has no `link_type` field; fix if needed
+- [x] T007 [US3] Audit `skills/strategy/SKILL.md` "Flow: Align Strategy Object" section — verify PUT endpoint is `/strategy/align`, body has no `link_type` field; fix if needed — PASS, no fix needed
 
 **Checkpoint**: PUT call in SKILL.md passes Phase 2 requirements for US3
 
@@ -78,9 +80,9 @@
 
 **Independent Test**: Locate the Tree Fetch and View flows in SKILL.md — confirm GET call has no `cascade` param; confirm `action` appears in Framework Label Mapping table; confirm inherited node display appends `[inherited from {team_name}]`.
 
-- [ ] T008 [US4] Audit `skills/strategy/SKILL.md` GET call in "Strategy Tree Fetch" section — confirm no `?cascade=` param is appended; fix if needed
-- [ ] T009 [P] [US4] Audit Framework Label Mapping table in SKILL.md — confirm `action` row exists covering 4DX L4 nodes; fix if needed
-- [ ] T010 [P] [US4] Audit View flow in SKILL.md — confirm `inherited: true` nodes display `[inherited from {team_name}]`; fix if needed
+- [x] T008 [US4] Audit `skills/strategy/SKILL.md` GET call in "Strategy Tree Fetch" section — confirm no `?cascade=` param is appended; fix if needed — PASS, no fix needed
+- [x] T009 [P] [US4] Audit Framework Label Mapping table in SKILL.md — confirm `action` row exists covering 4DX L4 nodes; fix if needed — PASS, `action` row present
+- [x] T010 [P] [US4] Audit View flow in SKILL.md — confirm `inherited: true` nodes display `[inherited from {team_name}]`; fix if needed — PASS, inherited display exists
 
 **Checkpoint**: GET call and 4DX rendering in SKILL.md pass Phase 2 requirements for US4
 
@@ -90,8 +92,8 @@
 
 **Purpose**: Propagate changes, sync skill copies, and prepare for release.
 
-- [ ] T011 Run `/sync-plugin` to copy updated `api-reference.md` to all skill `references/` directories including `skills/strategy/references/api-reference.md`
-- [ ] T012 [P] Bump plugin version in `.claude-plugin/plugin.json` (patch increment unless a minor/major bump is warranted)
+- [x] T011 Run `/sync-plugin` to copy updated `api-reference.md` to all skill `references/` directories including `skills/strategy/references/api-reference.md`
+- [x] T012 [P] Bump plugin version in `.claude-plugin/plugin.json` (patch increment unless a minor/major bump is warranted) — bumped to 1.2.39
 - [ ] T013 Commit all changes (strategy skill files, api-reference.md, plugin.json, version bump) with message referencing issue #26
 - [ ] T014 Push branch `032-strategy-api-phase2-26` to origin and open PR against main
 
