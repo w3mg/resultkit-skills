@@ -104,9 +104,9 @@ skills/teams/references/api-reference.md  ← synced copy (via /sync-plugin)
 
 **Purpose**: Sync shared files, validate end-to-end, finalize.
 
-- [ ] T014 Run `/sync-plugin` to copy updated `api-reference.md` to all skill `references/` directories and bump the plugin patch version in `.claude-plugin/plugin.json`
-- [ ] T015 [P] Validate all changes with live API calls per `specs/033-team-logo-url-27/quickstart.md` test commands
-- [ ] T016 Commit all changes on branch `033-team-logo-url-27` with a descriptive message
+- [x] T014 Run `/sync-plugin` to copy updated `api-reference.md` to all skill `references/` directories and bump the plugin patch version in `.claude-plugin/plugin.json`
+- [x] T015 [P] Validate all changes with live API calls per `specs/033-team-logo-url-27/quickstart.md` test commands
+- [x] T016 Commit all changes on branch `033-team-logo-url-27` with a descriptive message
 
 ---
 
