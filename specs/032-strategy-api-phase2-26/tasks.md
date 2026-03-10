@@ -94,8 +94,8 @@
 
 - [x] T011 Run `/sync-plugin` to copy updated `api-reference.md` to all skill `references/` directories including `skills/strategy/references/api-reference.md`
 - [x] T012 [P] Bump plugin version in `.claude-plugin/plugin.json` (patch increment unless a minor/major bump is warranted) — bumped to 1.2.39
-- [ ] T013 Commit all changes (strategy skill files, api-reference.md, plugin.json, version bump) with message referencing issue #26
-- [ ] T014 Push branch `032-strategy-api-phase2-26` to origin and open PR against main
+- [x] T013 Commit all changes (strategy skill files, api-reference.md, plugin.json, version bump) with message referencing issue #26
+- [x] T014 Push branch `032-strategy-api-phase2-26` to origin and open PR against main — PR #28
 
 ---
 
