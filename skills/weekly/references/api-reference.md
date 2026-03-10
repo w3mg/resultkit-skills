@@ -606,7 +606,7 @@ StrategyAssignee fields: `id`, `first_name` (string | null), `last_name` (string
 - `GET /teams/{id}/strategy` → `{ "data": { "framework": string, "strategy": StrategyNode[], "unaligned": StrategyNode[] } }` (200)
 - `POST /teams/{id}/strategy` → `{ "data": { "id": int, "object_type": string } }` (201)
 - `PATCH /strategy/{objectType}/{objectId}` → 200
-- `DELETE /strategy/{objectType}/{objectId}` → 204 No Content
+- `DELETE /strategy/{objectType}/{objectId}` → 200 `{ "data": { "unlinked": bool, "archived": bool } }`
 - `PUT /strategy/align` → 200
 
 **Inherited nodes**: Nodes with `inherited: true` come from a parent team and are read-only. `inherited_from` contains the source `team_id` and `team_name`.

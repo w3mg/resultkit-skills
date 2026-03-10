@@ -378,7 +378,7 @@ echo "$RESPONSE"
 
 ### Step 5: Handle response
 
-- **204**: "Detached: {object_name} from {parent_name}." + if archived: "Object has been archived."
+- **200**: "Detached: {object_name} from {parent_name}." + if `body.data.archived`: "Object has been archived."
 - **403**: "You don't have permission to detach objects in this team."
 - **404**: "Strategy object or parent not found."
 - Other errors: Handle per Error Handling table.
@@ -428,7 +428,7 @@ echo "$RESPONSE"
 - `GET /teams/{id}/strategy` → `{ "data": { "framework": string, "strategy": StrategyNode[], "unaligned": StrategyNode[] } }` (200)
 - `POST /teams/{id}/strategy` → `{ "data": { "id": int, "object_type": string } }` (201)
 - `PATCH /strategy/{objectType}/{objectId}` → 200
-- `DELETE /strategy/{objectType}/{objectId}` → 204 No Content
+- `DELETE /strategy/{objectType}/{objectId}` → 200 `{ "data": { "unlinked": bool, "archived": bool } }`
 - `PUT /strategy/align` → 200
 
 ---
