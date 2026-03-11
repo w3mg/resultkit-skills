@@ -201,7 +201,7 @@ echo "$RESPONSE" | jq -r \
    ($m.histories | map({(.date): .note}) | add // {}) as $notes |
    [
      ($m.id | tostring),
-     ($m.name + (if $m.is_archived then " [archived]" else "" end)),
+     ($m.name + (if $m.is_archived then " [archived]" else "" end) + (if $m.data_source_type == 3 then " [roll-up: " + ($m.roll_up_type // "?") + "]" else "" end)),
      ($m.unit // ""),
      $m.direction,
      ($m.target_value // "—"),
@@ -294,7 +294,13 @@ fi
 
 Use Measure Name Resolution. Stop on disambiguation or no-match.
 
-Extract `MEASURE_ID` and `MEASURE_NAME` from the matched measure.
+Extract `MEASURE_ID`, `MEASURE_NAME`, and `DATA_SOURCE_TYPE` from the matched measure.
+
+### Step 4b: Roll-up guard
+
+If `DATA_SOURCE_TYPE` equals `3`:
+- Print: `"{MEASURE_NAME}" is a roll-up measure (auto-calculated from other measures). Manual value entry is not supported.`
+- Stop. Do not show the confirmation prompt and do not call the API.
 
 ### Step 5: Confirm
 

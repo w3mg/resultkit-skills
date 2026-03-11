@@ -34,7 +34,6 @@ A team admin views their scorecard and sees measures that are roll-ups. The skil
 
 1. **Given** a team has a roll-up measure, **When** the user runs `/rkit:scorecard`, **Then** the measure is displayed with its `data_source_type` label (e.g., "roll-up") and `roll_up_type` (sum/average).
 2. **Given** a team has only manual measures, **When** the user runs `/rkit:scorecard`, **Then** output is unchanged from prior behavior.
-3. **Given** a roll-up measure has `roll_up_measure_ids: [12, 17]`, **When** displayed, **Then** the source measure IDs (or names if available) are shown.
 
 ---
 

@@ -49,9 +49,9 @@ No blocking prerequisites for this feature. All user story phases can proceed af
 
 **Goal**: `/rkit:scorecard` list view shows a `[roll-up: sum]` or `[roll-up: avg]` inline label on roll-up measures, following the existing `[archived]` label pattern.
 
-**Independent Test**: Run `/rkit:scorecard` on a team with a roll-up measure — the measure name displays `[roll-up: sum]` or `[roll-up: avg]`; manual measures are unchanged.
+**Independent Test**: Run `/rkit:scorecard` on a team with a roll-up measure — the measure name displays `[roll-up: sum]` or `[roll-up: average]`; manual measures are unchanged.
 
-- [ ] T008 [US1] Use `/skill-creator` to update the jq extraction in List Scorecard Step 6 of `skills/scorecard/SKILL.md` — in the `@tsv` block, append to the name field: `+ (if $m.data_source_type == 3 then " [roll-up: " + ($m.roll_up_type // "?") + "]" else "" end)` (place after the existing `[archived]` suffix logic)
+- [ ] T008 [US1] Use `/skill-creator` to update the jq extraction in List Scorecard Step 6 of `skills/scorecard/SKILL.md` — in the `@tsv` block, append to the name field: `+ (if $m.data_source_type == 3 then " [roll-up: " + ($m.roll_up_type // "?") + "]" else "" end)` (place after the existing `[archived]` suffix logic; outputs "sum" or "average" verbatim from API)
 
 **Checkpoint**: List view displays roll-up badge — US1 complete and independently verifiable
 
@@ -137,7 +137,7 @@ Then together: T009 → T010 → T011 → T012
 
 ## Notes
 
-- T008 and T009 MUST go through `/skill-creator` (Constitution Rule X)
+- T008 and T009 MUST go through `/skill-creator` (project convention — not a numbered constitution rule)
 - T010 (`/sync-plugin`) handles version bump automatically — do not manually bump before running it
 - `[P]` tasks = different files, no blocking dependencies
 - US1 and US3 touch the same SKILL.md — do not run their `/skill-creator` sessions concurrently

@@ -31,9 +31,10 @@ The ResultMaps API now exposes `data_source_type` on all measures and supports r
 | VII. Direct Execution | ✅ PASS | Bash + api.sh only; no subagents |
 | VIII. Graceful Degradation | ✅ PASS | Error table covers API errors; roll-up guard has clear message |
 | IX. Concise Output | ✅ PASS | Roll-up indicator is a compact inline label |
-| X. Use Skill Builder | ✅ PASS | SKILL.md changes must go through `/skill-creator` |
 
 No violations. No Complexity Tracking needed.
+
+> **Project convention**: SKILL.md changes MUST go through `/skill-creator` (not a constitution rule — local dev practice).
 
 ## Project Structure
 
