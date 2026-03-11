@@ -44,7 +44,7 @@ skills/scorecard/references/api-reference.md  ← synced copy (via /sync-plugin)
 
 **⚠️ CRITICAL**: Phases 3–4 can begin after this phase is complete.
 
-- [ ] T002 In `api-reference.md` under `## Team Scorecard Measures`, update the `POST /measures/{id}/history` row to document: optional `period` field (`"week"` | `"month"`), monthly date format (`YYYY-MM` or `YYYY-MM-01`, normalised to `YYYY-MM-01` in response), and that omitting `period` defaults to weekly (backward-compatible)
+- [X] T002 In `api-reference.md` under `## Team Scorecard Measures`, update the `POST /measures/{id}/history` row to document: optional `period` field (`"week"` | `"month"`), monthly date format (`YYYY-MM` or `YYYY-MM-01`, normalised to `YYYY-MM-01` in response), and that omitting `period` defaults to weekly (backward-compatible)
 
 **Checkpoint**: `api-reference.md` accurately documents the extended endpoint — ready for skill updates.
 
@@ -58,8 +58,8 @@ skills/scorecard/references/api-reference.md  ← synced copy (via /sync-plugin)
 
 ### Implementation for User Story 1
 
-- [ ] T003 [US1] In `skills/scorecard/SKILL.md` Argument Parsing table, extend the `record` row to: `record "NAME" VALUE [date=YYYY-MM-DD|YYYY-MM] [period=month]` with description "Record a value for a measure (weekly by default; add period=month for a monthly entry)"
-- [ ] T004 [US1] In `skills/scorecard/SKILL.md` Flow: Record Value, update the flow to handle `period=month`: (1) Step 1 — parse `PERIOD` from `period=...` arg (default `"week"`); (2) Step 3 — when `PERIOD=month`, default date to `date +%Y-%m` instead of current Monday, and if a `YYYY-MM-DD` date was provided with `period=month`, strip to `YYYY-MM`; (3) Step 5 — show `"for month of {DATE}"` in confirmation when monthly, `"for week of {DATE}"` when weekly; (4) Step 6 — include `"period": "month"` in API body only when monthly (weekly omits the field); (5) Step 7 — show `"for month of {DATE}"` in success message when monthly
+- [X] T003 [US1] In `skills/scorecard/SKILL.md` Argument Parsing table, extend the `record` row to: `record "NAME" VALUE [date=YYYY-MM-DD|YYYY-MM] [period=month]` with description "Record a value for a measure (weekly by default; add period=month for a monthly entry)"
+- [X] T004 [US1] In `skills/scorecard/SKILL.md` Flow: Record Value, update the flow to handle `period=month`: (1) Step 1 — parse `PERIOD` from `period=...` arg (default `"week"`); if no `period=` arg was provided but the date argument is in `YYYY-MM-DD` format, ask the user "Record this as a weekly or monthly entry?" before proceeding (spec edge case); (2) Step 2 — when a natural-language month without a year (e.g., "March") is provided, resolve to the current year (`date +%Y`) without prompting; (3) Step 3 — when `PERIOD=month`, default date to `date +%Y-%m` instead of current Monday; if a `YYYY-MM-DD` date was provided with `period=month`, strip to `YYYY-MM`; (4) Step 5 — show `"for month of {DATE}"` in confirmation when monthly, `"for week of {DATE}"` when weekly; (5) Step 6 — include `"period": "month"` in API body only when monthly (weekly omits the field); (6) Step 7 — show measure ID, history entry ID, value, and `"for month of {DATE}"` in success message when monthly (Constitution V: all entity IDs required); (7) Error handling — 403: inform user that admin access is required (FR-006); 404: inform user the measure was not found and show the measure ID attempted — both inherited from existing error path
 
 **Checkpoint**: `/rkit:scorecard record` works for monthly entries. US1 independently testable.
 
@@ -73,8 +73,8 @@ skills/scorecard/references/api-reference.md  ← synced copy (via /sync-plugin)
 
 ### Implementation for User Story 2
 
-- [ ] T005 [US2] In `skills/scorecard/SKILL.md` Edge Cases section, add monthly-specific entries: (a) `period=month with non-numeric value` — caught client-side, same "Value must be a number" check; (b) `period=month with invalid date format` — API returns 422, skill surfaces error message; (c) `period=month with full date (YYYY-MM-DD)` — skill strips to YYYY-MM automatically (no error)
-- [ ] T006 [P] [US2] In `skills/scorecard/SKILL.md` frontmatter `description` field, add mention of monthly entry support (e.g., "recording weekly and monthly values"); in the `## Rules` section, note that `period=month` enables monthly entries
+- [X] T005 [US2] In `skills/scorecard/SKILL.md` Edge Cases section, add monthly-specific entries: (a) `period=month with non-numeric value` — caught client-side, same "Value must be a number" check; (b) `period=month with invalid date format` — API returns 422, skill surfaces error message; (c) `period=month with full date (YYYY-MM-DD)` — skill strips to YYYY-MM automatically (no error)
+- [X] T006 [P] [US2] In `skills/scorecard/SKILL.md` frontmatter `description` field, add mention of monthly entry support (e.g., "recording weekly and monthly values"); in the `## Rules` section, note that `period=month` enables monthly entries
 
 **Checkpoint**: All two user stories functional. Monthly entry recording fully supported.
 
@@ -84,9 +84,9 @@ skills/scorecard/references/api-reference.md  ← synced copy (via /sync-plugin)
 
 **Purpose**: Sync shared files, validate end-to-end, finalize.
 
-- [ ] T007 Run `/sync-plugin` to copy updated `api-reference.md` to all skill `references/` directories and bump the plugin patch version in `.claude-plugin/plugin.json`
-- [ ] T008 [P] Validate all changes with live API calls per `specs/034-monthly-measure-entry-29/quickstart.md` test commands (weekly no-regression + monthly entry + 422 cases)
-- [ ] T009 Commit all changes on branch `034-monthly-measure-entry-29` with a descriptive message
+- [X] T007 Run `/sync-plugin` to copy updated `api-reference.md` to all skill `references/` directories and bump the plugin patch version in `.claude-plugin/plugin.json`
+- [X] T008 [P] Validate all changes with live API calls per `specs/034-monthly-measure-entry-29/quickstart.md` test commands (weekly no-regression + monthly entry + 422 cases)
+- [X] T009 Commit all changes on branch `034-monthly-measure-entry-29` with a descriptive message
 
 ---
 

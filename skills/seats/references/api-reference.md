@@ -547,7 +547,7 @@ Team scorecard measures are KPIs tracked weekly on a team's scorecard. Each meas
 | POST | `/teams/{id}/measures` | Create a new measure (body: measure wrapper with name*, unit?, direction?, target_value?, owner_id?) | "add measure", "create KPI", "new measurable", "add scorecard item", "create metric" | — |
 | PATCH | `/measures/{id}` | Update measure fields (body: measure wrapper with name?, unit?, direction?, target_value?, archived?). Use `archived: true` to soft-archive, `archived: false` to restore. | "update measure", "rename KPI", "change target", "edit measurable", "restore measure" | — |
 | DELETE | `/measures/{id}` | Archive a measure (soft-delete, idempotent). Sets is_archived=true. | "archive measure", "delete KPI", "remove measurable", "hide measure" | — |
-| POST | `/measures/{id}/history` | Record a weekly value for a measure (body: date*, value*). Upserts by (measure_id, date). Date must be a Monday. | "record value", "log KPI", "enter score", "record measurable", "update scorecard value", "fill in weekly number" | — |
+| POST | `/measures/{id}/history` | Record a weekly or monthly value for a measure (body: date*, value*, period?). `period` is optional: `"week"` (default, date must be a Monday) or `"month"` (date as `YYYY-MM` or `YYYY-MM-01`, response normalises to `YYYY-MM-01`). Omitting `period` defaults to weekly — fully backward-compatible. Upserts by (measure_id, date). | "record value", "log KPI", "enter score", "record measurable", "update scorecard value", "fill in weekly number", "record monthly value", "log monthly score", "enter monthly measure", "monthly scorecard entry" | — |
 | POST | `/measures/{id}/history/note` | Record or clear a per-week text note on a history slot (body: date*, note — string ≤255 chars or null/empty to clear). Upserts; clearing a slot with no note is a no-op. | "add note", "record note", "annotate week", "note this week", "clear note", "remove note", "weekly note" | — |
 
 Measure fields: `id`, `name`, `description` (string | null), `unit` (string, e.g. `"#"`, `"$"`, `"%"`), `direction` (`"higher"` | `"lower"`), `target_value` (numeric string | null), `owner` (UserSimple | null), `is_archived` (boolean), `histories` (MeasureHistory[]).
@@ -559,7 +559,7 @@ MeasureHistory fields: `id` (integer | null — null if no value recorded), `dat
 - `POST /teams/{id}/measures` → `{ "data": Measure }` (201, histories is empty array)
 - `PATCH /measures/{id}` → `{ "data": Measure }` (200, no histories field)
 - `DELETE /measures/{id}` → `{ "data": Measure }` (200, is_archived: true, no histories field)
-- `POST /measures/{id}/history` → `{ "data": { "id": int, "measure_id": int, "date": string, "value": string, "target_value": string | null } }` (200, upsert)
+- `POST /measures/{id}/history` → `{ "data": { "id": int, "measure_id": int, "date": string, "value": string, "target_value": string | null, "period": "week" | "month" } }` (200, upsert; for monthly entries `date` is always normalised to `YYYY-MM-01`)
 - `POST /measures/{id}/history/note` → `{ "data": { "id": int|null, "measure_id": int, "date": string, "note": string|null } }` (200, upsert; id is null when note is cleared)
 
 **Validation**: `name` must not be blank (422). `value` must be a numeric string (422). `date` must be a valid ISO date (Monday preferred). `direction` must be `"higher"` or `"lower"`.

@@ -1,6 +1,6 @@
 ---
 name: rkit:scorecard
-description: View and manage your team's weekly KPI scorecard (measures/measurables). Shows current-year measures with recent weekly history values, and supports recording values, creating, updating, and archiving measures. Use when users mention scorecard, KPIs, measurables, weekly metrics, measures, recording values, or team scorecard management.
+description: View and manage your team's KPI scorecard (measures/measurables). Shows current-year measures with recent weekly history values, and supports recording weekly and monthly values, creating, updating, and archiving measures. Use when users mention scorecard, KPIs, measurables, weekly metrics, monthly metrics, measures, recording values, monthly scorecard entry, or team scorecard management.
 disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Bash(date *), Read, Glob, Grep, AskUserQuestion
@@ -18,11 +18,12 @@ View and manage the team weekly KPI scorecard.
 ## Rules
 
 - **Confirm writes.** GET requests execute immediately. POST/PATCH/DELETE require user confirmation before executing.
-- **Show IDs.** Always include measure IDs in output for follow-up reference.
+- **Show IDs.** Always include measure IDs and history entry IDs in output for follow-up reference.
 - **Concise output.** Tables and short summaries. No filler prose.
 - **Direct execution.** Use Bash with api.sh for all API calls. Never use Task agents or subagents.
 - **Framework-aware.** Use the team's `framework` field: EOS teams use "Measurables" instead of "Measures" in labels. "Scorecard" is universal.
 - **Scoped tools.** Use `Bash(scripts/api.sh *)` and `Bash(jq *)` — never raw curl.
+- **Monthly entries.** Use `period=month` flag on the `record` command to record a monthly value. Weekly is the default when `period=` is omitted.
 
 ## Argument Parsing
 
@@ -32,7 +33,7 @@ View and manage the team weekly KPI scorecard.
 | `--year YYYY` | Show history for specified year |
 | `--include-archived` | Include archived measures in list view |
 | `--team {id}` | Use specified team instead of default |
-| `record "NAME" VALUE [date=YYYY-MM-DD]` | Record a weekly value for a measure |
+| `record "NAME" VALUE [date=YYYY-MM-DD|YYYY-MM] [period=month]` | Record a value for a measure (weekly by default; add `period=month` for a monthly entry) |
 | `note "NAME" "TEXT" [date=YYYY-MM-DD]` | Record a per-week note for a measure |
 | `note clear "NAME" [date=YYYY-MM-DD]` | Clear the note for a measure's week |
 | `add "NAME" [unit=...] [direction=...] [target=...]` | Create a new measure |
@@ -246,10 +247,17 @@ Triggered when: first arg is `record`.
 Extract:
 - `NAME` = arg 2 (measure name, required)
 - `VALUE` = arg 3 (numeric value, required)
-- `DATE` = from `date=YYYY-MM-DD` if present in args (optional)
+- `DATE_ARG` = from `date=...` if present in args (optional; may be `YYYY-MM-DD` or `YYYY-MM`)
+- `PERIOD` = from `period=...` if present in args (optional; must be `"month"` if provided; default: `"week"`)
 
-If NAME is missing: "Usage: `/rkit:scorecard record \"Measure Name\" VALUE [date=YYYY-MM-DD]`" and stop.
+If NAME is missing: "Usage: `/rkit:scorecard record \"Measure Name\" VALUE [date=YYYY-MM-DD|YYYY-MM] [period=month]`" and stop.
 If VALUE is missing: "Value is required. Usage: `/rkit:scorecard record \"Name\" VALUE`" and stop.
+
+**Period-ambiguity check**: If no `period=` arg was provided AND `DATE_ARG` is in `YYYY-MM-DD` format, ask:
+```
+"{DATE_ARG}" looks like a full date. Record this as a weekly or monthly entry?
+```
+Use AskUserQuestion with options `[weekly/monthly]`. Set PERIOD based on the user's answer.
 
 ### Step 2: Validate value (client-side)
 
@@ -261,9 +269,17 @@ Stop — do not call the API.
 
 ### Step 3: Compute date
 
-If `date=YYYY-MM-DD` was provided, use that.
+**Monthly path** (`PERIOD == "month"`):
+- If `DATE_ARG` is in `YYYY-MM-DD` format: strip to first 7 chars → `YYYY-MM` (e.g. `2026-03-15` → `2026-03`).
+- If `DATE_ARG` is in `YYYY-MM` format: use as-is.
+- If `DATE_ARG` contains only a month name (e.g. "March") or month+year (e.g. "March 2026"): resolve to `YYYY-MM`. If year is absent, default to current year (`date +%Y`) — no prompt.
+- If no `DATE_ARG`: default to current month (`date +%Y-%m`).
 
-Otherwise compute current Monday:
+Set `RECORD_DATE` to the resolved `YYYY-MM` string.
+
+**Weekly path** (`PERIOD == "week"`, default):
+- If `DATE_ARG` is provided: use as `RECORD_DATE`.
+- Otherwise compute current Monday:
 ```bash
 TODAY=$(date +%Y-%m-%d)
 DOW=$(date +%u)
@@ -282,26 +298,39 @@ Extract `MEASURE_ID` and `MEASURE_NAME` from the matched measure.
 
 ### Step 5: Confirm
 
-```
-Record value "{VALUE}" for "{MEASURE_NAME}" (ID: {MEASURE_ID}) for week of {RECORD_DATE}? [y/N]
-```
+Show period-aware confirmation prompt:
+- **Weekly**: `Record value "{VALUE}" for "{MEASURE_NAME}" (ID: {MEASURE_ID}) for week of {RECORD_DATE}? [y/N]`
+- **Monthly**: `Record value "{VALUE}" for "{MEASURE_NAME}" (ID: {MEASURE_ID}) for month of {RECORD_DATE}? [y/N]`
 
 Ask for confirmation using AskUserQuestion. If user says anything other than `y`/`yes`, cancel and show "Cancelled."
 
 ### Step 6: Execute
 
+Build API body based on period:
+
 ```bash
 API_SH="<resolved api.sh path>"
-RESPONSE=$("$API_SH" POST "/measures/$MEASURE_ID/history" \
-  "{\"date\": \"$RECORD_DATE\", \"value\": \"$VALUE\"}")
+if [ "$PERIOD" = "month" ]; then
+  BODY="{\"date\": \"$RECORD_DATE\", \"value\": \"$VALUE\", \"period\": \"month\"}"
+else
+  BODY="{\"date\": \"$RECORD_DATE\", \"value\": \"$VALUE\"}"
+fi
+RESPONSE=$("$API_SH" POST "/measures/$MEASURE_ID/history" "$BODY")
 STATUS=$(echo "$RESPONSE" | jq -r '.status // "error"')
 ```
 
 ### Step 7: Handle response
 
-- **200**: Extract `HISTORY_ID=$(echo "$RESPONSE" | jq -r '.body.data.id // "?"')`, then show: "Recorded: {MEASURE_NAME} — {VALUE} for week of {RECORD_DATE} (history ID: {HISTORY_ID})."
+```bash
+HISTORY_ID=$(echo "$RESPONSE" | jq -r '.body.data.id // "?"')
+CONFIRMED_DATE=$(echo "$RESPONSE" | jq -r '.body.data.date // "$RECORD_DATE"')
+```
+
+- **200**:
+  - Weekly: "Recorded: {MEASURE_NAME} (ID: {MEASURE_ID}) — {VALUE} for week of {CONFIRMED_DATE} (history ID: {HISTORY_ID})."
+  - Monthly: "Recorded: {MEASURE_NAME} (ID: {MEASURE_ID}) — {VALUE} for month of {CONFIRMED_DATE} (history ID: {HISTORY_ID})."
 - **422**: Show API error message: `$(echo "$RESPONSE" | jq -r '.body.error.message // .body // "Validation error"')`
-- **403**: "You don't have permission to record values for this team."
+- **403**: "You don't have permission to record values for this measure. Admin access is required."
 - **404**: "Measure ID {MEASURE_ID} not found."
 - Other: "API error ($STATUS): $(echo "$RESPONSE" | jq -r '.body.error.message // ""')"
 
@@ -618,10 +647,15 @@ STATUS=$(echo "$RESPONSE" | jq -r '.status // "error"')
 - **No default_team_id and no --team**: "No default team configured. Run `/rkit:setup` first."
 - **Empty measures array**: "No active measures on this scorecard. Use `/rkit:scorecard add \"Name\"` to create one."
 - **Measure owner is null**: Display "(none)" in table.
-- **Non-numeric record value**: Catch client-side before API call. "Value must be a number."
+- **Non-numeric record value**: Catch client-side before API call. "Value must be a number." (applies to both weekly and monthly entries)
 - **Measure name matches multiple**: Show numbered disambiguation list. Do not proceed.
 - **Measure name matches none**: "No measure found matching '{name}'."
-- **API 422 on record**: Surface the API error message (e.g. "Date must be a Monday").
+- **API 422 on record**: Surface the API error message (e.g. "Date must be a Monday" for bad weekly date; "Invalid date format" for bad monthly date).
+- **`period=month` with non-numeric value**: Caught client-side (Step 2) — same "Value must be a number" check applies.
+- **`period=month` with invalid date format**: API returns 422; skill surfaces the error message from the response body.
+- **`period=month` with `YYYY-MM-DD` date**: Automatically stripped to `YYYY-MM` — no error shown to user.
+- **Full date (`YYYY-MM-DD`) without `period=`**: Skill asks "Record as weekly or monthly?" before proceeding (Step 1 period-ambiguity check).
+- **Natural-language month without year (e.g. "March")**: Resolved to current year by default — no prompt unless year is genuinely ambiguous.
 
 ## References
 
