@@ -16,8 +16,8 @@
 
 **Purpose**: Confirm current state of affected files before making changes.
 
-- [ ] T001 [P] Read current Measure fields documentation in `api-reference.md` (lines ~540–563) to confirm baseline before edits
-- [ ] T002 [P] Read `skills/scorecard/SKILL.md` Step 6 (List display jq) and Step 4 (Record name resolution) to confirm baseline before edits
+- [X] T001 [P] Read current Measure fields documentation in `api-reference.md` (lines ~540–563) to confirm baseline before edits
+- [X] T002 [P] Read `skills/scorecard/SKILL.md` Step 6 (List display jq) and Step 4 (Record name resolution) to confirm baseline before edits
 
 **Checkpoint**: Baseline confirmed — ready to begin changes
 
@@ -35,11 +35,11 @@ No blocking prerequisites for this feature. All user story phases can proceed af
 
 **Independent Test**: Open `api-reference.md` and verify: (1) Measure fields section lists `data_source_type` with values 0–3; (2) POST and PATCH bodies list roll-up optional params; (3) a note states roll-up fields are response-only when `data_source_type=3`; (4) 422 validation constraints are documented.
 
-- [ ] T003 [US2] Add `data_source_type` to Measure fields line in `api-reference.md` — append to the fields list at line ~553: `data_source_type` (integer: 0=manual, 1=google_sheets, 2=other_api, 3=roll_up, always present)
-- [ ] T004 [US2] Add roll-up conditional response fields note to `api-reference.md` after the Measure fields line — document that `roll_up_type` (`"sum"` | `"average"`) and `roll_up_measure_ids` (integer[]) appear in responses only when `data_source_type=3`
-- [ ] T005 [US2] Update `POST /teams/{id}/measures` row in `api-reference.md` — add optional body params: `data_source_type` (default 0), `roll_up_type`, `roll_up_measure_ids`
-- [ ] T006 [US2] Update `PATCH /measures/{id}` row in `api-reference.md` — add optional body params: `data_source_type`, `roll_up_type`, `roll_up_measure_ids`
-- [ ] T007 [US2] Add 422 validation constraints for roll-up fields to `api-reference.md` notes section — cross-team IDs, self-reference, circular references all return 422; `roll_up_type` must be `"sum"` or `"average"`
+- [X] T003 [US2] Add `data_source_type` to Measure fields line in `api-reference.md` — append to the fields list at line ~553: `data_source_type` (integer: 0=manual, 1=google_sheets, 2=other_api, 3=roll_up, always present)
+- [X] T004 [US2] Add roll-up conditional response fields note to `api-reference.md` after the Measure fields line — document that `roll_up_type` (`"sum"` | `"average"`) and `roll_up_measure_ids` (integer[]) appear in responses only when `data_source_type=3`
+- [X] T005 [US2] Update `POST /teams/{id}/measures` row in `api-reference.md` — add optional body params: `data_source_type` (default 0), `roll_up_type`, `roll_up_measure_ids`
+- [X] T006 [US2] Update `PATCH /measures/{id}` row in `api-reference.md` — add optional body params: `data_source_type`, `roll_up_type`, `roll_up_measure_ids`
+- [X] T007 [US2] Add 422 validation constraints for roll-up fields to `api-reference.md` notes section — cross-team IDs, self-reference, circular references all return 422; `roll_up_type` must be `"sum"` or `"average"`
 
 **Checkpoint**: `api-reference.md` updated — US2 complete and independently verifiable
 
@@ -51,7 +51,7 @@ No blocking prerequisites for this feature. All user story phases can proceed af
 
 **Independent Test**: Run `/rkit:scorecard` on a team with a roll-up measure — the measure name displays `[roll-up: sum]` or `[roll-up: average]`; manual measures are unchanged.
 
-- [ ] T008 [US1] Use `/skill-creator` to update the jq extraction in List Scorecard Step 6 of `skills/scorecard/SKILL.md` — in the `@tsv` block, append to the name field: `+ (if $m.data_source_type == 3 then " [roll-up: " + ($m.roll_up_type // "?") + "]" else "" end)` (place after the existing `[archived]` suffix logic; outputs "sum" or "average" verbatim from API)
+- [X] T008 [US1] Use `/skill-creator` to update the jq extraction in List Scorecard Step 6 of `skills/scorecard/SKILL.md` — in the `@tsv` block, append to the name field: `+ (if $m.data_source_type == 3 then " [roll-up: " + ($m.roll_up_type // "?") + "]" else "" end)` (place after the existing `[archived]` suffix logic; outputs "sum" or "average" verbatim from API)
 
 **Checkpoint**: List view displays roll-up badge — US1 complete and independently verifiable
 
@@ -63,7 +63,7 @@ No blocking prerequisites for this feature. All user story phases can proceed af
 
 **Independent Test**: Run `/rkit:scorecard record "Total Revenue" 500` where "Total Revenue" has `data_source_type=3` — expect message `"Total Revenue" is a roll-up measure (auto-calculated from other measures). Manual value entry is not supported.` with no confirmation prompt.
 
-- [ ] T009 [US3] Use `/skill-creator` to add roll-up entry guard to Record Value flow in `skills/scorecard/SKILL.md` — after Step 4 (Resolve measure name), before Step 5 (Confirm), insert: check `data_source_type` on the matched measure; if `=3`, print `"{MEASURE_NAME}" is a roll-up measure (auto-calculated from other measures). Manual value entry is not supported.` and stop
+- [X] T009 [US3] Use `/skill-creator` to add roll-up entry guard to Record Value flow in `skills/scorecard/SKILL.md` — after Step 4 (Resolve measure name), before Step 5 (Confirm), insert: check `data_source_type` on the matched measure; if `=3`, print `"{MEASURE_NAME}" is a roll-up measure (auto-calculated from other measures). Manual value entry is not supported.` and stop
 
 **Checkpoint**: Roll-up entry guard active — US3 complete and independently verifiable
 
@@ -73,9 +73,9 @@ No blocking prerequisites for this feature. All user story phases can proceed af
 
 **Purpose**: Sync shared files, bump version, verify consistency.
 
-- [ ] T010 Run `/sync-plugin` to copy updated master `api-reference.md` to all `skills/*/references/api-reference.md` copies and bump plugin version
-- [ ] T011 Verify `skills/scorecard/references/api-reference.md` reflects the new measure fields after sync (spot-check `data_source_type` line)
-- [ ] T012 Commit all changes with message `Complete: Measure Data Source Fields (branch: 035-measure-data-source-30, closes #30)` per CLAUDE.md commit checklist (includes version bump and `git push`)
+- [X] T010 Run `/sync-plugin` to copy updated master `api-reference.md` to all `skills/*/references/api-reference.md` copies and bump plugin version
+- [X] T011 Verify `skills/scorecard/references/api-reference.md` reflects the new measure fields after sync (spot-check `data_source_type` line)
+- [X] T012 Commit all changes with message `Complete: Measure Data Source Fields (branch: 035-measure-data-source-30, closes #30)` per CLAUDE.md commit checklist (includes version bump and `git push`)
 
 ---
 
