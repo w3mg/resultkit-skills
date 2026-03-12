@@ -1,98 +1,83 @@
 ---
-description: Commit remaining changes, push branch, merge to main, and push main.
-allowed-tools: Bash, Read, Glob, Grep
+description: Commit all changes, push branch to origin, get Vercel preview URL, and mark GitHub issue ready-for-review
 ---
 
-## Ship Current Branch
+1. Run `git branch --show-current` to capture the current branch name. Store it as BRANCH.
 
-### 1. Identify the current branch
+2. If BRANCH is `main`, stop and tell the user: "Already on main — nothing to ship. Switch to a feature branch first."
 
-```bash
-git branch --show-current
-```
+3. **Clean up debug test scaffolding** — delete any leftover debug test files that should never be committed:
+   - Run: `find __tests__ -name "test-debug*.test.*" -delete 2>/dev/null; find __tests__ -name "debug*.test.*" -delete 2>/dev/null; find e2e -name "test-debug*.spec.*" -delete 2>/dev/null`
+   - These files are always untracked; this is a no-op if none exist.
 
-If already on `main`, stop and tell the user there's nothing to merge.
+4. Run `git status` to check for uncommitted changes.
 
-Store the branch name as `BRANCH`.
+5. If there are staged or unstaged changes (modified/added/deleted files):
+   - Stage all tracked changes with `git add -u`
+   - Stage any new untracked files that are NOT in .gitignore (use `git add` on specific files — never `git add .` or `git add -A` to avoid secrets)
+   - Commit with a descriptive message summarizing the changes
 
-### 2. Extract the GitHub issue number from the branch name
-
-Branches linked to GitHub issues are named `NNN-short-name-ISSUE` (e.g., `031-remove-speckit-25`). Extract the trailing number:
-
-```bash
-ISSUE_NUMBER=$(echo "BRANCH" | grep -oE '[0-9]+$')
-```
-
-This returns the issue number if present, or empty string if the branch has no trailing issue number.
-
-### 3. Commit any remaining changes
-
-Run `git status --porcelain`. If there are uncommitted changes:
-
-1. Stage all changed and untracked files (excluding `.env`, credentials, secrets)
-2. Commit with a descriptive message summarizing the changes
-
-If clean, skip to step 4.
-
-### 4. Add a completion commit on the branch
-
-Look for a spec file at `specs/BRANCH/spec.md`. If it exists:
-
-1. Extract the feature title (first `# ` heading after the frontmatter)
-2. Look for `specs/BRANCH/tasks.md` — if it exists, mark any remaining `- [ ]` tasks as `- [X]` and stage it
-3. Commit with:
-   ```
-   Complete: <feature title> (branch: BRANCH, closes #ISSUE_NUMBER)
-   ```
-   Omit `closes #ISSUE_NUMBER` if ISSUE_NUMBER is empty. Use `git commit --allow-empty` if no file changes remain, to ensure the completion marker always lands in the log.
-
-If no spec file exists but ISSUE_NUMBER is non-empty, still emit an empty completion commit: `Complete: BRANCH (closes #ISSUE_NUMBER)`.
-
-### 5. Push the branch
-
-```bash
-git push origin BRANCH
-```
-
-### 6. Checkout main and pull latest
-
-```bash
-git checkout main && git pull --rebase origin main
-```
-
-### 7. Merge the feature branch
-
-```bash
-git merge BRANCH
-```
-
-If there are merge conflicts, stop and tell the user.
-
-### 8. Push main
-
-```bash
-git push origin main
-```
-
-### 9. Close the GitHub issue (if found)
-
-Use ISSUE_NUMBER from step 2. If it is non-empty:
-
-1. Verify the issue is open:
+6. Push the branch:
    ```bash
-   gh issue view ISSUE_NUMBER --repo w3mg/resultkit-skills --json state --jq '.state'
+   git push origin $BRANCH
    ```
-2. If open, comment and close:
+
+7. **Get the Vercel preview URL** — poll GitHub Deployments until Vercel posts the preview URL (timeout: 3 minutes):
    ```bash
-   gh issue comment ISSUE_NUMBER --repo w3mg/resultkit-skills --body "Completed in branch \`BRANCH\`. Merged to main."
-   gh issue close ISSUE_NUMBER --repo w3mg/resultkit-skills
+   # Poll every 10 seconds for up to 18 attempts (3 minutes)
+   VERCEL_URL=""
+   for i in $(seq 1 18); do
+     DEPLOYMENT_ID=$(gh api "repos/w3mg/resultmaps-web-ui-2/deployments?ref=$BRANCH&per_page=5" \
+       --jq '[.[] | select(.environment | test("Preview|preview"))][0].id // empty' 2>/dev/null)
+     if [ -n "$DEPLOYMENT_ID" ]; then
+       VERCEL_URL=$(gh api "repos/w3mg/resultmaps-web-ui-2/deployments/$DEPLOYMENT_ID/statuses?per_page=1" \
+         --jq '[.[] | select(.state == "success")][0].environment_url // empty' 2>/dev/null)
+       [ -n "$VERCEL_URL" ] && break
+     fi
+     echo "Waiting for Vercel deployment... ($i/18)"
+     sleep 10
+   done
    ```
+   - If `VERCEL_URL` is found: store it for use in step 8.
+   - If not found after timeout: set `VERCEL_URL=""` and continue — the issue comment will note that the URL is pending.
 
-If ISSUE_NUMBER is empty, skip silently.
+8. **Find the GitHub issue number** — extract from BRANCH using this priority order:
+   1. **`-gh<N>` suffix** — match `-gh` followed by digits at the end (e.g. `028-gantt-kibo-ui-gh70` → `70`). Canonical format for `/next-issue` branches.
+   2. **`fix/<N>-` prefix** — match digits immediately after `fix/` (e.g. `fix/42-null-user-crash` → `42`). Canonical format for quick-fix branches.
+   3. **Leading digits (legacy fallback)** — match the leading digits before the first `-` only if neither pattern above matched (e.g. `018-old-style` → `18`). Warn the user that this is a legacy branch name and the issue number may be incorrect.
+   - Store as ISSUE_NUMBER. If no number is found, skip steps 9–10 and report: "No GitHub issue number found in branch name — skipping issue update."
 
-### 10. Report
+9. **Update the GitHub issue**:
+   - Build the comment body:
+     - If VERCEL_URL is set:
+       ```
+       Branch `$BRANCH` pushed to Vercel preview.
 
-Print:
-- Branch merged: `BRANCH`
-- Issue closed: `#ISSUE_NUMBER` (if closed), or omit if none found
-- Remind user to run `/plugin marketplace update` to get the latest
+       **Preview**: $VERCEL_URL
+
+       Ready for review.
+       ```
+     - If VERCEL_URL is empty:
+       ```
+       Branch `$BRANCH` pushed. Vercel preview URL not yet available — check the PR/deployments tab.
+
+       Ready for review.
+       ```
+   - Post the comment: `gh issue comment $ISSUE_NUMBER --body "<comment body>"`
+   - Add "ready-for-review" label: `gh issue edit $ISSUE_NUMBER --add-label "ready-for-review"`
+   - Remove "in-progress" label (if present): `gh issue edit $ISSUE_NUMBER --remove-label "in-progress"` (ignore errors if label wasn't set)
+   - **Do NOT close the issue.**
+
+10. **Exit worktree if applicable** — check if currently in a worktree:
+    ```bash
+    git rev-parse --git-dir
+    ```
+    If the output contains `worktrees` in the path, call `ExitWorktree` with `action=keep`. The branch stays on origin for review; the session returns to the main repo root.
+
+11. **Report**:
+    ```
+    Branch pushed: $BRANCH
+    Vercel preview: $VERCEL_URL (or "pending")
+    Issue #$ISSUE_NUMBER: labeled ready-for-review
+    Worktree: exited (if applicable)
+    ```
