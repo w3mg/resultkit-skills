@@ -16,7 +16,7 @@
 
 **Purpose**: Read existing files to confirm exact insertion points before editing.
 
-- [ ] T001 Read `api-reference.md` lines 270–300 to confirm Users table structure and exact lines to edit
+- [x] T001 Read `api-reference.md` lines 270–300 to confirm Users table structure and exact lines to edit
 
 **Checkpoint**: Insertion points confirmed — ready to update api-reference.md
 
@@ -36,10 +36,10 @@ No blocking prerequisites for this feature — the API endpoint is already deplo
 
 ### Implementation for User Story 1
 
-- [ ] T002 [US1] Add `PATCH /users/me/team-context` row to Users table in `api-reference.md` (after the `POST /users/me/password` row) with description, body param (`team_id*`), success/error codes, user phrases ("switch team", "use team", "set active team", "change my team"), idempotency note
-- [ ] T003 [US1] Update `GET /users/me` row in `api-reference.md` to append note: "`current_team` reflects the team last set via `PATCH /users/me/team-context` (was always null before 2026-03-13 API fix)"
-- [ ] T004 [US1] Update User fields prose block in `api-reference.md` (around line 290) to clarify `current_team` is non-null after a team-context set call
-- [ ] T005 [US1] Add row to User Phrases lookup table in `api-reference.md`: `switch team, use team, set active team, change my team, team context | Set Active Team | PATCH /users/me/team-context`
+- [x] T002 [US1] Add `PATCH /users/me/team-context` row to Users table in `api-reference.md` (after the `POST /users/me/password` row) with description, body param (`team_id*`), success/error codes, user phrases ("switch team", "use team", "set active team", "change my team"), idempotency note
+- [x] T003 [US1] Update `GET /users/me` row in `api-reference.md` to append note: "`current_team` reflects the team last set via `PATCH /users/me/team-context` (was always null before 2026-03-13 API fix)"
+- [x] T004 [US1] Update User fields prose block in `api-reference.md` (around line 290) to clarify `current_team` is non-null after a team-context set call
+- [x] T005 [US1] Add row to User Phrases lookup table in `api-reference.md`: `switch team, use team, set active team, change my team, team context | Set Active Team | PATCH /users/me/team-context`
 
 **Checkpoint**: `api-reference.md` documents the new endpoint completely. User Story 1 is fully testable by reading the file.
 
@@ -53,10 +53,10 @@ No blocking prerequisites for this feature — the API endpoint is already deplo
 
 ### Implementation for User Story 2
 
-- [ ] T006 [US2] Read `skills/teams/SKILL.md` fully to confirm current Argument Parsing table, Rules section, and end of file for insertion points
-- [ ] T007 [US2] Add `use {team_id}` row to Argument Parsing table in `skills/teams/SKILL.md`: "Set the server-side active team to the given team ID (requires confirmation)"
-- [ ] T008 [US2] Update `description` frontmatter in `skills/teams/SKILL.md` to mention team-switching (e.g., add "switch your active team" to the description triggers)
-- [ ] T009 [US2] Add `## Flow: Set Active Team` section to `skills/teams/SKILL.md` with: arg validation, `GET /teams/{team_id}` fetch for team name, confirmation prompt, `PATCH /users/me/team-context` execution, success output ("Active team set to **{name}** (ID: {id})."), and error handling (401 → setup, 422 → human-readable, 404 → team not found)
+- [x] T006 [US2] Read `skills/teams/SKILL.md` fully to confirm current Argument Parsing table, Rules section, and end of file for insertion points
+- [x] T007 [US2] Add `use {team_id}` row to Argument Parsing table in `skills/teams/SKILL.md`: "Set the server-side active team to the given team ID (requires confirmation)"
+- [x] T008 [US2] Update `description` frontmatter in `skills/teams/SKILL.md` to mention team-switching (e.g., add "switch your active team" to the description triggers)
+- [x] T009 [US2] Add `## Flow: Set Active Team` section to `skills/teams/SKILL.md` with: arg validation, `GET /teams/{team_id}` fetch for team name, confirmation prompt, `PATCH /users/me/team-context` execution, success output ("Active team set to **{name}** (ID: {id})."), and error handling (401 → setup, 422 → human-readable, 404 → team not found); also verify `allowed-tools` frontmatter includes a scoped pattern for the new PATCH call (e.g. `bash scripts/api.sh PATCH *`) per Constitution IV
 
 **Checkpoint**: `rkit:teams use {team_id}` works end-to-end: shows confirmation, executes PATCH, confirms active team.
 
@@ -66,9 +66,9 @@ No blocking prerequisites for this feature — the API endpoint is already deplo
 
 **Purpose**: Distribute updated api-reference.md to all skill copies and verify.
 
-- [ ] T010 Run `/sync-plugin` to copy master `api-reference.md` to all `skills/*/references/api-reference.md` copies and bump plugin version
-- [ ] T011 [P] Verify `skills/teams/references/api-reference.md` contains the new `PATCH /users/me/team-context` entry after sync
-- [ ] T012 [P] Spot-check two other skill api-reference copies (e.g., `skills/setup/references/api-reference.md`, `skills/profile/references/api-reference.md`) to confirm sync applied correctly
+- [x] T010 Run `/sync-plugin` to copy master `api-reference.md` to all `skills/*/references/api-reference.md` copies and bump plugin version
+- [x] T011 [P] Verify `skills/teams/references/api-reference.md` contains the new `PATCH /users/me/team-context` entry after sync
+- [x] T012 [P] Spot-check two other skill api-reference copies (e.g., `skills/setup/references/api-reference.md`, `skills/profile/references/api-reference.md`) to confirm sync applied correctly
 
 ---
 

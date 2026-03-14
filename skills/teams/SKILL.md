@@ -1,9 +1,9 @@
 ---
 name: rkit:teams
-description: List your teams, view team members, change member roles, manage team logos, and view team activity logs. Use this skill when users ask about their teams, want to see who's on a team, list team members, check team frameworks, search for a team by name, change a member's role (admin/member), set or remove a team logo, view membership history, or view their organization structure.
+description: List your teams, view team members, change member roles, manage team logos, view team activity logs, and switch your active team. Use this skill when users ask about their teams, want to see who's on a team, list team members, check team frameworks, search for a team by name, change a member's role (admin/member), set or remove a team logo, view membership history, view their organization structure, switch teams, use a team, set active team, or change team context.
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
+allowed-tools: Bash(scripts/api.sh *), Bash(scripts/api.sh PATCH *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---
 
 # rkit:teams
@@ -36,6 +36,7 @@ List teams, view team members, change member roles, and view activity logs.
 | `logs [team_id]` | View team activity logs (membership changes) |
 | `logo set {url} [team_id]` | Set logo for a team (admin only) |
 | `logo remove [team_id]` | Remove logo for a team (admin only) |
+| `use {team_id}` | Set the server-side active team to the given team ID (requires confirmation) |
 
 ---
 
@@ -380,6 +381,52 @@ If `meta.total_pages > 1`, fetch remaining pages and combine results.
 - **Activity logs — no entries**: "No activity logs found for team #{id}."
 - **Activity logs — not a member (403)**: "Access denied (403). You must be a team member to view activity logs."
 - **Activity logs — paginated results**: Fetch all pages and combine before displaying.
+
+---
+
+## Flow: Set Active Team
+
+Triggered by: `use {team_id}`
+
+### Step 1: Validate args
+
+- Extract `team_id` from args.
+- If missing or not numeric: "Usage: `/rkit:teams use {team_id}`\n  Example: `/rkit:teams use 8`" — stop.
+
+### Step 2: Fetch team name for confirmation
+
+```bash
+API_SH="<api.sh path>"
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID")
+```
+
+- On 404: "Team {team_id} not found." — stop.
+- On 401: "Unauthorized (401). Run `/rkit:setup` to update your token." — stop.
+- Extract `body.data.name` for display in confirmation prompt.
+
+### Step 3: Confirm
+
+Show the proposed action and ask for confirmation using AskUserQuestion:
+
+```
+Set active team to **{name}** (ID: {team_id})?
+```
+
+If user declines: "Active team unchanged." — stop.
+
+### Step 4: Execute
+
+```bash
+RESPONSE=$("$API_SH" PATCH "/users/me/team-context" '{"team_id": TEAM_ID}')
+```
+
+### Step 5: Handle response
+
+- On 200: "Active team set to **{name}** (ID: {id})."
+- On 401: "Unauthorized (401). Run `/rkit:setup` to update your token."
+- On 422: "Cannot set team (422): {error message from API body}"
+- On 400: "Bad request (400). Check your input."
+- Other: Show status code and error message.
 
 ## References
 
