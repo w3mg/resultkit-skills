@@ -184,9 +184,9 @@ After receiving answers (or immediately if no decisions are needed), apply all f
 - Prefer targeted Edit calls over full file rewrites — change only the affected sections
 - For each file modified, output a brief summary: which findings were addressed and what changed
 
-End with a final status line: `Applied N fixes across X files. N issues remain (severity list). Ready for /speckit:implement.`
+End with a final status line: `Applied N fixes across X files. N issues remain (severity list).`
 
-If zero issues were found, emit: `No issues found. All artifacts are consistent. Ready for /speckit:implement.`
+If zero issues were found, emit: `No issues found. All artifacts are consistent.`
 
 ### 10. Auto-advance to Implementation
 

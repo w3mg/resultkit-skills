@@ -270,7 +270,7 @@ Response: `{ data: { logo_url: "https://cdn.filestackcontent.com/..." | null } }
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/users/me` | Authenticated user (includes api_token, default_team, current_team). Response wrapped in `{ data: { ... } }`. | "who am I", "my profile", "my token", "my API key" | `/customize` |
+| GET | `/users/me` | Authenticated user (includes api_token, default_team, current_team). Response wrapped in `{ data: { ... } }`. `current_team` reflects the team last set via `PATCH /users/me/team-context` (was always null before 2026-03-13 API fix). | "who am I", "my profile", "my token", "my API key" | `/customize` |
 | GET | `/users/search` | Search users (params: q* — min 2 chars, page, per_page). Searches login, email, first_name, last_name. Returns active users visible to current user. | "find user", "search people", "look up user" | — |
 | GET | `/users/{id}` | User profile (no api_token). Returns UserPublic. | "show user", "user profile", "who is this" | `/users/{id}` |
 | GET | `/users/{id}/items` | User's items (requires same-team membership; params: page, per_page, q, status) | "show their tasks", "user's items", "what's assigned to them" | `/users/{id}` |
@@ -285,9 +285,10 @@ Response: `{ data: { logo_url: "https://cdn.filestackcontent.com/..." | null } }
 | GET | `/users/me/integrations` | Get third-party integration selections (task_management, sales_revops, team_communication) | "my integrations", "connected apps", "integration settings" | `/customize` |
 | PATCH | `/users/me/integrations` | Update integration selections (body: task_management?, sales_revops?, team_communication?). Set to null to disconnect. | "update integrations", "connect app", "disconnect integration" | `/customize` |
 | POST | `/users/me/password` | Change password (body: current_password?, password*, password_confirmation*). current_password required unless OAuth-only user. | "change password", "update password", "new password" | `/customize` |
+| PATCH | `/users/me/team-context` | Set the authenticated user's active team (body: team_id*). Returns `{ data: { id, name } }` of the newly active team. Idempotent. Errors: 400 (malformed body), 401 (unauthorized), 422 (team_id missing/invalid/not a member). | "switch team", "use team", "set active team", "change my team" | — |
 
 User fields (`/users/me`): `id`, `login`, `email`, `first_name`, `last_name`,
-`api_token`, `default_team` (TeamSimple | null), `current_team` (TeamSimple | null).
+`api_token`, `default_team` (TeamSimple | null), `current_team` (TeamSimple | null — reflects the team last set via `PATCH /users/me/team-context`. Non-null after at least one team-context set call).
 
 UserPublic fields: `id`, `login`, `email`, `first_name`, `last_name`.
 
@@ -739,6 +740,7 @@ Delete responses return `204 No Content` with empty body.
 | rocks, goals, quarterly priorities | User Rocks | `GET /users/{user_id}/rocks` |
 | feedback, High5s, kudos, recognition | User Feedback | `GET /users/{user_id}/feedback` |
 | check login, login available, check username, is handle available, username taken | Check Login | `GET /users/check-login` |
+| switch team, use team, set active team, change my team, team context | Set Active Team | `PATCH /users/me/team-context` |
 
 ### Item Types
 

@@ -7,12 +7,3 @@ Thumbs.db
 .idea/
 .env*
 
-# Dev-only command symlinks (auto-created by .claude/hooks/setup-symlinks.sh on session start)
-.claude/commands/speckit
-.claude/commands/next-issue.md
-.claude/commands/ship-it.md
-.claude/commands/close-issue.md
-.claude/commands/sync-plugin.md
-
-# Local-only skills (not distributed with plugin)
-.claude/skills/setup-new-skill/
