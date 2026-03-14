@@ -194,7 +194,13 @@ Given that feature description, do this:
 
    d. **Update Checklist**: After each validation iteration, update the checklist file with current pass/fail status
 
-8. Report completion with branch name, spec file path, checklist results, and readiness for the next phase (`/speckit.clarify` or `/speckit.plan`).
+7. **Auto-advance to the next phase**:
+
+   - Scan the final spec for any remaining `[NEEDS CLARIFICATION` markers.
+   - **If any remain**: Run `/speckit:clarify` automatically — do not ask the user first.
+   - **If none remain**: Run `/speckit:plan` automatically — do not ask the user first.
+
+   Report the branch name, spec file path, and checklist results, then immediately invoke the appropriate skill.
 
 **NOTE:** The script creates and checks out the new branch and initializes the spec file before writing.
 

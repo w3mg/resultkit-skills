@@ -36,8 +36,8 @@ View and manage the team weekly KPI scorecard.
 | `record "NAME" VALUE [date=YYYY-MM-DD|YYYY-MM] [period=month]` | Record a value for a measure (weekly by default; add `period=month` for a monthly entry) |
 | `note "NAME" "TEXT" [date=YYYY-MM-DD]` | Record a per-week note for a measure |
 | `note clear "NAME" [date=YYYY-MM-DD]` | Clear the note for a measure's week |
-| `add "NAME" [unit=...] [direction=...] [target=...]` | Create a new measure |
-| `update "NAME" [name=...] [unit=...] [direction=...] [target=...]` | Update measure fields |
+| `add "NAME" [unit=...] [direction=...] [target=...] [chart_type=...]` | Create a new measure |
+| `update "NAME" [name=...] [unit=...] [direction=...] [target=...] [chart_type=...]` | Update measure fields |
 | `archive "NAME"` | Archive (soft-delete) a measure |
 
 ---
@@ -185,8 +185,8 @@ No active measures on this scorecard. Use `/rkit:scorecard add "Name"` to create
 Team Scorecard — {TEAM_NAME} ({FRAMEWORK_UPPER}) — {YEAR}
 Showing last 4 weeks
 
-ID   Name                  Unit  Dir     Target  Owner       {H1}    {H2}    {H3}    {H4}
-──   ────────────────────  ────  ──────  ──────  ──────────  ──────  ──────  ──────  ──────
+ID   Name                  Unit  Dir     Target  Owner       {H1}    {H2}    {H3}    {H4}    Chart
+──   ────────────────────  ────  ──────  ──────  ──────────  ──────  ──────  ──────  ──────  ──────────────
 ...
 ```
 
@@ -209,7 +209,8 @@ echo "$RESPONSE" | jq -r \
      (($h[$w1] // "—") + (if $notes[$w1] then "*" else "" end)),
      (($h[$w2] // "—") + (if $notes[$w2] then "*" else "" end)),
      (($h[$w3] // "—") + (if $notes[$w3] then "*" else "" end)),
-     (($h[$w4] // "—") + (if $notes[$w4] then "*" else "" end))
+     (($h[$w4] // "—") + (if $notes[$w4] then "*" else "" end)),
+     ($m.chart_type // "—")
    ] | @tsv'
 ```
 
@@ -478,12 +479,18 @@ Extract from args:
 - `UNIT` = value from `unit=...` if present (default: `""`)
 - `DIRECTION` = value from `direction=...` if present (default: `"higher"`)
 - `TARGET` = value from `target=...` if present (default: none)
+- `CHART_TYPE` = value from `chart_type=...` if present (default: none)
 
 If NAME is missing or blank:
 ```
-Measure name is required. Usage: `/rkit:scorecard add "Name" [unit=...] [direction=higher|lower] [target=...]`
+Measure name is required. Usage: `/rkit:scorecard add "Name" [unit=...] [direction=higher|lower] [target=...] [chart_type=...]`
 ```
 Stop.
+
+If `CHART_TYPE` is provided, validate against enum (`pie`, `progress_circle`, `progress_bar`, `trend`, `bar_chart`). If invalid, stop with:
+```
+Invalid chart_type "{CHART_TYPE}". Valid values: pie, progress_circle, progress_bar, trend, bar_chart
+```
 
 ### Step 2: Resolve team ID
 
@@ -492,7 +499,7 @@ Use Team ID Resolution.
 ### Step 3: Confirm
 
 ```
-Create measure "{NAME}" (unit: {UNIT or "none"}, direction: {DIRECTION}, target: {TARGET or "none"})? [y/N]
+Create measure "{NAME}" (unit: {UNIT or "none"}, direction: {DIRECTION}, target: {TARGET or "none"}, chart_type: {CHART_TYPE or "none"})? [y/N]
 ```
 
 Ask for confirmation. If not `y`/`yes`, show "Cancelled."
@@ -508,6 +515,9 @@ BODY="{\"measure\": {\"name\": \"$NAME\", \"unit\": \"$UNIT\", \"direction\": \"
 if [ -n "$TARGET" ]; then
   BODY="$BODY, \"target_value\": \"$TARGET\""
 fi
+if [ -n "$CHART_TYPE" ]; then
+  BODY="$BODY, \"chart_type\": \"$CHART_TYPE\""
+fi
 BODY="$BODY}}"
 
 RESPONSE=$("$API_SH" POST "/teams/$TEAM_ID/measures" "$BODY")
@@ -516,7 +526,7 @@ STATUS=$(echo "$RESPONSE" | jq -r '.status // "error"')
 
 ### Step 5: Handle response
 
-- **201**: Show: "Created: {name} (ID: {id}, unit: {unit or "none"}, direction: {direction}, target: {target_value or "none"})."
+- **201**: Show: "Created: {name} (ID: {id}, unit: {unit or "none"}, direction: {direction}, target: {target_value or "none"}, chart_type: {chart_type or "none"})."
   Extract from `RESPONSE.body.data`.
 - **422**: Show API error message: `$(echo "$RESPONSE" | jq -r '.body.error.message // "Validation error"')`
 - **403**: "You don't have permission to add measures to this team."
@@ -536,9 +546,15 @@ Extract:
 - `UNIT` = value from `unit=...` if present
 - `DIRECTION` = value from `direction=...` if present
 - `TARGET` = value from `target=...` if present
+- `CHART_TYPE` = value from `chart_type=...` if present (may be `"null"` to clear)
 
-If NAME is missing: "Usage: `/rkit:scorecard update \"Name\" [name=...] [unit=...] [direction=...] [target=...]`" and stop.
-If no update fields provided: "No fields to update. Specify at least one of: name, unit, direction, target." and stop.
+If NAME is missing: "Usage: `/rkit:scorecard update \"Name\" [name=...] [unit=...] [direction=...] [target=...] [chart_type=...]`" and stop.
+If no update fields provided: "No fields to update. Specify at least one of: name, unit, direction, target, chart_type." and stop.
+
+If `CHART_TYPE` is provided and is not the string `"null"`, validate against enum (`pie`, `progress_circle`, `progress_bar`, `trend`, `bar_chart`). If invalid, stop with:
+```
+Invalid chart_type "{CHART_TYPE}". Valid values: pie, progress_circle, progress_bar, trend, bar_chart (or "null" to clear)
+```
 
 ### Step 2: Resolve measure name
 
@@ -554,6 +570,7 @@ name → "{NEW_NAME}"
 unit → "{UNIT}"
 direction → "{DIRECTION}"
 target → "{TARGET}"
+chart_type → "{CHART_TYPE}" (or "cleared" when CHART_TYPE is "null")
 ```
 
 ### Step 4: Confirm
@@ -575,6 +592,13 @@ FIELDS=""
 [ -n "$UNIT" ] && FIELDS="$FIELDS\"unit\": \"$UNIT\","
 [ -n "$DIRECTION" ] && FIELDS="$FIELDS\"direction\": \"$DIRECTION\","
 [ -n "$TARGET" ] && FIELDS="$FIELDS\"target_value\": \"$TARGET\","
+if [ -n "$CHART_TYPE" ]; then
+  if [ "$CHART_TYPE" = "null" ]; then
+    FIELDS="$FIELDS\"chart_type\": null,"
+  else
+    FIELDS="$FIELDS\"chart_type\": \"$CHART_TYPE\","
+  fi
+fi
 FIELDS="${FIELDS%,}"  # remove trailing comma
 BODY="{\"measure\": {$FIELDS}}"
 
