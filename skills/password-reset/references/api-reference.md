@@ -149,6 +149,27 @@ Integration fields: `id`, `type` ("slack"; others TBD), `name`, `webhook_url`, `
 
 Response: `{ data: { logo_url: "https://cdn.filestackcontent.com/..." | null } }`. Errors: 403 (non-admin), 404 (team not found), 422 (invalid URL — POST only).
 
+### Team Settings
+
+Per-team boolean settings stored in `object_metas` table — no schema changes required.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/settings` | Get all team settings (auth: any team member) | "team settings", "show settings", "is strict mode on", "check team settings" | `/teams/{id}` |
+| PATCH | `/teams/{id}/settings` | Update one or more settings (auth: team admin only). Unrecognized keys silently ignored. Returns full settings object after update. | "update settings", "change setting", "enable strict mode", "turn on bhag", "toggle setting" | `/teams/{id}` |
+
+Settings response shape: `{ "data": { "is_cascading_goals": bool, "is_strict": bool, "bhag_enabled": bool, "assignments_require_review": bool, "skip_show_completion_message": bool } }`.
+
+| Setting Key | Description |
+|-------------|-------------|
+| `is_cascading_goals` | Whether goals cascade to sub-teams |
+| `is_strict` | EOS strict meeting accountability mode (EOS teams default `true` when no record exists) |
+| `bhag_enabled` | Whether the BHAG section is visible |
+| `assignments_require_review` | Whether action assignments require a review step |
+| `skip_show_completion_message` | Whether to suppress the item completion message |
+
+PATCH body: any subset of the five recognized boolean keys (e.g. `{ "is_strict": false }`). Errors: 400 (invalid team id), 401 (no auth), 403 (GET: not a team member; PATCH: not a team admin), 404 (team not found), 422 (non-boolean value sent — `{ "error": { "code": "validation_error", "details": { "<key>": ["must be a boolean"] } } }`).
+
 ### Team Weekly Board (Items)
 
 | Method | Path | Description | User Phrases | Web URL |
