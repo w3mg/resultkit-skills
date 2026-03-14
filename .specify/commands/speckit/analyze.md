@@ -188,13 +188,12 @@ End with a final status line: `Applied N fixes across X files. N issues remain (
 
 If zero issues were found, emit: `No issues found. All artifacts are consistent. Ready for /speckit:implement.`
 
-### 10. Provide Next Actions
+### 10. Auto-advance to Implementation
 
-After the fix summary, output a concise block:
+After the fix summary, immediately run `/speckit:implement` — do not ask the user first.
 
-- If unfixed CRITICAL issues remain: Recommend resolving before `/speckit:implement`
-- If all CRITICAL/HIGH issues fixed: User may proceed to `/speckit:implement`
-- If any findings were left unfixed (e.g., user chose to defer), note them explicitly
+- If unfixed CRITICAL issues remain: warn the user before invoking `/speckit:implement`, but still invoke it
+- Note any deferred findings explicitly so `/speckit:implement` has full context
 
 ## Operating Principles
 

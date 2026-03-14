@@ -382,7 +382,7 @@ echo "$RESPONSE"
 
 ### Step 4: Handle response
 
-- **200**: Show updated measures list as a table with ID and Name columns.
+- **200**: Show updated measures list as a table with ID, Name, and Chart Type columns. For `chart_type`, display the value when non-null and `—` when null.
 - Other errors: Handle per Error Handling table.
 
 ---
