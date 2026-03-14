@@ -97,10 +97,12 @@ Mute/unmute response: `{ data: { id, name, is_muted } }`.
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/teams/{id}/members` | List members (params: page, per_page, q) | "show members", "who's on the team", "team roster" | `/teams/{id}` |
-| PUT | `/teams/{id}/members` | Add member (body: user_id*, role?: "member"\|"admin") | "add member", "invite to team", "make admin" | `/teams/{id}` |
-| PATCH | `/teams/{id}/members/{user_id}` | Change member role (body: role* — "admin" or "member"). Admin only. | "change role", "make admin", "promote to admin", "demote member", "change member role" | `/teams/{id}` |
+| PUT | `/teams/{id}/members` | Add existing user to team (body: user_id*, role?: "member"\|"admin") | "add member", "make admin" | `/teams/{id}` |
+| POST | `/teams/{id}/members/invite` | Invite new user by email (body: email*, first_name*, last_name*). Creates passive user + sends invite email via SES (fire-and-forget). Admin only. Returns 201 with membership. | "invite member", "invite to team", "send invite", "invite new user" | `/teams/{id}` |
+| PATCH | `/teams/{id}/members/{user_id}` | Change member role (body: role* — "admin" or "member"). Admin-only. Cannot demote last admin. | "change role", "make admin", "promote to admin", "demote member", "change member role" | `/teams/{id}` |
 | DELETE | `/teams/{id}/members/{user_id}` | Remove member | "remove member", "kick from team" | `/teams/{id}` |
-| PATCH | `/teams/{id}/members/{user_id}` | Change member role (body: role* — "admin" or "member"). Admin-only. Cannot demote last admin. | "change role", "promote to admin", "demote member", "make admin" | `/teams/{id}` |
+
+POST /teams/{id}/members/invite body: `{ "email", "first_name", "last_name" }`. Response 201: `{ "data": { "id", "team": { "id", "name" }, "user": { "id", "login", "first_name", "last_name" }, "role": "member" } }`. Errors: 401, 403 (not team admin), 404, 422 (email taken or blank fields). Invited user is created in `passive` state — cannot log in until they complete sign-up via the invitation email link. Email delivery is fire-and-forget (SES failure does not fail the request). If email already belongs to an existing user, returns 422 with `details.email: ["has already been taken"]` — use PUT /teams/{id}/members to add existing users instead.
 
 PATCH /teams/{id}/members/{user_id} body: `{ "role": "admin" | "member" }`. Response: `{ "data": { "id", "login", "first_name", "last_name", "email", "role" } }`. Errors: 401 (unauthorized), 403 (not a team admin), 404 (team or user not found), 422 (invalid role).
 
