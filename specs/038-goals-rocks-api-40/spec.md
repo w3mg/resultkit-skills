@@ -5,6 +5,14 @@
 **Status**: Draft
 **Input**: GitHub Issue #40 — API Change Handoff: Goals, Rocks & Milestones API (EOS)
 
+## Clarifications
+
+### Session 2026-03-18
+
+- Q: Are entity field names `goal_type` and `progress_color` correct? → A: No. Curl testing confirmed: `goal_type` → `type` (values: `"yearly_goal"`, `"rock"`, `"milestone"`), `progress_color` → `color`. Milestones do NOT include `updated_at`.
+- Q: Does an MCP tool exist for the renamed `GET /teams/{id}/targets` read endpoint? → A: No. There is no MCP tool for the read-only targets endpoint. The old `get_team_strategy` tool was removed, not renamed.
+- Q: Are milestone year/quarter filters reliable? → A: Known bug — `GET /teams/:id/milestones?year=&quarter=` returns incorrect results. Workaround: use `parent_id` filter instead.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Update API Reference for New Endpoints (Priority: P1)
@@ -83,6 +91,7 @@ As a user giving natural-language commands about goals, rocks, and milestones, I
 - What happens when a user tries to align a rock without specifying a parent goal? The skill should prompt for the goal ID or show available goals.
 - What happens when a user uses old terminology like "create a strategy node"? The skill should still understand the intent and route to the correct typed endpoint.
 - What happens when `GET /teams/{id}/targets` returns a different response shape than the old `GET /teams/{id}/strategy`? The skill's display logic must handle the new shape.
+- What happens when a user lists milestones filtered by year/quarter? Known bug: the V2 API returns incorrect results for `?year=&quarter=` filters. The skill MUST use `?parent_id=ROCK_ID` filter as the workaround, which returns correct results.
 
 ## Requirements *(mandatory)*
 
@@ -99,20 +108,21 @@ As a user giving natural-language commands about goals, rocks, and milestones, I
 - **FR-009**: System MUST document the EOS-only restriction (422 response) for all new endpoints
 - **FR-010**: System MUST update user phrase mappings in api-reference.md to cover goals, rocks, and milestones terminology
 - **FR-011**: System MUST sync the updated api-reference.md to all skill directories via `/sync-plugin`
-- **FR-012**: System MUST update any references to `get_team_strategy` MCP tool name to `get_team_targets` in documentation
+- **FR-012**: System MUST remove any references to the `get_team_strategy` MCP tool from documentation (no replacement MCP tool exists for the read-only targets endpoint)
+- **FR-013**: System MUST use `parent_id` filter (not year/quarter) when listing milestones in the strategy skill, due to a known API bug with year/quarter milestone filtering
 
 ### Key Entities
 
-- **Goal**: A yearly objective for an EOS team. Key attributes: name, description, status, goal_type, achieve_by, progress_color, is_visible_to_team, assignees, creator
-- **Rock**: A quarterly priority aligned to a yearly goal. Key attributes: name, description, status, parent_id (goal), year, quarter, assignees, creator
-- **Milestone**: A specific deliverable aligned to a rock. Key attributes: name, description, status, type, due, parent_id (rock), assignees, creator
+- **Goal**: A yearly objective for an EOS team. Key attributes: name, description, status, type (`"yearly_goal"`), achieve_by, color, is_visible_to_team, assignees, creator, created_at, updated_at
+- **Rock**: A quarterly priority aligned to a yearly goal. Key attributes: name, description, status, type (`"rock"`), achieve_by, color, is_visible_to_team, parent_id (goal), persist_until_cleared, assignees, creator, created_at, updated_at
+- **Milestone**: A specific deliverable aligned to a rock. Key attributes: name, description, status, type (`"milestone"`), due, color, parent_id (rock), assignees, creator, created_at (no updated_at)
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
 - **SC-001**: All 7 removed strategy mutation endpoints are absent from api-reference.md and all skill copies
-- **SC-002**: All 14 new endpoints are documented in api-reference.md with correct request/response shapes matching the API handoff specification
+- **SC-002**: All 14 new endpoints are documented in api-reference.md with correct field names (`type` not `goal_type`, `color` not `progress_color`) matching curl-verified response shapes
 - **SC-003**: The strategy skill successfully creates goals, rocks, and milestones using the new typed endpoints
 - **SC-004**: The strategy skill successfully aligns rocks to goals and milestones to rocks using the new PUT endpoints
 - **SC-005**: The strategy skill successfully retrieves the strategy tree using `GET /teams/{id}/targets`
@@ -123,5 +133,5 @@ As a user giving natural-language commands about goals, rocks, and milestones, I
 
 - The `GET /teams/{id}/targets` response shape is identical or compatible with the old `GET /teams/{id}/strategy` response, since the handoff only mentions a rename, not a schema change.
 - The strategy skill's display/tree-rendering logic does not need changes beyond the endpoint URLs, since the read endpoint was only renamed.
-- DELETE operations now archive directly — there is no separate "unlink" vs "archive" distinction in the new API.
+- DELETE operations now archive directly (no more `also_archive` flag). To unlink without archiving, use PATCH to set `parent_id: null`. The old single-endpoint approach (`DELETE /strategy/{type}/{id}` with `also_archive` boolean) is replaced by two methods: PATCH (unlink) and DELETE (archive).
 - The `skills/profile/SKILL.md` progress metrics (`strategy.rocks_realized_all_time`, etc.) are unaffected since they come from a different endpoint.

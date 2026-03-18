@@ -564,17 +564,13 @@ MeasureHistory fields: `id` (integer | null — null if no value recorded), `dat
 
 **Validation**: `name` must not be blank (422). `value` must be a numeric string (422). `date` must be a valid ISO date (Monday preferred). `direction` must be `"higher"` or `"lower"`.
 
-## Strategy
+## Strategy & Targets
 
-Unified strategy tree API. Returns goals, rocks, objectives, key results, focus areas, and milestones as a nested tree whose shape depends on the team's management framework (EOS, OKR, or 4DX). Objects not linked to any parent appear in the `unaligned` list.
+### Strategy Tree (read-only, all frameworks)
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/strategy` | Get team strategy tree (params: year?, quarter? — default current; use `"All"` or `0` for all) | "show strategy", "strategy tree", "goals and rocks", "team objectives", "OKRs", "V2MOM", "show rocks", "annual goals", "quarterly priorities" | `/teams/{id}` |
-| POST | `/teams/{id}/strategy` | Create a strategy object (body: name*, description?, status?, due?, assignees?, parent_id?, parent_type?, is_focus_area?) | "create goal", "add rock", "new objective", "add key result", "create focus area", "add milestone" | `/teams/{id}` |
-| PATCH | `/strategy/{objectType}/{objectId}` | Update a strategy object (body: name?, description?, status?, due?, assignees?). Assignees array replaces all existing. | "update goal", "rename rock", "change objective status", "edit key result", "mark goal complete" | — |
-| DELETE | `/strategy/{objectType}/{objectId}` | Detach object from parent (body: parent_id*, parent_type*, also_archive?). Object is kept unless `also_archive: true`. | "remove rock from goal", "unlink objective", "detach key result", "archive goal" | — |
-| PUT | `/strategy/align` | Link an object to a parent in the strategy tree (body: object_id*, object_type*, parent_id*, parent_type*) | "align rock to goal", "link key result", "connect objective", "move under goal" | — |
+| GET | `/teams/{id}/targets` | Get team strategy tree (params: year?, quarter? — default current; use `"All"` or `0` for all) | "show strategy", "strategy tree", "goals and rocks", "team objectives", "OKRs", "V2MOM", "show rocks", "annual goals", "quarterly priorities", "show targets" | `/teams/{id}` |
 
 StrategyResponse: `{ "data": { "framework": string, "strategy": StrategyNode[], "unaligned": StrategyNode[] } }`
 
@@ -584,32 +580,137 @@ StrategyAssignee fields: `id`, `first_name` (string | null), `last_name` (string
 
 **Supported frameworks**: EOS, OKR, 4DX. SRT and V2MOM are **not yet supported** (returns 400 error).
 
-**Framework hierarchy and type inference** (POST auto-infers type from position):
-- **EOS**: root → yearly_goal; under yearly_goal → rock; under rock → milestone (3 levels)
-- **OKR**: root → focus_area; under focus_area → objective; under objective → key_result (3 levels)
-- **4DX**: root → focus_area; under focus_area → objective (WIG); under objective → key_result (lead measure); under key_result → action (4 levels)
-- Creating under a leaf node (milestone, key_result in EOS/OKR, action in 4DX) → 422 error.
-
 **GET filtering rules**: EOS: yearly goals by `year`, rocks by `quarter` (persistent active rocks always included, realized persistent excluded). OKR: focus areas included if they have qualifying children, objectives "pulled up" if any child key result is in range. 4DX: same as OKR for L1-L3, actions filtered by year/quarter.
 
-**Authorization**: Root-level creation requires team admin. Child creation requires team admin or node-level assignment on the parent (assignee of the parent or any ancestor).
+**Inherited nodes**: Nodes with `inherited: true` come from a parent team and are read-only. `inherited_from` contains the source `team_id` and `team_name`.
 
-**Mutation route aliases**: Team-less routes (preferred): `PUT /strategy/align`, `PATCH /strategy/{objectType}/{objectId}`, `DELETE /strategy/{objectType}/{objectId}`. Team-scoped routes also exist: `PUT /teams/:id/strategy`, `PATCH /teams/:id/strategy`, `DELETE /teams/:id/strategy`.
+### Goals — Yearly (EOS only)
 
-**Create request**: `name` (required). `parent_id` + `parent_type` to create as child (use `object_type` value from GET response as `parent_type`, or `"Goal"`/`"Item"`). Without `parent_id`, creates at root level.
+All goal endpoints return `422 Unprocessable Entity` with message "This endpoint is only available for EOS teams" when called against a non-EOS team.
 
-**Align request**: `object_id`, `object_type`, `parent_id`, `parent_type` (all required). Uses `object_type` values from GET response.
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/goals` | List yearly goals (params: year?) | "list goals", "show yearly goals", "annual goals", "1-year goals" | `/teams/{id}` |
+| POST | `/teams/{id}/goals` | Create a yearly goal (body: name*, achieve_by?, assignee_ids?) | "create goal", "add yearly goal", "new annual goal" | `/teams/{id}` |
+| PATCH | `/goals/{id}` | Update a yearly goal (body: name?, description?, status?, achieve_by?, assignee_ids?) | "update goal", "rename goal", "mark goal complete", "change goal status" | — |
+| DELETE | `/goals/{id}` | Archive a yearly goal | "archive goal", "delete goal", "remove goal" | — |
 
-**Delete request**: `parent_id`, `parent_type` (required) — specifies which parent link to remove. `also_archive` (boolean, default false) — when true, also archives the object.
+**Goal response shape** (verified via curl 2026-03-18):
+```json
+{
+  "data": {
+    "id": 3645,
+    "name": "Hit $10M ARR",
+    "description": null,
+    "status": "active",
+    "type": "yearly_goal",
+    "achieve_by": "2026-12-31",
+    "color": null,
+    "is_visible_to_team": true,
+    "assignees": [{"id": 5, "login": "", "first_name": "Alice", "last_name": "Smith", "profile_photo_thumb_path": null}],
+    "creator": {"id": 5, "login": "", "first_name": "Alice", "last_name": "Smith", "profile_photo_thumb_path": null},
+    "created_at": "2026-01-15T10:00:00.000Z",
+    "updated_at": "2026-01-15T10:00:00.000Z"
+  }
+}
+```
 
 **Response envelopes**:
-- `GET /teams/{id}/strategy` → `{ "data": { "framework": string, "strategy": StrategyNode[], "unaligned": StrategyNode[] } }` (200)
-- `POST /teams/{id}/strategy` → `{ "data": { "id": int, "object_type": string } }` (201)
-- `PATCH /strategy/{objectType}/{objectId}` → 200
-- `DELETE /strategy/{objectType}/{objectId}` → 200 `{ "data": { "unlinked": bool, "archived": bool } }`
-- `PUT /strategy/align` → 200
+- `GET /teams/{id}/goals` → `{ "data": [Goal], "meta": { page, per_page, total, total_pages } }` (200)
+- `POST /teams/{id}/goals` → `{ "data": Goal }` (201)
+- `PATCH /goals/{id}` → `{ "data": Goal }` (200)
+- `DELETE /goals/{id}` → `{ "data": Goal }` (200, status: "archived")
 
-**Inherited nodes**: Nodes with `inherited: true` come from a parent team and are read-only. `inherited_from` contains the source `team_id` and `team_name`.
+### Rocks — Quarterly (EOS only)
+
+All rock endpoints return `422 Unprocessable Entity` for non-EOS teams.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/rocks` | List quarterly rocks (params: year?, quarter?, parent_id?) | "list rocks", "show rocks", "quarterly rocks", "90-day priorities" | `/teams/{id}` |
+| POST | `/teams/{id}/rocks` | Create a rock (body: name*, parent_id?, assignee_ids?) | "create rock", "add rock", "new quarterly rock" | `/teams/{id}` |
+| PUT | `/rocks/{id}` | Align rock to a yearly goal (body: parent_id*) | "align rock to goal", "link rock", "move rock under goal" | — |
+| PATCH | `/rocks/{id}` | Update a rock (body: name?, description?, status?, assignee_ids?) | "update rock", "rename rock", "mark rock complete", "change rock status" | — |
+| DELETE | `/rocks/{id}` | Archive a rock | "archive rock", "delete rock", "remove rock" | — |
+
+**Rock response shape** (verified via curl 2026-03-18):
+```json
+{
+  "data": {
+    "id": 3646,
+    "name": "Launch enterprise tier",
+    "description": null,
+    "status": "active",
+    "type": "rock",
+    "achieve_by": "2026-03-31",
+    "color": null,
+    "is_visible_to_team": true,
+    "assignees": [],
+    "creator": {"id": 5, "login": "", "first_name": "Alice", "last_name": "Smith", "profile_photo_thumb_path": null},
+    "created_at": "2026-01-15T10:00:00.000Z",
+    "updated_at": "2026-01-15T10:00:00.000Z",
+    "parent_id": 3645,
+    "persist_until_cleared": false
+  }
+}
+```
+
+**Response envelopes**:
+- `GET /teams/{id}/rocks` → `{ "data": [Rock], "meta": { page, per_page, total, total_pages } }` (200)
+- `POST /teams/{id}/rocks` → `{ "data": Rock }` (201)
+- `PUT /rocks/{id}` → `{ "data": Rock }` (200)
+- `PATCH /rocks/{id}` → `{ "data": Rock }` (200)
+- `DELETE /rocks/{id}` → `{ "data": Rock }` (200, status: "archived")
+
+### Milestones (EOS only)
+
+All milestone endpoints return `422 Unprocessable Entity` for non-EOS teams.
+
+**Known bug**: `GET /teams/{id}/milestones?year=&quarter=` returns incorrect results. Use `?parent_id=ROCK_ID` instead for accurate filtering.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/milestones` | List milestones (params: parent_id? — **recommended**; year?, quarter? — **avoid, known bug**) | "list milestones", "show milestones", "deliverables" | `/teams/{id}` |
+| POST | `/teams/{id}/milestones` | Create a milestone (body: name*, parent_id?, due?) | "create milestone", "add milestone", "new deliverable" | `/teams/{id}` |
+| PUT | `/milestones/{id}` | Align milestone to a rock (body: parent_id*) | "align milestone to rock", "link milestone", "move milestone under rock" | — |
+| PATCH | `/milestones/{id}` | Update a milestone (body: name?, description?, status?, due?) | "update milestone", "rename milestone", "mark milestone complete" | — |
+| DELETE | `/milestones/{id}` | Archive a milestone | "archive milestone", "delete milestone", "remove milestone" | — |
+
+**Milestone response shape** (verified via curl 2026-03-18):
+```json
+{
+  "data": {
+    "id": 79874,
+    "name": "Sign 3 enterprise customers",
+    "description": null,
+    "status": "active",
+    "type": "milestone",
+    "due": "2026-03-31",
+    "color": null,
+    "parent_id": 3646,
+    "assignees": [],
+    "creator": {"id": 5, "login": "", "first_name": "Alice", "last_name": "Smith", "profile_photo_thumb_path": null},
+    "created_at": "2026-03-17T10:00:00.000Z"
+  }
+}
+```
+
+Note: Milestone responses do NOT include `updated_at`.
+
+**Response envelopes**:
+- `GET /teams/{id}/milestones` → `{ "data": [Milestone], "meta": { page, per_page, total, total_pages } }` (200)
+- `POST /teams/{id}/milestones` → `{ "data": Milestone }` (201)
+- `PUT /milestones/{id}` → `{ "data": Milestone }` (200)
+- `PATCH /milestones/{id}` → `{ "data": Milestone }` (200)
+- `DELETE /milestones/{id}` → `{ "data": Milestone }` (200, status: "archived")
+
+### EOS Hierarchy
+
+- **Goals** are root-level (no parent)
+- **Rocks** align to goals via `parent_id`
+- **Milestones** align to rocks via `parent_id`
+
+**Authorization**: Root-level creation requires team admin. Child creation requires team admin or node-level assignment on the parent (assignee of the parent or any ancestor).
 
 ## Error Responses
 
@@ -628,7 +729,7 @@ All errors return: `{ "error": { "code": "<error_code>", "message": "<human-read
 
 Most list endpoints return: `{ data: [...], meta: { page, per_page, total, total_pages } }`
 
-Delete responses return `204 No Content` with empty body.
+Delete responses vary by resource: strategy objects (goals, rocks, milestones) return `200` with the archived object in `{ "data": ... }`. Other resources may return `204 No Content` with empty body.
 
 ---
 
@@ -715,11 +816,18 @@ Delete responses return `204 No Content` with empty body.
 | move seat, reparent seat, reorganize chart | Move Seat | `PUT /seats/{id}/move` |
 | archive seat, delete seat, remove position | Archive Seat | `DELETE /seats/{id}` |
 | restore seat, unarchive seat | Restore Seat | `PUT /seats/{id}/restore` |
-| strategy, strategy tree, goals and rocks, OKRs, annual goals, team objectives | Strategy Tree | `GET /teams/{id}/strategy` |
-| create goal, add rock, new objective, add key result, create focus area | Create Strategy Object | `POST /teams/{id}/strategy` |
-| update goal, rename rock, change objective status, mark goal complete | Update Strategy Object | `PATCH /strategy/{objectType}/{objectId}` |
-| align rock to goal, link key result, connect objective, move under goal | Align Strategy Object | `PUT /strategy/align` |
-| detach rock, unlink objective, remove from goal, archive goal | Detach Strategy Object | `DELETE /strategy/{objectType}/{objectId}` |
+| strategy, strategy tree, goals and rocks, OKRs, annual goals, team objectives, targets, show targets | Strategy Tree | `GET /teams/{id}/targets` |
+| yearly goal, annual goal, 1-year goal, create goal, add goal, new goal | Goal (yearly) | `POST /teams/{id}/goals`, `GET /teams/{id}/goals` |
+| rock, quarterly rock, 90-day priority, create rock, add rock, new rock | Rock (quarterly) | `POST /teams/{id}/rocks`, `GET /teams/{id}/rocks` |
+| milestone, deliverable, create milestone, add milestone, new milestone | Milestone | `POST /teams/{id}/milestones`, `GET /teams/{id}/milestones` |
+| update goal, rename goal, change goal status, mark goal complete | Update Goal | `PATCH /goals/{id}` |
+| update rock, rename rock, change rock status, mark rock complete | Update Rock | `PATCH /rocks/{id}` |
+| update milestone, rename milestone, mark milestone complete | Update Milestone | `PATCH /milestones/{id}` |
+| align rock to goal, link rock, move rock under goal | Align Rock | `PUT /rocks/{id}` |
+| align milestone to rock, link milestone, move milestone under rock | Align Milestone | `PUT /milestones/{id}` |
+| detach goal, unlink goal, archive goal, delete goal | Archive/Unlink Goal | `PATCH /goals/{id}` (unlink), `DELETE /goals/{id}` (archive) |
+| detach rock, unlink rock, archive rock, remove rock from goal | Archive/Unlink Rock | `PATCH /rocks/{id}` (unlink), `DELETE /rocks/{id}` (archive) |
+| detach milestone, unlink milestone, archive milestone, remove milestone | Archive/Unlink Milestone | `PATCH /milestones/{id}` (unlink), `DELETE /milestones/{id}` (archive) |
 | label, tag, team label | Team Label | `/teams/{id}/labels` |
 | integration, webhook, Slack integration, Discord integration | Team Integration | `/teams/{id}/integrations` |
 | team logo, upload logo, remove logo, delete logo | Team Logo | `POST /teams/{id}/logo`, `DELETE /teams/{id}/logo` |
