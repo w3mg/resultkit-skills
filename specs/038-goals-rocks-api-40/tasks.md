@@ -90,7 +90,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] Run `/sync-plugin` to copy master api-reference.md and scripts/api.sh to all skill directories and bump plugin version
+- [x] T020 [US3] Run `/sync-plugin` to copy master api-reference.md and scripts/api.sh to all skill directories and bump plugin version
 
 **Checkpoint**: All ~40 skill copies of api-reference.md match master. Plugin version bumped.
 
@@ -100,10 +100,10 @@
 
 **Purpose**: Final verification and cleanup
 
-- [ ] T021 Verify GET /teams/{id}/targets returns expected response shape by calling the live API via scripts/api.sh
-- [ ] T022 Verify at least one typed create endpoint (POST /teams/{id}/goals) works against the live API via scripts/api.sh
-- [ ] T023 Verify the Pagination note in api-reference.md is updated if DELETE behavior changed (old: 204 No Content; new goals/rocks/milestones DELETE may return 200 with body)
-- [ ] T024 Confirm no remaining references to old strategy mutation paths (`/strategy/align`, `PATCH /strategy/`, `DELETE /strategy/`, `POST /teams/{id}/strategy`) in api-reference.md or skills/strategy/SKILL.md
+- [x] T021 Verify GET /teams/{id}/targets returns expected response shape by calling the live API via scripts/api.sh
+- [x] T022 Verify at least one typed create endpoint (POST /teams/{id}/goals) works against the live API via scripts/api.sh
+- [x] T023 Verify the Pagination note in api-reference.md is updated if DELETE behavior changed (old: 204 No Content; new goals/rocks/milestones DELETE may return 200 with body)
+- [x] T024 Confirm no remaining references to old strategy mutation paths (`/strategy/align`, `PATCH /strategy/`, `DELETE /strategy/`, `POST /teams/{id}/strategy`) in api-reference.md or skills/strategy/SKILL.md
 
 ---
 
