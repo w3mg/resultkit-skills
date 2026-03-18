@@ -55,7 +55,7 @@ Used by all flows. Fetch once and reuse.
 ```bash
 API_SH="<resolved api.sh path>"
 TEAM_ID="<resolved team ID>"
-RESPONSE=$("$API_SH" GET "/teams/$TEAM_ID/strategy?year=$YEAR&quarter=$QUARTER")
+RESPONSE=$("$API_SH" GET "/teams/$TEAM_ID/targets?year=$YEAR&quarter=$QUARTER")
 echo "$RESPONSE"
 ```
 
@@ -210,23 +210,35 @@ Triggered when: first arg is `create`.
 Extract:
 - `NAME` (required, quoted string after `create`). If missing → error: "Object name is required."
 - `under "PARENT"` (optional) — parent name to create under
-- `due=YYYY-MM-DD` (optional)
+- `due=YYYY-MM-DD` (optional) — maps to `achieve_by` for goals/rocks, `due` for milestones
 - `status=...` (optional, default: active)
 - `assignees=ID,ID,...` (optional, comma-separated user IDs)
-- `--focus-area` flag (optional, OKR/4DX only)
 
-### Step 2: Resolve parent (if specified)
+### Step 2: Determine object type and resolve parent
 
-Fetch tree (if not already fetched). Resolve parent name via Object Name Resolution.
+Fetch tree (if not already fetched).
+
+**Type determination** (EOS hierarchy: goal → rock → milestone):
+
+| Condition | Object Type | Endpoint |
+|-----------|------------|----------|
+| No parent specified (root level) | goal | `POST /teams/$TEAM_ID/goals` |
+| Parent is a `yearly_goal` | rock | `POST /teams/$TEAM_ID/rocks` |
+| Parent is a `rock` | milestone | `POST /teams/$TEAM_ID/milestones` |
+| User explicitly says "create goal" | goal | `POST /teams/$TEAM_ID/goals` |
+| User explicitly says "create rock" | rock | `POST /teams/$TEAM_ID/rocks` |
+| User explicitly says "create milestone" | milestone | `POST /teams/$TEAM_ID/milestones` |
+
+If parent specified, resolve parent name via Object Name Resolution.
 
 If parent is inherited → error: "Cannot create children under inherited node '{name}' — it belongs to {inherited_from.team_name}."
 
-Extract `parent_id` and `parent_type` (= matched node's `object_type`).
+Extract `parent_id` from matched node.
 
 ### Step 3: Confirm
 
-> **Create strategy object**: "{NAME}" {under "{PARENT}" ({parent_type}) | at root level} in team {team_id}
-> Fields: {due, status, assignees if set}
+> **Create {type}**: "{NAME}" {under "{PARENT}" (#{parent_id}) | at root level} in team {team_id}
+> Fields: {due/achieve_by, status, assignees if set}
 
 Ask for confirmation.
 
@@ -234,16 +246,21 @@ Ask for confirmation.
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" POST "/teams/$TEAM_ID/strategy" '{"name":"NAME","parent_id":PID,"parent_type":"TYPE","due":"DATE","status":"STATUS","assignees":[IDS],"is_focus_area":BOOL}')
+# For goals (root level):
+RESPONSE=$("$API_SH" POST "/teams/$TEAM_ID/goals" '{"name":"NAME","achieve_by":"DATE","assignee_ids":[IDS]}')
+# For rocks (under a goal):
+RESPONSE=$("$API_SH" POST "/teams/$TEAM_ID/rocks" '{"name":"NAME","parent_id":GID,"assignee_ids":[IDS]}')
+# For milestones (under a rock):
+RESPONSE=$("$API_SH" POST "/teams/$TEAM_ID/milestones" '{"name":"NAME","parent_id":RID,"due":"DATE"}')
 echo "$RESPONSE"
 ```
 
-Omit null/unset fields from the JSON body. Only `name` is required.
+Omit null/unset fields from the JSON body. Only `name` is required. Use `parent_id` in the POST body to align on creation (single call, no separate PUT needed).
 
 ### Step 5: Handle response
 
-- **201**: Extract `body.data.id` and `body.data.object_type`. Show: "Created: {NAME} ({object_type} #{id})."
-- **422**: Show the validation error message.
+- **201**: Extract `body.data.id` and `body.data.type`. Show: "Created: {NAME} ({type} #{id})."
+- **422**: Show the validation error message. If "This endpoint is only available for EOS teams" → show clearly.
 - **403**: "You don't have permission to create strategy objects in this team."
 - Other errors: Handle per Error Handling table.
 
@@ -277,20 +294,27 @@ Ask for confirmation.
 
 ### Step 4: Execute
 
+Route to the correct endpoint based on `object_type`:
+
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" PATCH "/strategy/$OBJECT_TYPE/$OBJECT_ID" '{"name":"...","status":"...","due":"...","assignees":[...]}')
+# object_type == "yearly_goal":
+RESPONSE=$("$API_SH" PATCH "/goals/$OBJECT_ID" '{"name":"...","status":"...","achieve_by":"...","assignee_ids":[...]}')
+# object_type == "rock":
+RESPONSE=$("$API_SH" PATCH "/rocks/$OBJECT_ID" '{"name":"...","status":"...","assignee_ids":[...]}')
+# object_type == "milestone":
+RESPONSE=$("$API_SH" PATCH "/milestones/$OBJECT_ID" '{"name":"...","status":"...","due":"..."}')
 echo "$RESPONSE"
 ```
 
-Include only the fields being updated.
+Include only the fields being updated. Note: goals/rocks use `achieve_by`, milestones use `due`.
 
 ### Step 5: Handle response
 
 - **200**: "Updated: {name} ({object_type} #{id})."
 - **403**: "You don't have permission to update this object."
 - **404**: "Strategy object not found."
-- **422**: Show the validation error message.
+- **422**: Show the validation error message. If "This endpoint is only available for EOS teams" → show clearly.
 - Other errors: Handle per Error Handling table.
 
 ---
@@ -314,11 +338,16 @@ Fetch tree. Resolve object name and parent name via Object Name Resolution (two 
 If either is inherited → error and stop.
 
 Extract from object: `object_id`, `object_type`
-Extract from parent: `parent_id`, `parent_type` (= `object_type` of the parent node)
+Extract from parent: `parent_id`
+
+Validate alignment is valid:
+- `object_type == "rock"` and parent is `yearly_goal` → OK
+- `object_type == "milestone"` and parent is `rock` → OK
+- Other combinations → error: "Cannot align {object_type} under {parent_type}. Rocks align to goals, milestones align to rocks."
 
 ### Step 3: Confirm
 
-> **Link** "{object_name}" ({object_type} #{object_id}) under "{parent_name}" ({parent_type} #{parent_id})?
+> **Link** "{object_name}" ({object_type} #{object_id}) under "{parent_name}" (#{parent_id})?
 
 Ask for confirmation.
 
@@ -326,7 +355,10 @@ Ask for confirmation.
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" PUT "/strategy/align" '{"object_id":OID,"object_type":"OTYPE","parent_id":PID,"parent_type":"PTYPE"}')
+# object_type == "rock":
+RESPONSE=$("$API_SH" PUT "/rocks/$OBJECT_ID" "{\"parent_id\":$PARENT_ID}")
+# object_type == "milestone":
+RESPONSE=$("$API_SH" PUT "/milestones/$OBJECT_ID" "{\"parent_id\":$PARENT_ID}")
 echo "$RESPONSE"
 ```
 
@@ -334,12 +366,12 @@ echo "$RESPONSE"
 
 - **200**: "Linked: {object_name} now under {parent_name}."
 - **403**: "You don't have permission to link objects in this team."
-- **422**: Show the validation error message.
+- **422**: Show the validation error message. If "This endpoint is only available for EOS teams" → show clearly.
 - Other errors: Handle per Error Handling table.
 
 ---
 
-## Flow: Detach Strategy Object
+## Flow: Detach / Archive Strategy Object
 
 Triggered when: first arg is `detach`.
 
@@ -347,24 +379,28 @@ Triggered when: first arg is `detach`.
 
 Extract:
 - Object name (required, quoted string after `detach`)
-- `from "PARENT"` (required)
+- `from "PARENT"` (optional — required for unlink, not needed for archive-only)
 - `--archive` flag (optional)
 
-If `from` is missing → error: "Usage: `/rkit:strategy detach \"Object\" from \"Parent\"` [--archive]"
+If neither `from` nor `--archive` → error: "Usage: `/rkit:strategy detach \"Object\" from \"Parent\"` [--archive] or `/rkit:strategy detach \"Object\" --archive`"
 
-### Step 2: Resolve both objects
+### Step 2: Resolve object
 
-Fetch tree. Resolve object name and parent name via Object Name Resolution.
+Fetch tree. Resolve object name via Object Name Resolution.
 
 If object is inherited → error: "Cannot detach inherited node '{name}' — it belongs to {inherited_from.team_name}."
 
 Extract from object: `object_type`, `id`
-Extract from parent: `parent_id`, `parent_type` (= `object_type` of the parent node)
 
 ### Step 3: Confirm
 
-> **Detach** "{object_name}" ({object_type} #{id}) from "{parent_name}" ({parent_type} #{parent_id})?
-> {--archive ? "Object will also be archived." : "Object will be preserved (moved to unaligned)."}
+Two paths based on flags:
+
+**Without `--archive`** (unlink only — move to unaligned):
+> **Unlink** "{object_name}" ({object_type} #{id}) from its parent? Object will be preserved (moved to unaligned).
+
+**With `--archive`** (archive the object):
+> **Archive** "{object_name}" ({object_type} #{id})? Object will be archived permanently.
 
 Ask for confirmation.
 
@@ -372,22 +408,39 @@ Ask for confirmation.
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" DELETE "/strategy/$OBJECT_TYPE/$OBJECT_ID" '{"parent_id":PID,"parent_type":"PTYPE","also_archive":BOOL}')
+
+# Without --archive (unlink): PATCH to set parent_id to null
+# object_type == "yearly_goal":
+RESPONSE=$("$API_SH" PATCH "/goals/$OBJECT_ID" '{"parent_id":null}')
+# object_type == "rock":
+RESPONSE=$("$API_SH" PATCH "/rocks/$OBJECT_ID" '{"parent_id":null}')
+# object_type == "milestone":
+RESPONSE=$("$API_SH" PATCH "/milestones/$OBJECT_ID" '{"parent_id":null}')
+
+# With --archive: DELETE to archive
+# object_type == "yearly_goal":
+RESPONSE=$("$API_SH" DELETE "/goals/$OBJECT_ID")
+# object_type == "rock":
+RESPONSE=$("$API_SH" DELETE "/rocks/$OBJECT_ID")
+# object_type == "milestone":
+RESPONSE=$("$API_SH" DELETE "/milestones/$OBJECT_ID")
 echo "$RESPONSE"
 ```
 
 ### Step 5: Handle response
 
-- **204**: "Detached: {object_name} from {parent_name}." + if archived: "Object has been archived."
-- **403**: "You don't have permission to detach objects in this team."
-- **404**: "Strategy object or parent not found."
+- **200 (unlink)**: "Unlinked: {object_name} moved to unaligned."
+- **200 (archive)**: "Archived: {object_name} ({object_type} #{id})."
+- **403**: "You don't have permission to modify objects in this team."
+- **404**: "Strategy object not found."
+- **422**: Show the validation error message. If "This endpoint is only available for EOS teams" → show clearly.
 - Other errors: Handle per Error Handling table.
 
 ---
 
 ## Schemas
 
-**StrategyResponse (from GET /teams/{id}/strategy):**
+**StrategyResponse (from GET /teams/{id}/targets):**
 ```json
 {
   "data": {
@@ -414,22 +467,55 @@ echo "$RESPONSE"
 }
 ```
 
-**CreateResponse (from POST /teams/{id}/strategy):**
+**Goal response (from POST/PATCH /goals, DELETE /goals):**
 ```json
 {
   "data": {
-    "id": 42,
-    "object_type": "rock"
+    "id": 3645, "name": "Hit $10M ARR", "description": null, "status": "active",
+    "type": "yearly_goal", "achieve_by": "2026-12-31", "color": null,
+    "is_visible_to_team": true, "assignees": [...], "creator": {...},
+    "created_at": "...", "updated_at": "..."
   }
 }
 ```
 
+**Rock response (from POST/PUT/PATCH /rocks, DELETE /rocks):**
+```json
+{
+  "data": {
+    "id": 3646, "name": "Launch enterprise tier", "description": null, "status": "active",
+    "type": "rock", "achieve_by": "2026-03-31", "color": null,
+    "is_visible_to_team": true, "parent_id": 3645, "persist_until_cleared": false,
+    "assignees": [...], "creator": {...}, "created_at": "...", "updated_at": "..."
+  }
+}
+```
+
+**Milestone response (from POST/PUT/PATCH /milestones, DELETE /milestones):**
+```json
+{
+  "data": {
+    "id": 79874, "name": "Sign 3 enterprise customers", "description": null,
+    "status": "active", "type": "milestone", "due": "2026-03-31", "color": null,
+    "parent_id": 3646, "assignees": [...], "creator": {...}, "created_at": "..."
+  }
+}
+```
+Note: Milestone responses do NOT include `updated_at`.
+
 **Response envelopes:**
-- `GET /teams/{id}/strategy` → `{ "data": { "framework": string, "strategy": StrategyNode[], "unaligned": StrategyNode[] } }` (200)
-- `POST /teams/{id}/strategy` → `{ "data": { "id": int, "object_type": string } }` (201)
-- `PATCH /strategy/{objectType}/{objectId}` → 200
-- `DELETE /strategy/{objectType}/{objectId}` → 204 No Content
-- `PUT /strategy/align` → 200
+- `GET /teams/{id}/targets` → `{ "data": { "framework": string, "strategy": StrategyNode[], "unaligned": StrategyNode[] } }` (200)
+- `POST /teams/{id}/goals` → `{ "data": Goal }` (201)
+- `POST /teams/{id}/rocks` → `{ "data": Rock }` (201)
+- `POST /teams/{id}/milestones` → `{ "data": Milestone }` (201)
+- `PATCH /goals/{id}` → `{ "data": Goal }` (200)
+- `PATCH /rocks/{id}` → `{ "data": Rock }` (200)
+- `PATCH /milestones/{id}` → `{ "data": Milestone }` (200)
+- `PUT /rocks/{id}` → `{ "data": Rock }` (200) — align
+- `PUT /milestones/{id}` → `{ "data": Milestone }` (200) — align
+- `DELETE /goals/{id}` → `{ "data": Goal }` (200, status: "archived")
+- `DELETE /rocks/{id}` → `{ "data": Rock }` (200, status: "archived")
+- `DELETE /milestones/{id}` → `{ "data": Milestone }` (200, status: "archived")
 
 ---
 
@@ -444,6 +530,7 @@ echo "$RESPONSE"
 | `status: 403` | "Not authorized for this team. Check your team membership." |
 | `status: 404` | "Not found. Check the ID and try again." |
 | `status: 422` | Show the validation error message from the response body. |
+| `status: 422` (EOS-only) | If message contains "only available for EOS teams": "Goal/rock/milestone management is only available for EOS teams. The strategy tree view (`/rkit:strategy` with no args) works for all frameworks." |
 | Other non-200 | Show status code and error message. |
 
 ### Edge Cases
