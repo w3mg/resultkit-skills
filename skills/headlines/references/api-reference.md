@@ -73,7 +73,7 @@ Comment fields: `id`, `body`, `author` (UserSimple), `created_at`.
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/teams` | Authenticated user's teams (params: include_muted, q). Default team first, then alphabetical. | "show my teams", "list teams", "which teams", "my groups" | — |
-| POST | `/teams` | Create team (body: name*, description, framework) | "create team", "new team", "add group" | `/teams/{id}` |
+| POST | `/teams` | Create team (body: name*, description, framework, parent_id?). Optional `parent_id` creates a child team under an existing parent; child inherits parent's account, framework (unless overridden), and team settings (`is_strict`, `assignments_require_review`, `is_cascading_goals`). Returns 403 if caller lacks view access to parent, 422 if parent_id is invalid. | "create team", "new team", "add group", "create child team", "create sub-team", "create team under" | `/teams/{id}` |
 | GET | `/teams/{id}` | Get team detail (includes members) | "show team", "team details", "team info", "who's on the team" | `/teams/{id}` |
 | PATCH | `/teams/{id}` | Update team (body: name, description, framework) | "update team", "rename team", "change framework" | `/teams/{id}` |
 | DELETE | `/teams/{id}` | Delete team (permanent) | "delete team", "remove team" | — |
@@ -85,7 +85,7 @@ Comment fields: `id`, `body`, `author` (UserSimple), `created_at`.
 `parent_id`, `is_default`, `is_muted`, `logo_url` (string | null — Filestack CDN URL or null if no logo set), `creator` (UserSimple),
 `created_at`, `updated_at`.
 
-Team detail fields: `id`, `name`, `description`, `framework`,
+Team detail fields: `id`, `name`, `description`, `framework`, `parent_id` (integer | null — ID of parent team, or null for root teams),
 `logo_url` (string | null — Filestack CDN URL or null if no logo set), `creator` (UserSimple), `created_at`, `updated_at`, `members` (TeamMember[]).
 
 TeamMember: `id`, `team` (TeamSimple), `user` (UserSimple), `role` ("member" | "admin").
