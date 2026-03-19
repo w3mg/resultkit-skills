@@ -406,6 +406,7 @@ echo "$RESPONSE"
 ### Step 3: Handle response
 
 - **Status 201**: "Review #{id} created. Status: in_progress."
+- **Status 400** → If error contains "is not a member of any team": "Reviewee or reviewer must be a member of at least one team in this account." Otherwise show the API's error message.
 - **Status 403** → "Admin/people-ops permissions required."
 - **Error** → use Error Handling above
 
