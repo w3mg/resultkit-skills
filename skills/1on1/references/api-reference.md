@@ -742,6 +742,56 @@ Note: Milestone responses do NOT include `updated_at`.
 
 **Authorization**: Root-level creation requires team admin. Child creation requires team admin or node-level assignment on the parent (assignee of the parent or any ancestor).
 
+### EOS Vision (V/TO)
+
+The Vision/Traction Organizer (V/TO) covers six EOS components: core values, core focus (purpose/niche), BHAG (10-year target), marketing strategy, three-year picture, and year/quarter plans.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/eos-vision` | Get complete V/TO (all 6 sections in one call) | "show vision", "show V/TO", "vision traction organizer", "EOS vision", "show the VTO" | `/teams/{id}` |
+| GET | `/teams/{id}/eos-core-values` | List core values | "show core values", "list core values", "our values" | `/teams/{id}` |
+| POST | `/teams/{id}/eos-core-values` | Create core value (body: name*, description?) | "add core value", "create core value", "new value" | `/teams/{id}` |
+| PATCH | `/eos-core-values/{valueId}` | Update core value (body: name?, description?) — standalone, no team prefix | "update core value", "edit value", "rename value" | — |
+| DELETE | `/eos-core-values/{valueId}` | Delete core value — standalone, no team prefix | "delete core value", "remove value" | — |
+| GET | `/teams/{id}/eos-core-focus` | Get core focus (purpose + niche) | "show core focus", "what's our purpose", "our niche" | `/teams/{id}` |
+| PATCH | `/teams/{id}/eos-core-focus` | Update core focus (body: purpose?, niche?) | "update core focus", "set purpose", "change niche" | `/teams/{id}` |
+| GET | `/teams/{id}/eos-bhag` | Get BHAG (10-year target) | "show BHAG", "10-year target", "big hairy audacious goal" | `/teams/{id}` |
+| PATCH | `/teams/{id}/eos-bhag` | Update BHAG (body: text*) | "update BHAG", "set 10-year target", "change BHAG" | `/teams/{id}` |
+| GET | `/teams/{id}/eos-marketing-strategy` | Get marketing strategy | "show marketing strategy", "target market", "our uniques", "proven process", "guarantee" | `/teams/{id}` |
+| PATCH | `/teams/{id}/eos-marketing-strategy` | Update marketing strategy (body: targetMarket?, uniques?, provenProcess?, guarantee?) | "update marketing strategy", "set target market", "change uniques" | `/teams/{id}` |
+| GET | `/teams/{id}/eos-three-year-picture` | Get three-year picture | "show three-year picture", "3-year picture", "where we'll be in 3 years" | `/teams/{id}` |
+| PATCH | `/teams/{id}/eos-three-year-picture` | Update three-year picture (body: description?, futureDate?, revenue?, profit?, measurables?) | "update three-year picture", "set 3-year picture" | `/teams/{id}` |
+| GET | `/teams/{id}/eos-plans` | Get all year/quarter plans | "show plans", "annual plan", "quarterly plan", "year plans" | `/teams/{id}` |
+| GET | `/teams/{id}/eos-plans/{year}` | Get plans for a specific year | "show 2026 plans", "plans for this year" | `/teams/{id}` |
+| GET | `/teams/{id}/eos-plans/{year}/{quarter}` | Get specific quarter plan (quarter: 0=annual, 1-4=Q1-Q4) | "show Q1 plan", "annual plan for 2026" | `/teams/{id}` |
+| PATCH | `/teams/{id}/eos-plans/{year}/{quarter}` | Update year/quarter plan (body: text, date, revenue, profit, measures — all string or null) | "update Q1 plan", "set annual plan", "change quarterly plan" | `/teams/{id}` |
+
+**Composite GET `/eos-vision` response shape**:
+```json
+{
+  "data": {
+    "teamId": 456,
+    "isInheritingParentVision": false,
+    "parentTeamId": null,
+    "coreValues": [{ "id": 1, "name": "Integrity", "description": "<p>Do the right thing</p>", "groupId": 456 }],
+    "coreFocus": { "purpose": "<p>Our mission</p>", "niche": "<p>Our niche</p>" },
+    "bhag": { "text": "<p>Be the best</p>" },
+    "marketingStrategy": { "targetMarket": "<p>SMBs</p>", "uniques": ["Speed", "Quality"], "provenProcess": "<p>Our process</p>", "guarantee": "<p>100% satisfaction</p>" },
+    "threeYearPicture": { "description": "<p>Where we'll be</p>", "futureDate": "2029-01-01", "revenue": "5000000", "profit": "1000000", "measurables": "Key metrics" },
+    "plans": { "2026_0": { "text": "Annual goals", "date": "2026-12-31", "revenue": "1000000", "profit": "200000", "measures": "Key measurables" } }
+  }
+}
+```
+
+**Behavior notes**:
+- **PATCH merge semantics**: Marketing strategy and three-year picture only update provided fields — omitted fields retain existing values.
+- **Parent vision inheritance**: If a team uses parent vision, reads return parent data with `isInheritingParentVision: true`. All writes return 403.
+- **Case convention**: Marketing strategy and three-year picture use camelCase in API (targetMarket, provenProcess, futureDate).
+- **Plan keys**: `{year}_{quarter}` format. Quarter 0 = annual, 1-4 = Q1-Q4. Values outside 0-4 return 400.
+- **HTML sanitization**: All string inputs sanitized before storage.
+- **Standalone core value routes**: PATCH/DELETE at `/eos-core-values/{valueId}` — no team ID in URL. Team inferred from value's `group_id`.
+- **Auth**: All GET endpoints require Member role. All write endpoints (POST/PATCH/DELETE) require Admin role.
+
 ## Error Responses
 
 All errors return: `{ "error": { "code": "<error_code>", "message": "<human-readable>", "details": { ... } } }`
@@ -847,6 +897,13 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | archive seat, delete seat, remove position | Archive Seat | `DELETE /seats/{id}` |
 | restore seat, unarchive seat | Restore Seat | `PUT /seats/{id}/restore` |
 | strategy, strategy tree, goals and rocks, OKRs, annual goals, team objectives, targets, show targets | Strategy Tree | `GET /teams/{id}/targets` |
+| vision, V/TO, vision traction organizer, EOS vision, show VTO | EOS Vision (composite) | `GET /teams/{id}/eos-vision` |
+| core values, our values, company values (EOS V/TO) | EOS Core Values | `GET /teams/{id}/eos-core-values` |
+| core focus, purpose, niche, why we exist (EOS V/TO) | EOS Core Focus | `GET /teams/{id}/eos-core-focus` |
+| BHAG, 10-year target, big hairy audacious goal (EOS V/TO) | EOS BHAG | `GET /teams/{id}/eos-bhag` |
+| marketing strategy, target market, uniques, proven process, guarantee (EOS V/TO) | EOS Marketing Strategy | `GET /teams/{id}/eos-marketing-strategy` |
+| three-year picture, 3-year picture, where we'll be (EOS V/TO) | EOS Three-Year Picture | `GET /teams/{id}/eos-three-year-picture` |
+| annual plan, quarterly plan, year plan, Q1 plan (EOS V/TO) | EOS Plans | `GET /teams/{id}/eos-plans` |
 | yearly goal, annual goal, 1-year goal, create goal, add goal, new goal | Goal (yearly) | `POST /teams/{id}/goals`, `GET /teams/{id}/goals` |
 | rock, quarterly rock, 90-day priority, create rock, add rock, new rock | Rock (quarterly) | `POST /teams/{id}/rocks`, `GET /teams/{id}/rocks` |
 | milestone, deliverable, create milestone, add milestone, new milestone | Milestone | `POST /teams/{id}/milestones`, `GET /teams/{id}/milestones` |
