@@ -794,6 +794,26 @@ The Vision/Traction Organizer (V/TO) covers six EOS components: core values, cor
 - **Standalone core value routes**: PATCH/DELETE at `/eos-core-values/{valueId}` — no team ID in URL. Team inferred from value's `group_id`.
 - **Auth**: All GET endpoints require Member role. All write endpoints (POST/PATCH/DELETE) require Admin role.
 
+## Favorites
+
+User-private bookmarks to any relative app URL. Ordered by position. All endpoints require Bearer auth.
+
+| Method | Path | Description | User Phrases |
+|--------|------|-------------|--------------|
+| GET | `/favorites` | List authenticated user's favorites ordered by position | "show my favorites", "list bookmarks", "my saved pages" |
+| POST | `/favorites` | Create a favorite (body: url*, title) | "add favorite", "bookmark this", "save this page", "add to favorites" |
+| PATCH | `/favorites/{id}` | Update a favorite's title (body: title) | "rename favorite", "update bookmark title" |
+| DELETE | `/favorites/{id}` | Remove a favorite | "remove favorite", "delete bookmark", "unfavorite" |
+| PUT | `/favorites/reorder` | Reorder all favorites (body: favorite_ids[]) | "reorder favorites", "move bookmark", "reorganize favorites" |
+
+Favorite fields: `id`, `url`, `title`, `position`, `created_at`, `updated_at`.
+
+- `url`: relative path starting with `/`, max 2048 chars. Unique per user — duplicate returns 409.
+- `title`: max 255 chars. Auto-generated from URL path if omitted on create.
+- `position`: auto-assigned on create (appended to end). Renumbered only via explicit reorder.
+- Ownership violations return 403.
+- `PUT /favorites/reorder` body: `{ "favorite_ids": [3, 1, 2] }` — must include ALL user's favorite IDs in desired order. Response: `{ "data": [...] }` with updated positions.
+
 ## Error Responses
 
 All errors return: `{ "error": { "code": "<error_code>", "message": "<human-readable>", "details": { ... } } }`
