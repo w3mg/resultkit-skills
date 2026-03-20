@@ -231,11 +231,11 @@ Prompt the user for a single free-form text response via AskUserQuestion: "Enter
 
 ```bash
 API_SH="<api.sh path from Current State>"
-VALUES=$("$API_SH" GET "/core-values")
+VALUES=$("$API_SH" GET "/teams/TEAM_ID/eos-core-values")
 echo "$VALUES"
 ```
 
-If core values exist, ask: "Would you like to include core values ratings?" If yes, for each core value, prompt for a score (1–5) via AskUserQuestion.
+Use TEAM_ID from Team ID Resolution above. If core values exist, ask: "Would you like to include core values ratings?" If yes, for each core value, prompt for a score (1–5) via AskUserQuestion. The `core_value_id` in the request body must be the label `id` returned by this endpoint.
 
 ### Step 5: Confirm and submit
 
@@ -491,9 +491,11 @@ echo "$RESPONSE"
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" GET "/core-values")
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/eos-core-values")
 echo "$RESPONSE"
 ```
+
+Use TEAM_ID from Team ID Resolution above.
 
 ### Step 2: Display core values
 
@@ -522,9 +524,11 @@ Display as a table:
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" GET "/core-values")
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/eos-core-values")
 echo "$RESPONSE"
 ```
+
+Use TEAM_ID from Team ID Resolution above.
 
 If empty → "No core values defined for your organization. Nothing to rate." and stop.
 

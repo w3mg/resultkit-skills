@@ -455,13 +455,12 @@ PUT /passwords: Unauthenticated — the reset token serves as authentication. Bo
 
 ## Core Values
 
+**Note**: `GET /api/v2/core-values` has been removed. Core values are now managed via EOS Vision: `GET /teams/{id}/eos-core-values` (see EOS Vision section below). The `core_value_id` in ratings requests now references a label ID from the EOS Vision core values list.
+
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/core-values` | List all core values for the user's account | "show core values", "list values", "our core values" | — |
 | GET | `/core-values-ratings` | List ratings for a subject (params: subject_id*, page, per_page) | "show ratings", "core value ratings", "ratings for user" | — |
-| POST | `/core-values-ratings` | Create standalone core value ratings (body: subject_id*, ratings[{core_value_id*, score*}]) | "rate core values", "submit ratings", "score values" | — |
-
-CoreValue fields: `id`, `name`, `description`, `position`.
+| POST | `/core-values-ratings` | Create standalone core value ratings (body: subject_id*, ratings[{core_value_id*, score*}]) — `core_value_id` is a label ID from EOS Vision core values | "rate core values", "submit ratings", "score values" | — |
 
 CoreValuesRating fields: `id`, `core_value` ({ id, name }), `score` (integer), `rater` (UserSimple), `review_id` (integer | null), `created_at`.
 
