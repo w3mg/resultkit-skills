@@ -296,6 +296,127 @@ Integration fields: `id`, `type` ("slack" | "discord"), `name`, `webhook_url`, `
 
 Response: `{ data: { logo_url: "https://cdn.filestackcontent.com/..." | null } }`. Errors: 403 (non-admin), 404 (team not found), 422 (invalid URL — POST only).
 
+### L10 Meeting Organizer
+
+Endpoints supporting the L10 Meeting Organizer page (Team Weekly). All under `/teams/{id}/`. Purely additive — no breaking changes to existing endpoints.
+
+#### Weekly Focus (Rally Cry)
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/weekly-focus` | Get current + previous weekly focus entries (params: date — YYYY-MM-DD) | "show rally cry", "weekly focus", "what's the focus", "team rally cry" | `/teams/{id}` |
+| POST | `/teams/{id}/weekly-focus` | Set weekly focus for a date (body: focus_name*, date*). Admin only. | "set rally cry", "set weekly focus", "new rally cry" | `/teams/{id}` |
+
+GET response: `{ data: { id, weekly_focus, created_for, previous_weekly_focus: [{ id, created_for, focus_name, average_rating }] } }`.
+POST response (201): `{ data: { id, focus_name, created_for } }`.
+
+#### Weekly Notes
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/weekly-notes` | Get current + previous meeting notes | "show meeting notes", "weekly notes", "L10 notes" | `/teams/{id}` |
+| POST | `/teams/{id}/weekly-notes` | Create a meeting note (body: title*, body*, json_content*). Admin only. HTML body sanitized server-side. | "add meeting note", "new weekly note", "create L10 note" | `/teams/{id}` |
+| PATCH | `/teams/{id}/weekly-notes/{note_id}` | Update a meeting note (body: title?, body?). Admin only. | "update meeting note", "edit weekly note" | `/teams/{id}` |
+| DELETE | `/teams/{id}/weekly-notes/{note_id}` | Delete a meeting note. Admin only. | "delete meeting note", "remove weekly note" | `/teams/{id}` |
+
+GET response: `{ data: { current: { id, title, body, json_content, creator_id, created_at, updated_at }, previous: [same shape] } }`.
+POST response (201): Created note in `data` envelope. DELETE: 204 No Content.
+
+#### Wins
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/wins` | Get team wins for a date range (params: date — YYYY-MM-DD). Read-only — win creation happens elsewhere. | "show wins", "team wins", "what did we win", "victories" | `/teams/{id}` |
+
+Response: `{ data: { wins: [{ id, name, description, win_type, win_date, user: { id, full_name }, created_at }] } }`. `win_type`: "professional" or "personal".
+
+#### Documents
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/documents` | List team documents (paginated) | "show documents", "team docs", "team files", "list documents" | `/teams/{id}` |
+| POST | `/teams/{id}/documents` | Upload a document (multipart form data: file*, name*, material_category_id?, description?). Member auth. | "upload document", "add team file", "new document" | `/teams/{id}` |
+| PATCH | `/teams/{id}/documents/{doc_id}` | Update document metadata (body: name?, material_category_id?, description?). Admin/owner only. | "update document", "rename document" | `/teams/{id}` |
+| DELETE | `/teams/{id}/documents/{doc_id}` | Delete a document. Admin/owner only. | "delete document", "remove file" | `/teams/{id}` |
+
+Document fields: `id`, `name`, `filename`, `content_type`, `size`, `description`, `material_category_id`, `user_id`, `created_at`. Paginated with `meta`. POST uses multipart form data (not JSON). DELETE: 204.
+
+#### Linked URLs
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/linked-urls` | List linked URLs (paginated) | "show linked urls", "team links", "list urls" | `/teams/{id}` |
+| POST | `/teams/{id}/linked-urls` | Create a linked URL (body: title*, full_path*, description?, media_type_code?, material_category_id?). Member auth. | "add linked url", "new team link", "link a url" | `/teams/{id}` |
+| PATCH | `/teams/{id}/linked-urls/{url_id}` | Update a linked URL (body: title?, full_path?, description?, media_type_code?, material_category_id?). Member auth. | "update linked url", "edit team link" | `/teams/{id}` |
+| DELETE | `/teams/{id}/linked-urls/{url_id}` | Delete a linked URL. Member auth. | "delete linked url", "remove team link" | `/teams/{id}` |
+
+LinkedURL fields: `id`, `title`, `full_path`, `description`, `media_type_code`, `material_category_id`, `user_id`, `created_at`. Paginated with `meta`. DELETE: 204.
+
+#### Shared Links
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/shared-links` | List shared links | "show shared links", "team shared links" | `/teams/{id}` |
+| POST | `/teams/{id}/shared-links` | Create a shared link (body: title*, link_string*). Member auth. | "add shared link", "share a link", "new shared link" | `/teams/{id}` |
+| DELETE | `/teams/{id}/shared-links/{link_id}` | Delete a shared link. Member auth. | "delete shared link", "remove shared link" | `/teams/{id}` |
+
+SharedLink fields: `id`, `title`, `link_string`, `user_id`, `created_at`. Response in `data` envelope. DELETE: 204.
+
+#### Weekly Ratings
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/weekly-ratings` | Get all-time average rating and total count | "show weekly rating", "team rating", "meeting rating", "how are meetings rated" | `/teams/{id}` |
+| POST | `/teams/{id}/weekly-ratings` | Submit or update weekly rating (body: rating*, date*). One rating per user per week — upserts. Member auth. | "rate meeting", "submit rating", "rate the week", "rate weekly" | `/teams/{id}` |
+
+GET response: `{ data: { average_rating, total_ratings } }`.
+POST response (201 new, 200 updated): `{ data: { id, stars, created_at } }`.
+
+#### Braindump
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| POST | `/teams/{id}/braindump` | Bulk create items on the board (body: items* — string[], section*). Admin only. Max 50 items per request. | "braindump", "bulk add items", "dump items to board", "brain dump" | `/teams/{id}` |
+
+`section` values: `next`, `blocked`, `parked`.
+Response (201): `{ data: { items: [{ id, name }], count } }`.
+
+#### Item Reorder
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| PATCH | `/teams/{id}/items/reorder` | Reorder organizer items (body: item_ids* — integer[]). Admin only. All IDs must belong to the team and be on the organizer board (is_wow=true). | "reorder items", "rearrange board", "sort items" | `/teams/{id}` |
+
+Response (200): `{ data: { success: true, count } }`.
+
+#### Meeting Settings
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/meeting-settings` | Get meeting day, start time, and section durations | "show meeting settings", "meeting schedule", "L10 settings", "meeting time" | `/teams/{id}` |
+| PATCH | `/teams/{id}/meeting-settings` | Update meeting settings (body: meeting_day?, start_time?, section_durations?). Admin only. | "update meeting settings", "change meeting day", "set meeting time", "adjust section times" | `/teams/{id}` |
+
+Response: `{ data: { meeting_day, start_time, section_durations: { transition, scorecard, goals, headlines, done, next, blocked } } }`.
+`meeting_day`: 0-6 (Sunday=0). `start_time`: formatted string e.g. `"01:30 PM"`. `section_durations`: values are integers (minutes).
+
+#### Meeting Summary Email
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| POST | `/teams/{id}/meeting-summary` | Send summary email to all team members. Admin only. Fire-and-forget. | "send meeting summary", "email meeting notes", "send L10 summary" | `/teams/{id}` |
+
+Response (200): `{ data: { sent_to, message } }`. Example: `{ "sent_to": 8, "message": "Meeting summary sent to 8 team members" }`.
+
+#### L10 Meeting Organizer Error Responses
+
+All L10 Meeting Organizer endpoints share these error shapes:
+```json
+{ "error": { "code": "bad_request", "message": "Invalid team ID" } }
+{ "error": { "code": "forbidden", "message": "Admin access required" } }
+{ "error": { "code": "not_found", "message": "Team not found" } }
+{ "error": { "code": "validation_error", "message": "Validation failed", "details": { "<field>": "Required" } } }
+```
+
 ## Users
 
 | Method | Path | Description | User Phrases | Web URL |
