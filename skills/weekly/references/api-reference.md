@@ -326,9 +326,16 @@ POST response (201): Created note in `data` envelope. DELETE: 204 No Content.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/l10/wins` | Get team wins for a date range (params: date — YYYY-MM-DD). Read-only — win creation happens elsewhere. | "show wins", "team wins", "what did we win", "victories" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/wins` | Get team wins for a date range (params: date — YYYY-MM-DD). | "show wins", "team wins", "what did we win", "victories" | `/teams/{id}` |
+| POST | `/teams/{id}/l10/wins` | Create a win (body: name*, win_type* ["personal"\|"professional"], win_date* [YYYY-MM-DD], description?). Member auth. user_id set from auth token. | "add win", "create win", "log a win", "new win" | `/teams/{id}` |
+| PATCH | `/teams/{id}/l10/wins/{win_id}` | Update a win (body: name?, win_type?, win_date?, description?). Owner or admin only. | "update win", "edit win", "change win" | `/teams/{id}` |
+| DELETE | `/teams/{id}/l10/wins/{win_id}` | Delete a win. Owner or admin only. Returns 204. | "delete win", "remove win" | `/teams/{id}` |
 
-Response: `{ data: { wins: [{ id, name, description, win_type, win_date, user: { id, full_name }, created_at }] } }`. `win_type`: "professional" or "personal".
+Response (GET): `{ data: { wins: [{ id, name, description, win_type, win_date, user: { id, full_name }, created_at }] } }`. `win_type`: "professional" or "personal".
+
+Response (POST 201, PATCH 200): `{ data: { win: { id, name, description, win_type, win_date, user: { id, full_name }, created_at } } }`.
+
+Response (DELETE): 204 No Content. Errors: 403 if not owner and not admin.
 
 #### Documents
 
