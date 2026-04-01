@@ -2,6 +2,16 @@
 
 Spec-driven skill suite for interacting with the ResultMaps V2 API as a user.
 
+## Documentation First (NON-NEGOTIABLE)
+
+Search these directories first, in this order:
+
+1. `ai-docs/`
+2. `doc/`
+3. `docs/`
+
+When no docs exist, ask if it would be appropriate to read through the specs or whether to skip directly to the code.
+
 ## Project Purpose
 
 This project contains **specs and source files** for the `rkit:*` skill namespace — global Claude Code skills for daily planning, team boards, meetings, and item management via the ResultMaps API.
