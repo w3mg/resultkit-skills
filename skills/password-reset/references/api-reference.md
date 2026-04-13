@@ -669,6 +669,9 @@ Templates that define the prompts used in reviews. Access is role-based (`canVie
 | PATCH | `/review-templates/{id}/prompts/{pid}` | Update prompt (body: description?, hint?, answer_type?, answer_meta_data?). Requires `canEdit` on parent template. | "update prompt", "edit question", "change prompt" | — |
 | DELETE | `/review-templates/{id}/prompts/{pid}` | Delete prompt. Requires `canEdit` on parent template. | "delete prompt", "remove question" | — |
 | PUT | `/review-templates/{id}/prompts/positions` | Reorder prompts (body: positions[{id*, position*}]). All prompts must be included. Requires `canEdit` on parent template. | "reorder prompts", "rearrange questions", "sort prompts" | — |
+| GET | `/review-templates/{id}/permissions` | List individual user permissions on a template. Returns `{ data: { object_type, object_id, viewers: [{user_id, login, first_name, last_name, profile_photo_thumb_path, role_name}], collaborators: [...] } }`. Requires `canEdit`. | "who has access to template", "list template permissions", "view template roles" | — |
+| POST | `/review-templates/{id}/permissions` | Grant a role to a user on a template (body: user_id*, permission_type* — viewer/editor/author/admin). Returns 204. Requires `canEdit`. | "grant template access", "add template permission", "give user access to template" | — |
+| DELETE | `/review-templates/{id}/permissions` | Revoke a role from a user on a template (body: user_id*, permission_type? — omit to revoke all roles). Returns 204. Requires `canEdit`. | "revoke template access", "remove template permission", "remove user from template" | — |
 
 ReviewTemplateListItem fields: `id`, `name`, `target_role` (string | null), `prompt_count` (integer), `created_at`, `owning_organization` (`{ id, name }` | null), `organization_id` (integer | null — root team ID).
 
