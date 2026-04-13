@@ -626,11 +626,11 @@ Performance reviews with self-assessment and reviewer assessment workflow.
 |--------|------|-------------|--------------|---------|
 | GET | `/reviews` | List reviews (params: page, per_page, status, q, team_id). `team_id` filters by organization — resolves the team's root ancestor and returns only reviews where the reviewee is a member of any team in that org. 400 if team_id invalid, 404 if not found. Omitting team_id returns all reviews. Excludes archived. Response includes `user_id` (creator ID, nullable). | "show reviews", "list reviews", "my reviews", "performance reviews" | — |
 | POST | `/reviews` | Create review (body: reviewee_id*, reviewer_id*, template_id*, review_type?, start_date?, end_date?). Admin/people-ops only. reviewee_id and reviewer_id must be members of at least one team in the account (400 "is not a member of any team in this account" if not). | "create review", "start review", "new performance review" | — |
-| GET | `/reviews/{id}` | Review detail. Assessment visibility depends on requesting user's role. Response includes `user_id` (creator ID, nullable) and `can_delete` (boolean — whether the authenticated user may delete this review). | "show review", "review details", "open review" | — |
+| GET | `/reviews/{id}` | Review detail. Assessment visibility depends on requesting user's role. Response includes `user_id` (creator ID, nullable), `can_delete` (boolean — whether the authenticated user may delete this review), and `gwc_evaluations` (GwcEvaluationEntry[] — 0-2 entries, one per respondent_type). Reviewer GWC entries hidden from reviewee until `signed_off` status. | "show review", "review details", "open review" | — |
 | PATCH | `/reviews/{id}` | Update review (body: review_type?, start_date?, end_date?) | "update review", "change review dates", "edit review" | — |
 | DELETE | `/reviews/{id}` | Archive review (soft delete). Allowed for admins/people-ops and for the review creator (unless the reviewee has saved assessment data — 403 "Cannot delete: the reviewee has already saved assessment data"). Use `can_delete` from the detail response to determine visibility. | "archive review", "delete review", "remove review" | — |
-| PUT | `/reviews/{id}/draft-assessment` | Save draft assessment (WIP, does not advance state). Body: AssessmentSubmitRequest. | "save draft", "draft assessment", "save progress" | — |
-| POST | `/reviews/{id}/submit-assessment` | Submit final assessment. Transitions to assessed when both parties submit. Body: AssessmentSubmitRequest. | "submit assessment", "finalize assessment", "submit review" | — |
+| PUT | `/reviews/{id}/draft-assessment` | Save draft assessment (WIP, does not advance state). Body: AssessmentSubmitRequest (includes optional `gwc_evaluation`). | "save draft", "draft assessment", "save progress" | — |
+| POST | `/reviews/{id}/submit-assessment` | Submit final assessment. Transitions to assessed when both parties submit. Body: AssessmentSubmitRequest (includes optional `gwc_evaluation`). | "submit assessment", "finalize assessment", "submit review" | — |
 | POST | `/reviews/{id}/sign-off` | Sign off review (body: initials*). Must be in assessed state. Reviewer only. | "sign off", "approve review", "finalize review" | — |
 | PUT | `/reviews/{id}/void` | Void review (body: reason*). Admin/people-ops only. Rejects all further actions. | "void review", "cancel review", "invalidate review" | — |
 | PUT | `/reviews/{id}/notes` | Update review notes (body: notes*). Reviewer or people-ops. | "update review notes", "add notes", "edit review notes" | — |
@@ -645,11 +645,15 @@ Review status values: `in_progress`, `assessed`, `signed_off`, `voided`.
 
 ReviewListItem fields: `id`, `user_id` (integer | null — creator ID), `reviewee` (UserSimple), `reviewer` (UserSimple), `status`, `review_type` (integer | null), `template` ({ id, name } | null), `start_date`, `end_date`, `created_at`.
 
-ReviewDetail fields: ReviewListItem + `can_delete` (boolean — whether the current user can delete), `notes`, `void_reason`, `signed_off_at`, `signed_off_initials`, `self_assessment` (Assessment | null), `reviewer_assessment` (Assessment | null), `core_values_ratings` (CoreValuesRatingEntry[]), `attachments` (Attachment[]), `action_items` (ActionItem[]), `updated_at`.
+ReviewDetail fields: ReviewListItem + `can_delete` (boolean — whether the current user can delete), `notes`, `void_reason`, `signed_off_at`, `signed_off_initials`, `self_assessment` (Assessment | null), `reviewer_assessment` (Assessment | null), `core_values_ratings` (CoreValuesRatingEntry[]), `gwc_evaluations` (GwcEvaluationEntry[] — defaults to `[]`), `attachments` (Attachment[]), `action_items` (ActionItem[]), `updated_at`.
 
 Assessment fields: `respondent_type` ("self" | "reviewer"), `respondent` (UserSimple), `is_draft` (boolean), `responses` ([{ prompt_id, description, response_value, score }]).
 
-AssessmentSubmitRequest: `respondent_type` ("self" | "reviewer"), `assessment_responses` ([{ prompt_id*, response_value?, score? }]), `core_values_ratings?` ([{ core_value_id*, score*, justification? (string, max 5000 chars, HTML stripped, empty string → null) }]).
+AssessmentSubmitRequest: `respondent_type` ("self" | "reviewer"), `assessment_responses` ([{ prompt_id*, response_value?, score? }]), `core_values_ratings?` ([{ core_value_id*, score*, justification? (string, max 5000 chars, HTML stripped, empty string → null) }]), `gwc_evaluation?` (GwcEvaluationInput — optional, upserts GWC data keyed by respondent_type).
+
+GwcEvaluationEntry fields: `respondent_type` ("self" | "reviewer"), `gets_it_1..3` (boolean | null), `gets_it_verdict` (boolean | null), `wants_it_1..5` (boolean | null), `wants_it_verdict` (boolean | null), `capacity_1..4` (integer | null), `capacity_total` (integer | null — server-computed, sum of capacity_1–4, null if any capacity field null). Reviewer entries hidden from reviewee until review reaches `signed_off` status.
+
+GwcEvaluationInput: same fields as GwcEvaluationEntry except `capacity_total` (read-only, do not send). All fields nullable — partial saves allowed.
 
 ActionItem fields: `id`, `title`, `assignee` (UserSimple), `status`, `created_at`.
 

@@ -95,6 +95,14 @@
     "core_values_ratings": [
       { "id": 1, "core_value": { "id": 3, "name": "Integrity" }, "score": 4, "rater": { "id": 2 }, "review_id": 42 }
     ],
+    "gwc_evaluations": [
+      {
+        "respondent_type": "self",
+        "gets_it_1": true, "gets_it_2": false, "gets_it_3": true, "gets_it_verdict": true,
+        "wants_it_1": true, "wants_it_2": true, "wants_it_3": false, "wants_it_4": true, "wants_it_5": null, "wants_it_verdict": true,
+        "capacity_1": 4, "capacity_2": 3, "capacity_3": 5, "capacity_4": 4, "capacity_total": 16
+      }
+    ],
     "attachments": [],
     "action_items": [],
     "created_at": "2026-01-15T10:00:00Z",
@@ -131,7 +139,12 @@
   ],
   "core_values_ratings": [
     { "core_value_id": 3, "score": 4 }
-  ]
+  ],
+  "gwc_evaluation": {
+    "gets_it_1": true, "gets_it_2": true, "gets_it_3": false, "gets_it_verdict": true,
+    "wants_it_1": true, "wants_it_2": true, "wants_it_3": true, "wants_it_4": false, "wants_it_5": null, "wants_it_verdict": true,
+    "capacity_1": 4, "capacity_2": 3, "capacity_3": 5, "capacity_4": 4
+  }
 }
 ```
 
