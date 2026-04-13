@@ -1,4 +1,5 @@
 ---
+model: claude-opus-4-6
 description: Perform a cross-artifact consistency and quality analysis across spec.md, plan.md, and tasks.md after task generation, then automatically fix all issues found. Questions needed to resolve ambiguous fixes are asked in a single batch at the end before writing any files.
 ---
 

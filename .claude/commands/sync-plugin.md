@@ -1,4 +1,5 @@
 ---
+model: claude-sonnet-4-6
 description: Sync shared files across all rkit plugin skills. Copies master api.sh and api-reference.md to each skill, then bumps the plugin version.
 ---
 

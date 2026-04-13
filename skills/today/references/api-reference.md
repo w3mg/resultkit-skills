@@ -583,7 +583,7 @@ PUT /passwords: Unauthenticated — the reset token serves as authentication. Bo
 
 ## Core Values
 
-**Note**: `GET /api/v2/core-values` has been removed. Core values are now managed via EOS Vision: `GET /teams/{id}/eos-core-values` (see EOS Vision section below). The `core_value_id` in ratings requests now references a label ID from the EOS Vision core values list.
+**Note**: `GET /api/v2/core-values` has been removed. Core values are now managed via EOS Vision: `GET /teams/{id}/core-values` (see EOS Vision section below). The `core_value_id` in ratings requests now references a label ID from the EOS Vision core values list.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
@@ -879,10 +879,10 @@ The Vision/Traction Organizer (V/TO) covers six EOS components: core values, cor
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/teams/{id}/eos-vision` | Get complete V/TO (all 6 sections in one call) | "show vision", "show V/TO", "vision traction organizer", "EOS vision", "show the VTO" | `/teams/{id}` |
-| GET | `/teams/{id}/eos-core-values` | List core values | "show core values", "list core values", "our values" | `/teams/{id}` |
-| POST | `/teams/{id}/eos-core-values` | Create core value (body: name*, description?) | "add core value", "create core value", "new value" | `/teams/{id}` |
-| PATCH | `/eos-core-values/{valueId}` | Update core value (body: name?, description?) — standalone, no team prefix | "update core value", "edit value", "rename value" | — |
-| DELETE | `/eos-core-values/{valueId}` | Delete core value — standalone, no team prefix | "delete core value", "remove value" | — |
+| GET | `/teams/{id}/core-values` | List core values | "show core values", "list core values", "our values" | `/teams/{id}` |
+| POST | `/teams/{id}/core-values` | Create core value (body: name*, description?) | "add core value", "create core value", "new value" | `/teams/{id}` |
+| PATCH | `/core-values/{valueId}` | Update core value (body: name?, description?) — standalone, no team prefix | "update core value", "edit value", "rename value" | — |
+| DELETE | `/core-values/{valueId}` | Delete core value — standalone, no team prefix | "delete core value", "remove value" | — |
 | GET | `/teams/{id}/eos-core-focus` | Get core focus (purpose + niche) | "show core focus", "what's our purpose", "our niche" | `/teams/{id}` |
 | PATCH | `/teams/{id}/eos-core-focus` | Update core focus (body: purpose?, niche?) | "update core focus", "set purpose", "change niche" | `/teams/{id}` |
 | GET | `/teams/{id}/eos-bhag` | Get BHAG (10-year target) | "show BHAG", "10-year target", "big hairy audacious goal" | `/teams/{id}` |
@@ -919,7 +919,7 @@ The Vision/Traction Organizer (V/TO) covers six EOS components: core values, cor
 - **Case convention**: Marketing strategy and three-year picture use camelCase in API (targetMarket, provenProcess, futureDate).
 - **Plan keys**: `{year}_{quarter}` format. Quarter 0 = annual, 1-4 = Q1-Q4. Values outside 0-4 return 400.
 - **HTML sanitization**: All string inputs sanitized before storage.
-- **Standalone core value routes**: PATCH/DELETE at `/eos-core-values/{valueId}` — no team ID in URL. Team inferred from value's `group_id`.
+- **Standalone core value routes**: PATCH/DELETE at `/core-values/{valueId}` — no team ID in URL. Team inferred from value's `group_id`.
 - **Auth**: All GET endpoints require Member role. All write endpoints (POST/PATCH/DELETE) require Admin role.
 
 ## Favorites
@@ -1048,7 +1048,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | restore seat, unarchive seat | Restore Seat | `PUT /seats/{id}/restore` |
 | strategy, strategy tree, goals and rocks, OKRs, annual goals, team objectives, targets, show targets | Strategy Tree | `GET /teams/{id}/targets` |
 | vision, V/TO, vision traction organizer, EOS vision, show VTO | EOS Vision (composite) | `GET /teams/{id}/eos-vision` |
-| core values, our values, company values (EOS V/TO) | EOS Core Values | `GET /teams/{id}/eos-core-values` |
+| core values, our values, company values (EOS V/TO) | EOS Core Values | `GET /teams/{id}/core-values` |
 | core focus, purpose, niche, why we exist (EOS V/TO) | EOS Core Focus | `GET /teams/{id}/eos-core-focus` |
 | BHAG, 10-year target, big hairy audacious goal (EOS V/TO) | EOS BHAG | `GET /teams/{id}/eos-bhag` |
 | marketing strategy, target market, uniques, proven process, guarantee (EOS V/TO) | EOS Marketing Strategy | `GET /teams/{id}/eos-marketing-strategy` |

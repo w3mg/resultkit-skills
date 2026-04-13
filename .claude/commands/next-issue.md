@@ -1,4 +1,5 @@
 ---
+model: claude-sonnet-4-6
 description: Grab the oldest open GitHub issue and triage it — handoff docs get noted, features/bugs start /speckit:specify
 ---
 

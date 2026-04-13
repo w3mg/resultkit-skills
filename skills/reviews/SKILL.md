@@ -231,7 +231,7 @@ Prompt the user for a single free-form text response via AskUserQuestion: "Enter
 
 ```bash
 API_SH="<api.sh path from Current State>"
-VALUES=$("$API_SH" GET "/teams/TEAM_ID/eos-core-values")
+VALUES=$("$API_SH" GET "/teams/TEAM_ID/core-values")
 echo "$VALUES"
 ```
 
@@ -491,7 +491,7 @@ echo "$RESPONSE"
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/eos-core-values")
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/core-values")
 echo "$RESPONSE"
 ```
 
@@ -524,7 +524,7 @@ Display as a table:
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/eos-core-values")
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/core-values")
 echo "$RESPONSE"
 ```
 

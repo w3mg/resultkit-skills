@@ -1,4 +1,5 @@
 ---
+model: claude-sonnet-4-6
 description: Commit all changes, push branch to origin, post implementation summary comment on GitHub issue, and close the issue
 ---
 
