@@ -245,7 +245,7 @@ VALUES=$("$API_SH" GET "/teams/TEAM_ID/core-values")
 echo "$VALUES"
 ```
 
-Use TEAM_ID from Team ID Resolution above. If core values exist, ask: "Would you like to include core values ratings?" If yes, for each core value, prompt for a score (1–5) via AskUserQuestion. The `core_value_id` in the request body must be the label `id` returned by this endpoint.
+Use TEAM_ID from Team ID Resolution above. If core values exist, ask: "Would you like to include core values ratings?" If yes, for each core value, prompt for a score (1–5) and an optional justification (text comment, up to 5000 chars, or leave blank) via AskUserQuestion. The `core_value_id` in the request body must be the label `id` returned by this endpoint.
 
 ### Step 5: Confirm and submit
 
@@ -271,10 +271,12 @@ Wait for confirmation. Then build the request body:
     {"prompt_id": 11, "score": 4}
   ],
   "core_values_ratings": [
-    {"core_value_id": 3, "score": 4}
+    {"core_value_id": 3, "score": 4, "justification": "Strong teamwork on Q4 launch"}
   ]
 }
 ```
+
+Include `justification` only if the user provided one (omit or set to null if blank).
 
 ```bash
 API_SH="<api.sh path from Current State>"

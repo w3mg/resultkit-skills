@@ -616,7 +616,7 @@ PUT /passwords: Unauthenticated — the reset token serves as authentication. Bo
 | GET | `/core-values-ratings` | List ratings for a subject (params: subject_id*, page, per_page) | "show ratings", "core value ratings", "ratings for user" | — |
 | POST | `/core-values-ratings` | Create standalone core value ratings (body: subject_id*, ratings[{core_value_id*, score*}]) — `core_value_id` is a label ID from EOS Vision core values | "rate core values", "submit ratings", "score values" | — |
 
-CoreValuesRating fields: `id`, `core_value` ({ id, name }), `score` (integer), `rater` (UserSimple), `review_id` (integer | null), `created_at`.
+CoreValuesRating fields: `id`, `core_value` ({ id, name }), `score` (integer), `justification` (string | null), `rater` (UserSimple), `review_id` (integer | null), `created_at`.
 
 ## Reviews
 
@@ -647,7 +647,7 @@ ReviewDetail fields: ReviewListItem + `notes`, `void_reason`, `signed_off_at`, `
 
 Assessment fields: `respondent_type` ("self" | "reviewer"), `respondent` (UserSimple), `is_draft` (boolean), `responses` ([{ prompt_id, description, response_value, score }]).
 
-AssessmentSubmitRequest: `respondent_type` ("self" | "reviewer"), `assessment_responses` ([{ prompt_id*, response_value?, score? }]), `core_values_ratings?` ([{ core_value_id, score }]).
+AssessmentSubmitRequest: `respondent_type` ("self" | "reviewer"), `assessment_responses` ([{ prompt_id*, response_value?, score? }]), `core_values_ratings?` ([{ core_value_id*, score*, justification? (string, max 5000 chars, HTML stripped, empty string → null) }]).
 
 ActionItem fields: `id`, `title`, `assignee` (UserSimple), `status`, `created_at`.
 
