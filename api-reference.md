@@ -598,7 +598,7 @@ Performance reviews with self-assessment and reviewer assessment workflow.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/reviews` | List reviews (params: page, per_page, status, q). Excludes archived. | "show reviews", "list reviews", "my reviews", "performance reviews" | — |
+| GET | `/reviews` | List reviews (params: page, per_page, status, q, team_id). `team_id` filters by organization — resolves the team's root ancestor and returns only reviews where the reviewee is a member of any team in that org. 400 if team_id invalid, 404 if not found. Omitting team_id returns all reviews. Excludes archived. | "show reviews", "list reviews", "my reviews", "performance reviews" | — |
 | POST | `/reviews` | Create review (body: reviewee_id*, reviewer_id*, template_id*, review_type?, start_date?, end_date?). Admin/people-ops only. reviewee_id and reviewer_id must be members of at least one team in the account (400 "is not a member of any team in this account" if not). | "create review", "start review", "new performance review" | — |
 | GET | `/reviews/{id}` | Review detail. Assessment visibility depends on requesting user's role. | "show review", "review details", "open review" | — |
 | PATCH | `/reviews/{id}` | Update review (body: review_type?, start_date?, end_date?) | "update review", "change review dates", "edit review" | — |

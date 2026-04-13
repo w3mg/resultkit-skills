@@ -27,7 +27,9 @@ Parse the JSON response from api.sh. Handle these cases:
 - `"error": "NO_CONFIG"` or `"error": "NO_TOKEN"` → "Config not found. Run `/rkit:setup` first."
 - `"error": "CURL_FAILED"` → "Network error. Check your connection."
 - `status: 401` → "Unauthorized (401). Run `/rkit:setup` to update your token."
+- `status: 400` on reviews list → If error contains "team_id": "Invalid team ID." Otherwise show the API's error message.
 - `status: 400` on template PATCH → If error message contains "owning team": "Cannot change owning team after creation." Otherwise show the API's error message.
+- `status: 404` on reviews list with `team_id` → "Team not found or not accessible."
 - `status: 403` → Review-specific messages:
   - Sign-off actions: "You must be the reviewer to sign off."
   - Template create/update/delete actions: "Admin on the owning team required."
@@ -79,9 +81,16 @@ If the input doesn't match any pattern, show this usage summary and ask what the
 
 ### Step 1: Fetch reviews
 
+Resolve TEAM_ID using Team ID Resolution above. If a team ID is available, pass `team_id` to filter reviews by organization.
+
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" GET "/reviews?per_page=50")
+TEAM_ID="<team ID from Team ID Resolution, or empty>"
+if [ -n "$TEAM_ID" ]; then
+  RESPONSE=$("$API_SH" GET "/reviews?per_page=50&team_id=$TEAM_ID")
+else
+  RESPONSE=$("$API_SH" GET "/reviews?per_page=50")
+fi
 echo "$RESPONSE"
 ```
 
