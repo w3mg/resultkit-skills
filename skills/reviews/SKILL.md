@@ -61,6 +61,7 @@ Parse the user input to determine which flow to follow:
 | `{id} assess` | Assess Review |
 | `{id} draft` | Draft Assessment |
 | `{id} sign-off` | Sign Off Review |
+| `{id} update` | Update Review |
 | `create` | Create Review |
 | `{id} void` | Void Review |
 | `{id} archive` | Archive Review |
@@ -84,7 +85,7 @@ If the input doesn't match any pattern, show this usage summary and ask what the
 
 ### Step 1: Fetch reviews
 
-Resolve TEAM_ID using Team ID Resolution above. If a team ID is available, pass `team_id` to filter reviews by organization.
+Resolve TEAM_ID using Team ID Resolution above. If a team ID is available, pass `team_id` to filter reviews — this returns only reviews directly associated with that team (reviews without a team association are excluded).
 
 ```bash
 API_SH="<api.sh path from Current State>"
@@ -104,16 +105,17 @@ Display as a table:
 ```
 ## Reviews
 
-| ID | Reviewee | Reviewer | Status | Period |
-|----|----------|----------|--------|--------|
-| 42 | Jane Doe | John Smith | in_progress | 2026-01-01 – 2026-03-31 |
-| 38 | Mary Mejia | Scott Levy | signed_off | 2025-10-01 – 2025-12-31 |
+| ID | Reviewee | Reviewer | Team | Status | Period |
+|----|----------|----------|------|--------|--------|
+| 42 | Jane Doe | John Smith | Engineering | in_progress | 2026-01-01 – 2026-03-31 |
+| 38 | Mary Mejia | Scott Levy | — | signed_off | 2025-10-01 – 2025-12-31 |
 
 {count} reviews
 ```
 
 **Display rules**:
 - `Reviewee` / `Reviewer`: show `first_name last_name`; fall back to `login` if names are empty.
+- `Team`: show `team.name` if present; show "—" if `team` is null.
 - `Period`: show `start_date – end_date`; show "—" for either date if null.
 - Sort by API default order.
 
@@ -140,7 +142,7 @@ Display format:
 ```
 ## Review #42: Jane Doe ← John Smith
 
-**Status**: in_progress | **Template**: Q1 2026 Review (ID: 5) | **Period**: 2026-01-01 – 2026-03-31
+**Status**: in_progress | **Template**: Q1 2026 Review (ID: 5) | **Period**: 2026-01-01 – 2026-03-31 | **Team**: Engineering
 
 ### Self Assessment
 
@@ -181,6 +183,7 @@ Status: Submitted
 - Header: `Review #{id}: {reviewee_name} ← {reviewer_name}` — use `first_name last_name`; fall back to `login`.
 - Template: show `name (ID: {id})` or "None" if null.
 - Period: `start_date – end_date`; "—" for null dates.
+- Team: show `team.name` if present; omit the Team field entirely if `team` is null.
 - **Self Assessment**: Show `responses` array as table. Each row: prompt number, `description`, `response_value` (or "—"), `score` (or "—"). Show `is_draft` as "Status: Draft" or "Status: Submitted". Show "(none)" if `self_assessment` is null.
 - **Reviewer Assessment**: Same format. Show "(none)" if `reviewer_assessment` is null. Note: API omits this field for reviewees until review reaches `signed_off` status.
 - **Core Values Ratings**: Table with value name, score, rater name. Show "(none)" if empty.
@@ -398,6 +401,7 @@ Prompt: "Select a template ID:"
 
 4. **Start date** (optional): "Enter start date (YYYY-MM-DD) or leave blank:"
 5. **End date** (optional): "Enter end date (YYYY-MM-DD) or leave blank:"
+6. **Team ID** (optional): "Enter a team ID to associate this review with a team (or leave blank):"
 
 ### Step 2: Confirm and create
 
@@ -407,13 +411,14 @@ Create review?
 - Reviewer: User #{reviewer_id}
 - Template: {template_name} (ID: {template_id})
 - Period: {start_date} – {end_date}
+- Team: #{team_id} (or "None")
 ```
 
-Wait for confirmation. Then:
+Wait for confirmation. Then build request body — include `team_id` only if provided, omit blank optional fields:
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" POST "/reviews" '{"reviewee_id":ID,"reviewer_id":ID,"template_id":ID,"start_date":"DATE","end_date":"DATE"}')
+RESPONSE=$("$API_SH" POST "/reviews" '{"reviewee_id":ID,"reviewer_id":ID,"template_id":ID,"start_date":"DATE","end_date":"DATE","team_id":TEAM_ID}')
 echo "$RESPONSE"
 ```
 
@@ -421,6 +426,59 @@ echo "$RESPONSE"
 
 - **Status 201**: "Review #{id} created. Status: in_progress."
 - **Status 400** → If error contains "is not a member of any team": "Reviewee or reviewer must be a member of at least one team in this account." Otherwise show the API's error message.
+- **Status 403** → "Admin/people-ops permissions required."
+- **Error** → use Error Handling above
+
+---
+
+## Flow: Update Review
+
+**Trigger**: `{id} update`
+
+### Step 1: Fetch current review
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" GET "/reviews/REVIEW_ID")
+echo "$RESPONSE"
+```
+
+Show current values:
+
+```
+Review #{id}: {reviewee_name} ← {reviewer_name}
+- review_type: {review_type | "—"}
+- Period: {start_date} – {end_date}
+- Team: {team.name | "None"}
+```
+
+### Step 2: Collect updates
+
+Prompt for each field via AskUserQuestion (blank = keep unchanged):
+
+1. **Review type** (current: {review_type | "—"}): "New review type (integer, or leave blank to keep):"
+2. **Start date** (current: {start_date | "—"}): "New start date (YYYY-MM-DD, or leave blank to keep):"
+3. **End date** (current: {end_date | "—"}): "New end date (YYYY-MM-DD, or leave blank to keep):"
+4. **Team ID** (current: {team_id | "None"}): "New team ID (integer to associate, 'none' to clear, or leave blank to keep):"
+
+Team ID input logic:
+- `none` → send `"team_id": null`
+- blank → omit `team_id` from request body
+- integer → send `"team_id": <integer>`
+
+### Step 3: Confirm and update
+
+Show summary of changes. Wait for confirmation. Build request body with only changed fields. Then:
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" PATCH "/reviews/REVIEW_ID" 'REQUEST_BODY')
+echo "$RESPONSE"
+```
+
+### Step 4: Handle response
+
+- **Status 200**: "Review #{id} updated."
 - **Status 403** → "Admin/people-ops permissions required."
 - **Error** → use Error Handling above
 
