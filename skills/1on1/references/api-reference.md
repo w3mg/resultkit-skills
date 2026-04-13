@@ -624,11 +624,11 @@ Performance reviews with self-assessment and reviewer assessment workflow.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/reviews` | List reviews (params: page, per_page, status, q, team_id). `team_id` filters by organization — resolves the team's root ancestor and returns only reviews where the reviewee is a member of any team in that org. 400 if team_id invalid, 404 if not found. Omitting team_id returns all reviews. Excludes archived. | "show reviews", "list reviews", "my reviews", "performance reviews" | — |
+| GET | `/reviews` | List reviews (params: page, per_page, status, q, team_id). `team_id` filters by organization — resolves the team's root ancestor and returns only reviews where the reviewee is a member of any team in that org. 400 if team_id invalid, 404 if not found. Omitting team_id returns all reviews. Excludes archived. Response includes `user_id` (creator ID, nullable). | "show reviews", "list reviews", "my reviews", "performance reviews" | — |
 | POST | `/reviews` | Create review (body: reviewee_id*, reviewer_id*, template_id*, review_type?, start_date?, end_date?). Admin/people-ops only. reviewee_id and reviewer_id must be members of at least one team in the account (400 "is not a member of any team in this account" if not). | "create review", "start review", "new performance review" | — |
-| GET | `/reviews/{id}` | Review detail. Assessment visibility depends on requesting user's role. | "show review", "review details", "open review" | — |
+| GET | `/reviews/{id}` | Review detail. Assessment visibility depends on requesting user's role. Response includes `user_id` (creator ID, nullable) and `can_delete` (boolean — whether the authenticated user may delete this review). | "show review", "review details", "open review" | — |
 | PATCH | `/reviews/{id}` | Update review (body: review_type?, start_date?, end_date?) | "update review", "change review dates", "edit review" | — |
-| DELETE | `/reviews/{id}` | Archive review (soft delete). Admin/people-ops only. | "archive review", "delete review", "remove review" | — |
+| DELETE | `/reviews/{id}` | Archive review (soft delete). Allowed for admins/people-ops and for the review creator (unless the reviewee has saved assessment data — 403 "Cannot delete: the reviewee has already saved assessment data"). Use `can_delete` from the detail response to determine visibility. | "archive review", "delete review", "remove review" | — |
 | PUT | `/reviews/{id}/draft-assessment` | Save draft assessment (WIP, does not advance state). Body: AssessmentSubmitRequest. | "save draft", "draft assessment", "save progress" | — |
 | POST | `/reviews/{id}/submit-assessment` | Submit final assessment. Transitions to assessed when both parties submit. Body: AssessmentSubmitRequest. | "submit assessment", "finalize assessment", "submit review" | — |
 | POST | `/reviews/{id}/sign-off` | Sign off review (body: initials*). Must be in assessed state. Reviewer only. | "sign off", "approve review", "finalize review" | — |
@@ -641,9 +641,9 @@ Performance reviews with self-assessment and reviewer assessment workflow.
 
 Review status values: `in_progress`, `assessed`, `signed_off`, `voided`.
 
-ReviewListItem fields: `id`, `reviewee` (UserSimple), `reviewer` (UserSimple), `status`, `review_type` (integer | null), `template` ({ id, name } | null), `start_date`, `end_date`, `created_at`.
+ReviewListItem fields: `id`, `user_id` (integer | null — creator ID), `reviewee` (UserSimple), `reviewer` (UserSimple), `status`, `review_type` (integer | null), `template` ({ id, name } | null), `start_date`, `end_date`, `created_at`.
 
-ReviewDetail fields: ReviewListItem + `notes`, `void_reason`, `signed_off_at`, `signed_off_initials`, `self_assessment` (Assessment | null), `reviewer_assessment` (Assessment | null), `core_values_ratings` (CoreValuesRatingEntry[]), `attachments` (Attachment[]), `action_items` (ActionItem[]), `updated_at`.
+ReviewDetail fields: ReviewListItem + `can_delete` (boolean — whether the current user can delete), `notes`, `void_reason`, `signed_off_at`, `signed_off_initials`, `self_assessment` (Assessment | null), `reviewer_assessment` (Assessment | null), `core_values_ratings` (CoreValuesRatingEntry[]), `attachments` (Attachment[]), `action_items` (ActionItem[]), `updated_at`.
 
 Assessment fields: `respondent_type` ("self" | "reviewer"), `respondent` (UserSimple), `is_draft` (boolean), `responses` ([{ prompt_id, description, response_value, score }]).
 
