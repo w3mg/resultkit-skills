@@ -355,7 +355,7 @@ Response (DELETE): 204 No Content. Errors: 403 if not owner and not admin.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/l10/documents` | List team documents (paginated) | "show documents", "team docs", "team files", "list documents" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/documents` | List team documents (paginated). Returns `material_category_id` per document. | "show documents", "team docs", "team files", "list documents" | `/teams/{id}` |
 | POST | `/teams/{id}/l10/documents` | Upload a document (multipart form data: file*, name*, material_category_id?, description?). Member auth. | "upload document", "add team file", "new document" | `/teams/{id}` |
 | PATCH | `/teams/{id}/l10/documents/{doc_id}` | Update document metadata (body: name?, material_category_id?, description?). Admin/owner only. | "update document", "rename document" | `/teams/{id}` |
 | DELETE | `/teams/{id}/l10/documents/{doc_id}` | Delete a document. Admin/owner only. | "delete document", "remove file" | `/teams/{id}` |
@@ -378,10 +378,22 @@ LinkedURL fields: `id`, `title`, `full_path`, `description`, `media_type_code`, 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/teams/{id}/l10/shared-links` | List shared links | "show shared links", "team shared links" | `/teams/{id}` |
-| POST | `/teams/{id}/l10/shared-links` | Create a shared link (body: title*, link_string*). Member auth. | "add shared link", "share a link", "new shared link" | `/teams/{id}` |
+| POST | `/teams/{id}/l10/shared-links` | Create a shared link (body: title*, link_string*). **Admin role required** (403 for non-admin). | "add shared link", "share a link", "new shared link" | `/teams/{id}` |
+| PATCH | `/teams/{id}/l10/shared-links/{link_id}` | Update shared link title (body: title*). Member auth (non-viewer). | "update shared link", "rename shared link", "edit link title" | `/teams/{id}` |
 | DELETE | `/teams/{id}/l10/shared-links/{link_id}` | Delete a shared link. Member auth. | "delete shared link", "remove shared link" | `/teams/{id}` |
 
-SharedLink fields: `id`, `title`, `link_string`, `user_id`, `created_at`. Response in `data` envelope. DELETE: 204.
+SharedLink fields: `id`, `title`, `full_path`, `link_string`, `user_id`, `created_at`. Response in `data` envelope. DELETE: 204.
+
+#### Material Categories
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/l10/material-categories` | List material categories. Any team member. | "show material categories", "document categories", "list categories" | `/teams/{id}` |
+| POST | `/teams/{id}/l10/material-categories` | Create material category (body: name*). Member auth (non-viewer). 409 if name already exists. | "create category", "new document category", "add category" | `/teams/{id}` |
+| PATCH | `/teams/{id}/l10/material-categories/{cat_id}` | Rename material category (body: name*). Member auth (non-viewer). | "rename category", "update category name" | `/teams/{id}` |
+| DELETE | `/teams/{id}/l10/material-categories/{cat_id}` | Delete material category. Creator only (403 for others). Sets material_category_id=null on associated documents and linked URLs. | "delete category", "remove category" | `/teams/{id}` |
+
+MaterialCategory fields: `id`, `name`, `user_id`, `created_at`, `updated_at`. Response in `data` envelope.
 
 #### Weekly Ratings
 
