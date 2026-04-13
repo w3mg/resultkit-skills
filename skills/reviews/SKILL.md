@@ -28,7 +28,8 @@ Parse the JSON response from api.sh. Handle these cases:
 - `"error": "CURL_FAILED"` → "Network error. Check your connection."
 - `status: 401` → "Unauthorized (401). Run `/rkit:setup` to update your token."
 - `status: 400` on reviews list → If error contains "team_id": "Invalid team ID." Otherwise show the API's error message.
-- `status: 400` on template PATCH → If error message contains "owning team": "Cannot change owning team after creation." Otherwise show the API's error message.
+- `status: 400` on template PATCH → If error message contains "owning organization": "Cannot change owning organization after creation." Otherwise show the API's error message.
+- `status: 422` on template POST/PATCH → If error message contains "not root teams": "Organization ID(s) must be root teams (no sub-teams)." Otherwise show validation error from response body.
 - `status: 404` on reviews list with `team_id` → "Team not found or not accessible."
 - `status: 403` → Review-specific messages:
   - Sign-off actions: "You must be the reviewer to sign off."
@@ -387,7 +388,7 @@ Display template table:
 | 5 | Q1 2026 Review | 8 | Engineering |
 | 3 | Annual Review | 12 | — |
 
-Display `owning_team.name` for each template, or "—" if `owning_team` is null.
+Display `owning_organization.name` for each template, or "—" if `owning_organization` is null.
 
 Prompt: "Select a template ID:"
 
@@ -606,8 +607,8 @@ Display as a table:
 ```
 ## Review Templates
 
-| ID | Name | Prompts | Owning Team |
-|----|------|---------|-------------|
+| ID | Name | Prompts | Owning Organization |
+|----|------|---------|---------------------|
 | 5  | Q1 2026 Review | 8 | Engineering |
 | 3  | Annual Review | 12 | — |
 
@@ -615,7 +616,7 @@ Display as a table:
 ```
 
 **Display rules**:
-- `Owning Team`: show `owning_team.name`; show "—" if `owning_team` is null.
+- `Owning Organization`: show `owning_organization.name`; show "—" if `owning_organization` is null.
 
 **Empty result**: "No templates found."
 
@@ -632,7 +633,7 @@ Prompt for each field via AskUserQuestion:
 1. **Name** (required): "Enter template name:"
 2. **Target role** (optional): "Enter target role (or leave blank to omit):"
 3. **Reviewer instructions** (optional): "Enter reviewer instructions (or leave blank to omit):"
-4. **Owning team ID** (optional): "Enter owning team ID (or leave blank — API defaults to your current team):"
+4. **Owning organization ID** (optional): "Enter owning organization ID (must be a root team — or leave blank to use API default):"
 
 ### Step 2: Confirm and create
 
@@ -641,7 +642,7 @@ Create template?
 - Name: {name}
 - Target role: {target_role | "—"}
 - Reviewer instructions: {reviewer_instructions | "—"}
-- Owning team ID: {owning_team_id | "API default"}
+- Owning organization ID: {owning_organization_id | "API default"}
 ```
 
 Wait for confirmation. Build request body with only provided fields (omit blank optional fields). Then:
@@ -660,11 +661,11 @@ echo "$RESPONSE"
 ## Template #{id} created
 
 **Name**: {name} | **ID**: {id}
-**Owning Team**: {owning_team.name | "—"} (ID: {owning_team.id | "—"})
-**Shared With**: {shared_with_teams names joined by ", " | "None"}
+**Owning Organization**: {owning_organization.name | "—"} (ID: {owning_organization.id | "—"})
+**Shared With**: {shared_with_organizations names joined by ", " | "None"}
 ```
 
-- **Status 403** → "Admin on the owning team required."
+- **Status 403** → "Admin on the owning organization required."
 - **Error** → use Error Handling above
 
 ---
@@ -686,8 +687,8 @@ Show current values:
 ```
 ## Template #{id}: {name}
 
-**Owning Team**: {owning_team.name | "—"}
-**Shared With**: {shared_with_teams names | "None"}
+**Owning Organization**: {owning_organization.name | "—"}
+**Shared With**: {shared_with_organizations names | "None"}
 **Target Role**: {target_role | "—"}
 **Reviewer Instructions**: {reviewer_instructions | "—"}
 ```
@@ -699,12 +700,12 @@ Prompt for each field via AskUserQuestion (show current value as context; blank 
 1. **Name** (current: "{name}"): "New name (or leave blank to keep):"
 2. **Target role** (current: "{target_role | "—"}"): "New target role (or leave blank to keep):"
 3. **Reviewer instructions** (current: "{reviewer_instructions | "—"}"): "New reviewer instructions (or leave blank to keep):"
-4. **Share with team IDs**: "Team IDs to share with, comma-separated (enter 'none' to remove all sharing, or leave blank to keep unchanged):"
+4. **Share with organization IDs**: "Organization IDs to share with, comma-separated (must be root teams — enter 'none' to remove all sharing, or leave blank to keep unchanged):"
 
 Sharing input logic:
-- `none` → send `"shared_with_team_ids": []`
-- blank → omit `shared_with_team_ids` from request body
-- comma-separated IDs → send `"shared_with_team_ids": [id1, id2, ...]`
+- `none` → send `"shared_with_organization_ids": []`
+- blank → omit `shared_with_organization_ids` from request body
+- comma-separated IDs → send `"shared_with_organization_ids": [id1, id2, ...]`
 
 ### Step 3: Confirm and update
 
@@ -724,12 +725,12 @@ echo "$RESPONSE"
 ## Template #{id} updated
 
 **Name**: {name} | **ID**: {id}
-**Owning Team**: {owning_team.name | "—"} (ID: {owning_team.id | "—"})
-**Shared With**: {shared_with_teams names joined by ", " | "None"}
+**Owning Organization**: {owning_organization.name | "—"} (ID: {owning_organization.id | "—"})
+**Shared With**: {shared_with_organizations names joined by ", " | "None"}
 ```
 
 - **Status 400** → use Error Handling above (400 on template PATCH)
-- **Status 403** → "Admin on the owning team required."
+- **Status 403** → "Admin on the owning organization required."
 - **Error** → use Error Handling above
 
 ---
