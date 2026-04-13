@@ -36,6 +36,7 @@ Endpoints that support `q` and `include_archived` are noted below.
 | PATCH | `/items/bulk-move` | Move up to 1000 items under a target parent (body: item_ids, parent_id). Items removed from all weekly boards. | "bulk move", "move items", "move these under", "reparent multiple" | — |
 
 Item fields: `id`, `name`, `description`, `due`, `status`, `on_weekly`,
+`is_long_term` (boolean, defaults to `false`),
 `team` (TeamSimple | null), `creator` (UserSimple), `assignees` (UserSimple[]),
 `parent_id`, `created_at`, `updated_at`.
 
@@ -192,6 +193,16 @@ Section values for `{section}`: `done`, `next`, `blocked`, `parked`.
 | `parked` | Items with status=parked. No time filter. Supports `include_archived`. | Sets status=parked, ensures on_weekly=true |
 
 The `all` param (boolean, default false) on team item endpoints shows all team members' items when true; otherwise only current user's. Note: team projects do NOT use `all` — use `followed_only` and `include_muted` instead.
+
+### Team Issues (dedicated endpoint)
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/issues` | List team issues (items with status=blocked, is_wow=true). Supports rich filtering. No pagination — returns all matches. | "show team issues", "list all issues", "filter issues by label", "long-term issues", "IDS items" | `/teams/{id}` |
+
+Query params: `is_long_term` (boolean — filter long-term vs short-term issues; null treated as false), `search` (string, min 2 chars — case-insensitive name search), `custom_label_ids[]` (integer[] — AND logic, item must have all specified labels), `created_at_from` (YYYY-MM-DD), `created_at_to` (YYYY-MM-DD), `completed_from` (YYYY-MM-DD), `completed_to` (YYYY-MM-DD).
+
+**Notes**: Completion date filters (`completed_from`/`completed_to`) also include `realized` items (not just `blocked`). Response includes `can_edit` (boolean), `comment_count` (integer), `attachment_count` (integer) in addition to standard Item fields.
 
 Due date auto-set: creating an item with `status: "next"` in a team context (or moving an item to the `next` column via `PUT .../items/{section}/{item_id}`) with no explicit `due` date auto-sets `due` to 7 days from now. Explicit `due` values are always preserved.
 
@@ -989,6 +1000,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | done, completed, finished | Item with status=done | `/teams/{id}/items/done` |
 | L10 to-do, weekly to-do | Item with status=next (EOS alias) | `/teams/{id}/l10/todos` |
 | L10 issue, IDS item | Item with status=blocked (EOS alias) | `/teams/{id}/l10/issues` |
+| team issues, filter issues, long-term issues, IDS board | Team issues with filter support | `GET /teams/{id}/issues` |
 | L10 headline | Headline (EOS alias) | `/teams/{id}/l10/headlines` |
 | L10 done, L10 completed | Item with status=done (EOS alias) | `/teams/{id}/l10/done` |
 | L10 parking lot, L10 parked | Item with status=parked (EOS alias) | `/teams/{id}/l10/parked` |
