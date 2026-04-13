@@ -28,11 +28,14 @@ Parse the user input to determine which flow to follow:
 |-------|------|
 | *(no args)* | List One-on-Ones |
 | `{meeting_id}` or `show {meeting_id}` | View One-on-One Detail |
-| `{meeting_id} next` / `done` / `blocked` | View Single Column |
+| `{meeting_id} next` / `blocked` | View Single Column |
+| `{meeting_id} done` | View Done Items (dedicated endpoint) |
+| `{meeting_id} done --since YYYY-MM-DD` | View Done Items with Date Filter |
 | `{meeting_id} move {item_id} {column}` | Move Item |
 | `{meeting_id} add "text"` | Add New Item |
 | `{meeting_id} add {item_id}` | Add Existing Item |
 | `{meeting_id} remove {item_id}` | Remove Item |
+| `{meeting_id} notes "text"` | Save Notes |
 | `--team {id}` *(anywhere in args)* | Override team ID for any flow |
 
 If the input doesn't match any pattern, show this usage summary and ask what they'd like to do.
@@ -74,7 +77,7 @@ Resolve team ID using Team ID Resolution.
 API_SH="<api.sh path from Current State>"
 TEAM=$("$API_SH" GET "/teams/TEAM_ID")
 echo "$TEAM"
-RESPONSE=$("$API_SH" GET "/meetings?team_id=TEAM_ID&per_page=100")
+RESPONSE=$("$API_SH" GET "/1-on-1?team_id=TEAM_ID&per_page=100")
 echo "$RESPONSE"
 ```
 
@@ -82,7 +85,7 @@ echo "$RESPONSE"
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" GET "/meetings?per_page=100")
+RESPONSE=$("$API_SH" GET "/1-on-1?per_page=100")
 echo "$RESPONSE"
 ```
 
@@ -138,7 +141,7 @@ Tip: Set a default team with `/rkit:setup` to filter by team.
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" GET "/meetings/MEETING_ID")
+RESPONSE=$("$API_SH" GET "/1-on-1/MEETING_ID")
 echo "$RESPONSE"
 ```
 
@@ -181,26 +184,46 @@ Display format:
 
 ## Flow: View Single Column
 
-**Trigger**: `{meeting_id} next`, `{meeting_id} done`, or `{meeting_id} blocked`
+**Trigger**: `{meeting_id} next` or `{meeting_id} blocked`
 
 ### Step 1: Fetch the requested column
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" GET "/meetings/MEETING_ID/items/COLUMN?per_page=50")
+RESPONSE=$("$API_SH" GET "/1-on-1/MEETING_ID/items/COLUMN?per_page=50")
 echo "$RESPONSE"
 ```
 
 Replace `COLUMN` with:
 - `next` for next
-- `done` for done
 - `blocked` for blocked items
 
 ### Step 2: Display column
 
 Use same display format as a single section from View Detail — column header, item table, overflow indicator if more than 50 items.
 
-> **Note**: `GET /meetings/{id}/items/{section}` excludes archived items by API default (`include_archived` defaults to `false`). No client-side filtering is needed for this flow.
+> **Note**: `GET /1-on-1/{id}/items/{section}` excludes archived items by API default (`include_archived` defaults to `false`). No client-side filtering is needed for this flow.
+
+---
+
+## Flow: Done Items
+
+**Trigger**: `{meeting_id} done` or `{meeting_id} done --since YYYY-MM-DD`
+
+### Step 1: Fetch done items
+
+```bash
+API_SH="<api.sh path from Current State>"
+# Without date filter:
+RESPONSE=$("$API_SH" GET "/1-on-1/MEETING_ID/done?per_page=50")
+# With date filter (--since DATE):
+RESPONSE=$("$API_SH" GET "/1-on-1/MEETING_ID/done?since=DATE&per_page=50")
+echo "$RESPONSE"
+```
+
+### Step 2: Display done items
+
+Use same table format as single column view (ID, Name, Creator, Due). If `--since DATE` was provided, include it in the header: "### Done since {date} ({count} items)".
 
 ---
 
@@ -270,7 +293,7 @@ Wait for confirmation. Then:
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" POST "/meetings/MEETING_ID/items" '{"name":"TEXT"}')
+RESPONSE=$("$API_SH" POST "/1-on-1/MEETING_ID/items" '{"name":"TEXT"}')
 echo "$RESPONSE"
 ```
 
@@ -296,7 +319,7 @@ Wait for confirmation. Then:
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" PUT "/meetings/MEETING_ID/items/ITEM_ID")
+RESPONSE=$("$API_SH" PUT "/1-on-1/MEETING_ID/items/ITEM_ID")
 echo "$RESPONSE"
 ```
 
@@ -318,13 +341,41 @@ Wait for confirmation. Then:
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" DELETE "/meetings/MEETING_ID/items/ITEM_ID")
+RESPONSE=$("$API_SH" DELETE "/1-on-1/MEETING_ID/items/ITEM_ID")
 echo "$RESPONSE"
 ```
 
 ### Step 2: Handle response
 
 - **Status 200/204**: "Removed item {item_id} from one-on-one {meeting_id}."
+- **Error** → use Error Handling above
+
+---
+
+## Flow: Save Notes
+
+**Trigger**: `{meeting_id} notes "text"`
+
+### Step 1: Validate input
+
+If notes text is empty or missing → "Please provide note content. Example: `/rkit:1on1 {id} notes \"Discussion about Q2 goals\"`" and stop.
+
+### Step 2: Confirm and execute
+
+Describe:
+> Save notes to one-on-one {meeting_id}? (This will overwrite any existing notes.)
+
+Wait for confirmation. Then:
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" PUT "/1-on-1/MEETING_ID/notes" '{"notes":"TEXT"}')
+echo "$RESPONSE"
+```
+
+### Step 3: Handle response
+
+- **Status 200**: "Notes saved to one-on-one {meeting_id}."
 - **Error** → use Error Handling above
 
 ---
@@ -340,6 +391,7 @@ echo "$RESPONSE"
 - **Item already in target column (move)** → warn and skip
 - **Item not found (add existing)** → "Item {id} not found."
 - **Creator names empty** → fall back to `login` field
+- **Empty notes text** → warn and do not submit
 
 ## References
 

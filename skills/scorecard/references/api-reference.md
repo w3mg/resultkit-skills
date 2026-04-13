@@ -20,7 +20,7 @@ Many list endpoints accept these shared params:
 
 Endpoints that support `q` and `include_archived` are noted below.
 
-`include_archived`: by default, archived items are excluded from all list endpoints. Pass `include_archived=true` to include them. Supported on `GET /items`, `GET /projects`, `GET /meetings/{id}/items`, and `GET /meetings/{id}/items/{section}` (next section only).
+`include_archived`: by default, archived items are excluded from all list endpoints. Pass `include_archived=true` to include them. Supported on `GET /items`, `GET /projects`, `GET /1-on-1/{id}/items`, and `GET /1-on-1/{id}/items/{section}` (next section only).
 
 ## Items
 
@@ -563,23 +563,40 @@ Behavioral notes:
 - Adding items triggers status side-effects: done→done, next→next, blocked→blocked.
 - Removing items does NOT revert status side-effects.
 
-## Meetings
+## 1-on-1 Meetings
+
+All endpoints scoped to 1-on-1 sessions only (`sessionable_type = 'User'`). Project meetings are excluded.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/meetings` | List meetings (params: team_id, page, per_page) | "show meetings", "my meetings", "list 1:1s", "L10s", "team 1:1s" | — |
-| GET | `/meetings/{id}` | Meeting detail (includes blocked, done, next arrays) | "show meeting", "meeting details", "open meeting" | `/meetings/{id}` |
-| GET | `/meetings/{id}/items` | All meeting items (params: creator_id?, page, per_page, q, include_archived) | "meeting items", "what's on the agenda" | `/meetings/{id}` |
-| POST | `/meetings/{id}/items` | Create item in meeting | "add to meeting", "new meeting item" | `/items/{item_id}` |
-| PUT | `/meetings/{id}/items/{item_id}` | Attach existing item | "attach to meeting", "link item to meeting" | `/meetings/{id}` |
-| DELETE | `/meetings/{id}/items/{item_id}` | Remove from meeting (keeps item) | "remove from meeting", "detach from meeting" | — |
-| GET | `/meetings/{id}/items/{section}` | Items by section (params: creator_id?, page, per_page, q, include_archived). Section: `done`, `next`, `blocked`. | "meeting next items", "meeting done items", "meeting blockers", "meeting issues" | `/meetings/{id}` |
+| GET | `/1-on-1` | List 1-on-1 sessions (params: team_id, page, per_page) | "show 1:1s", "my 1:1s", "list one-on-ones", "show meetings" | — |
+| POST | `/1-on-1` | Find or create a 1-on-1 session (body: user1_id*, user2_id*). Returns 200 if found, 201 if created. | "start a 1:1 with {name}", "find or create 1:1" | — |
+| GET | `/1-on-1/fetch` | Find/create session by query params (user1_id, user2_id) | "find my 1:1 with {name}" | — |
+| GET | `/1-on-1/{id}` | Full session detail. Includes persons, items (done/next/blocked arrays), notes, attachments, assistants, goals, measures | "show 1:1", "meeting details", "open meeting", "show agenda" | `/1-on-1/{id}` |
+| GET | `/1-on-1/{id}/items` | All session items (params: creator_id?, page, per_page, q, include_archived) | "meeting items", "what's on the agenda" | `/1-on-1/{id}` |
+| POST | `/1-on-1/{id}/items` | Create item in session (body: name*) | "add to 1:1", "new meeting item", "add item to one-on-one" | `/items/{item_id}` |
+| PUT | `/1-on-1/{id}/items/{item_id}` | Attach existing item to session | "attach to 1:1", "link item to meeting" | `/1-on-1/{id}` |
+| DELETE | `/1-on-1/{id}/items/{item_id}` | Remove item from session (keeps item) | "remove from 1:1", "detach from meeting" | — |
+| GET | `/1-on-1/{id}/items/{section}` | Items by section (params: creator_id?, page, per_page, q, include_archived). Section: `next`, `blocked`. Excludes archived by default. | "next items", "blockers", "meeting issues" | `/1-on-1/{id}` |
+| GET | `/1-on-1/{id}/done` | Done items with optional date filter (params: since?, per_page) | "done items", "completed items", "what got done since {date}" | `/1-on-1/{id}` |
+| PUT | `/1-on-1/{id}/notes` | Save session notes (body: notes*). HTML sanitized server-side. Overwrites existing notes. | "save notes", "add notes to 1:1", "write meeting notes" | — |
+| PUT | `/1-on-1/{id}/notes-lock` | Toggle notes lock (body: locked* boolean) | "lock notes", "unlock notes" | — |
+| POST | `/1-on-1/{id}/align` | Align an object to the session (body: alignable_type*, alignable_id*) | "align goal", "align measure to 1:1" | — |
+| POST | `/1-on-1/{id}/unalign` | Unalign an object. Unaligning a Goal cascades to remove its KeyResults. | "unalign", "remove goal from 1:1" | — |
+| POST | `/1-on-1/{id}/set-positions` | Reorder items (body: positions array) | "reorder items", "set order" | — |
+| POST | `/1-on-1/{id}/assistants` | Set assistants (replace semantics, not additive) | "add assistant", "set assistant" | — |
+| GET | `/1-on-1/{id}/attachments` | List attachments | "attachments", "files in 1:1" | — |
+| POST | `/1-on-1/{id}/attachments` | Add attachment | "attach file", "add attachment" | — |
+| DELETE | `/1-on-1/{id}/attachments/{attachment_id}` | Remove attachment | "remove attachment", "delete file" | — |
+| GET | `/1-on-1/{id}/goals` | List aligned goals | "goals in 1:1", "aligned goals" | — |
+| GET | `/1-on-1/{id}/measures` | List aligned measures | "measures in 1:1", "aligned measures" | — |
 
-MeetingSimple fields: `id`, `type` (one_on_one | project), `date`,
-`person1` (UserSimple), `person2` (UserSimple),
-`project` ({ id, name } | null).
+OneOnOne fields: `id`, `sessionable_type` ("User"), `sessionable_id`, `creator_id`, `date`, `human_name`, `can_edit`, `can_view`, `can_edit_notes`, `notes`, `persons` ({ person1: UserSimple, person2: UserSimple }), `items` ({ done: Item[], next: Item[], blocked: Item[] }), `attachments`, `assistants`, `goals`, `measures`.
 
-Meeting fields: MeetingSimple + `blocked` (Item[]), `done` (Item[]), `next` (Item[]).
+Behavior notes:
+- Find-or-create (`POST /1-on-1`) checks both directions (A→B and B→A)
+- Assistants use replace semantics — sending a new list overwrites the previous one
+- Notes HTML is sanitized server-side with `sanitize-html`
 
 ## Sessions
 
@@ -1008,9 +1025,9 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | outcome, objective (as item type) | Item (type=Outcome) | `/items` (type: "Outcome") |
 | key result, KR, measure (as item type) | Item (type=KeyResult) | `/items` (type: "KeyResult") |
 | team, group | Team | `/teams` |
-| meeting, weekly meeting, weekly sync, L10, team meeting | Meeting | `/meetings` |
-| 1:1, 1x1, one-on-one | Meeting (type=one_on_one) | `/meetings` |
-| project meeting | Meeting (type=project) | `/meetings` |
+| meeting, weekly meeting, weekly sync, L10, team meeting | Meeting | `/1-on-1` (1:1s), `/teams/{id}/l10` (team meetings) |
+| 1:1, 1x1, one-on-one | 1-on-1 Session | `/1-on-1` |
+| project meeting | (removed — use Level 10 endpoints) | `/teams/{id}/l10` |
 | day plan, daily plan, prioritizer, tasks for today, my plan | Day Plan | `/day-plans/today`, `/day-plans/{date}` |
 | check-in, 90-second practice, result feed, daily report | Result Feed (daily check-in report) | `/result-feed/today`, `/result-feed/{date}` |
 | team check-ins, team feed, team result feed | Team Result Feeds (shared check-ins) | `/teams/{id}/result-feed` |
@@ -1055,7 +1072,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | convert to project, promote to project | Convert Item to Project | `PUT /teams/{id}/projects/{item_id}` |
 | put on weekly, add to board, show on weekly | Set on_weekly=true | `PUT /teams/{id}/items/{item_id}` |
 | remove from weekly, take off board | Set on_weekly=false | `DELETE /teams/{id}/items/{item_id}` |
-| attach, link to meeting | Attach Item to Meeting | `PUT /meetings/{id}/items/{item_id}` |
+| attach, link to meeting | Attach Item to 1-on-1 | `PUT /1-on-1/{id}/items/{item_id}` |
 | add to plan, add to today, put on my plan | Attach to Day Plan | `PUT /day-plans/today/items/{item_id}` |
 | check off, mark done for today, complete for today | Day Plan Completion | `PATCH /day-plans/today/items/{item_id}` |
 | archive, soft delete, remove item | Archive Item (status→archived) | `DELETE /items/{id}` |

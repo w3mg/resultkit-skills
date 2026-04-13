@@ -112,6 +112,8 @@ Never do these piecemeal. Never forget the version bump. One shot, every time.
 - Bash 5.x, Markdown (Claude Code skill runtime) + `scripts/api.sh` (shared API caller), `curl`, `jq`, `date` (034-monthly-measure-entry-29)
 - Bash 5.x (scripts), Markdown (SKILL.md — Claude Code skill runtime) + curl, jq, `scripts/api.sh` (shared API caller) (035-measure-data-source-30)
 - Bash 5.x + Markdown (Claude Code skill runtime) + `scripts/api.sh`, `curl`, `jq` (037-team-context-endpoint-32)
+- Bash 5.x (scripts), Markdown (Claude Code skill format) + `scripts/api.sh` (shared API caller), `curl`, `jq` (039-1on1-endpoint-migration-gh67)
+- N/A — stateless API calls; config at `~/.config/resultkit/config.json` (039-1on1-endpoint-migration-gh67)
 
 ## Recent Changes
 - 014-result-feed-skill: Added Bash 5.x (api.sh), Markdown (SKILL.md — Claude Code skill runtime) + curl, jq, `scripts/api.sh` (shared API caller)
