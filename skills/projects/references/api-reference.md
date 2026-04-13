@@ -694,15 +694,15 @@ Seats represent positions on a team's accountability chart. Each seat can have a
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/seats` | Get team accountability chart — full hierarchical tree (params: include_archived) | "show org chart", "accountability chart", "team seats", "who does what" | `/teams/{id}` |
+| GET | `/teams/{id}/seats` | Get team accountability chart — full hierarchical tree (params: include_archived). Each node includes `roles` (string[] | null) and `seat_level` ("leadership_team"\|"department"\|"individual_contributor"\|null). | "show org chart", "accountability chart", "team seats", "who does what" | `/teams/{id}` |
 | POST | `/seats` | Create seat (body: name*, team_id or parent_id, accountabilities?, notes?, seat_owner_id?, associated_team_id?). Root requires team_id; child requires parent_id. One root per team. | "create seat", "add position", "new role on chart" | — |
-| GET | `/seats/{id}` | Get seat detail (children as SeatSimple, one level deep) | "show seat", "seat details", "position details" | — |
-| PATCH | `/seats/{id}` | Update seat (body: name?, accountabilities?, notes?, seat_owner_id?, associated_team_id?). Owner changes cascade to aligned measures/goals. | "update seat", "rename seat", "change seat owner", "assign seat" | — |
+| GET | `/seats/{id}` | Get seat detail (children as SeatSimple, one level deep). Includes `roles`, `seat_level`, and `has_direct_reports` (boolean, computed). | "show seat", "seat details", "position details" | — |
+| PATCH | `/seats/{id}` | Update seat (body: name?, accountabilities?, notes?, seat_owner_id?, associated_team_id?, roles?, seat_level?). Owner changes cascade to aligned measures/goals. `roles`: string[] | null, max 5 items, 500 chars each. `seat_level`: "leadership_team"\|"department"\|"individual_contributor"\|null. | "update seat", "rename seat", "change seat owner", "assign seat", "set seat roles", "set seat level" | — |
 | DELETE | `/seats/{id}` | Archive seat and all descendants (soft delete). Cannot archive root seat. | "archive seat", "delete seat", "remove position" | — |
 | PUT | `/seats/{id}/restore` | Restore archived seat (children remain archived, restore individually) | "restore seat", "unarchive seat", "bring back seat" | — |
 | PUT | `/seats/{id}/move` | Re-parent seat (body: parent_id*). Validates no circular refs, same group. Cannot move root. | "move seat", "reparent seat", "reorganize chart" | — |
 
-Seat fields: `id`, `name`, `accountabilities` (string | null, HTML sanitized), `notes` (string | null, HTML sanitized), `parent` (SeatSimple | null), `creator` (UserSimple), `seat_owner` (UserSimple | null), `team` (TeamSimple + framework), `associated_team` (TeamSimple | null), `measures` ([{ id, name, description }]), `goals` ([{ id, name, description }]), `links` ([{ id, title, url }]), `children` (Seat[] in tree, SeatSimple[] in detail), `created_at`, `updated_at`.
+Seat fields: `id`, `name`, `accountabilities` (string | null, HTML sanitized), `notes` (string | null, HTML sanitized), `parent` (SeatSimple | null — `{ id, name }` object), `creator` (UserSimple), `seat_owner` (UserSimple | null), `team` (TeamSimple + framework), `associated_team` (TeamSimple | null), `measures` ([{ id, name, description }]), `goals` ([{ id, name, description }]), `links` ([{ id, title, url }]), `children` (Seat[] in tree, SeatSimple[] in detail), `roles` (string[] | null — max 5, 500 chars each; Seat Builder accountability roles), `seat_level` ("leadership_team" | "department" | "individual_contributor" | null), `has_direct_reports` (boolean, computed, only on GET /seats/{id}), `created_at`, `updated_at`.
 
 SeatSimple: `{ id: integer, name: string }`.
 
@@ -1085,6 +1085,9 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | move seat, reparent seat, reorganize chart | Move Seat | `PUT /seats/{id}/move` |
 | archive seat, delete seat, remove position | Archive Seat | `DELETE /seats/{id}` |
 | restore seat, unarchive seat | Restore Seat | `PUT /seats/{id}/restore` |
+| seat roles, accountability roles, LMA roles, seat responsibilities | Seat Roles | `PATCH /seats/{id}` (roles[]) |
+| seat level, org level, leadership team, department, individual contributor | Seat Level | `PATCH /seats/{id}` (seat_level) |
+| has direct reports, seat with reports, seat builder | Seat Builder | `GET /seats/{id}` (has_direct_reports) |
 | strategy, strategy tree, goals and rocks, OKRs, annual goals, team objectives, targets, show targets | Strategy Tree | `GET /teams/{id}/targets` |
 | vision, V/TO, vision traction organizer, EOS vision, show VTO | EOS Vision (composite) | `GET /teams/{id}/eos-vision` |
 | core values, our values, company values (EOS V/TO) | EOS Core Values | `GET /teams/{id}/core-values` |
