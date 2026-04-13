@@ -143,9 +143,10 @@ Preferred team:   {preferred_team_id}
   Week-ahead (Sun):    {week_ahead_sunday → ON/OFF}
 
 **Settings**
-Update frequency: {update_frequency}
-Startup view:     {startup_view_label} ({startup_view_code})
-Slack username:   {slack_username or "—"}
+Update frequency:   {update_frequency}
+Startup view:       {startup_view_label} ({startup_view_code})
+Slack username:     {slack_username or "—"}
+Subscriber persona: {subscriber_persona}
 ```
 
 ---

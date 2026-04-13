@@ -261,6 +261,9 @@ EOS-friendly URL aliases for the team weekly board. These endpoints return the s
 | PUT | `/teams/{id}/l10/issues/{item_id}` | Move item to L10 issues. Sets status=blocked. Alias for `PUT /teams/{id}/items/blocked/{item_id}`. | "move to L10 issues", "flag as issue", "IDS this" | `/items/{item_id}` |
 | PUT | `/teams/{id}/l10/parked/{item_id}` | Park L10 item. Sets status=parked. Alias for `PUT /teams/{id}/items/parked/{item_id}`. | "park L10 item", "move to parking lot", "shelve in L10" | `/items/{item_id}` |
 | DELETE | `/teams/{id}/l10/items/{item_id}` | Remove item from L10 board (sets on_weekly=false, keeps item). Alias for `DELETE /teams/{id}/items/{item_id}`. | "remove from L10", "take off L10 board", "drop from L10" | — |
+| GET | `/teams/{id}/l10/quick-wins` | Fetch contextual coaching articles from MasteryMaps based on subscriber persona and team framework. Always returns 200 — empty array if no articles available (persona=1, non-EOS/OKR framework, or external API failure). | "quick wins", "coaching articles", "L10 tips", "team coaching" | — |
+
+QuickWinsArticle fields: `id` (integer), `headline` (string), `subheadline` (string | null), `thumbnail_url` (string | null), `type` (string, e.g. "Video How To"), `body` (string — HTML), `link_text` (string | null), `video_url` (string | null).
 
 ### Team Activity Logs
 
@@ -448,7 +451,7 @@ All L10 Meeting Organizer endpoints share these error shapes:
 | GET | `/users/{user_id}/rocks` | User rocks/goals with milestone progress (params: year?, page, per_page; requires shared team membership) | "show rocks", "my rocks", "goals", "quarterly priorities" | `/users/{user_id}` |
 | GET | `/users/{user_id}/feedback` | User feedback/High5s (params: direction* — "given" or "received", page, per_page; requires shared team membership) | "show feedback", "High5s", "kudos", "recognition" | `/users/{user_id}` |
 | GET | `/users/check-login` | Check if login/handle is available (params: login* — 3-40 chars) | "check login", "is handle available", "username taken" | — |
-| GET | `/users/me/preferences` | Get full preferences (profile, notifications, timezone, startup view, API token) | "my preferences", "settings", "notification settings" | `/customize` |
+| GET | `/users/me/preferences` | Get full preferences (profile, notifications, timezone, startup view, API token, subscriber_persona) | "my preferences", "settings", "notification settings" | `/customize` |
 | PATCH | `/users/me/preferences` | Update preferences (body: login?, time_zone?, notifications?, startup_view_code?, preferred_team_id?, secondary_email?, update_frequency?, unsubscribe_all?, slack_username?). Partial update — only sent fields change. Notification booleans represent the logical ON/OFF value (true=on); the API inverts from the raw DB `should_suppress` field. | "update preferences", "change settings", "change timezone", "toggle notifications", "turn off digest", "turn on notifications" | `/customize` |
 | GET | `/users/me/progress` | Personal progress — strategy metrics, practice scorecard, streak totals (params: period? — week/month/quarter) | "my progress", "practice streak", "how am I doing", "scorecard" | — |
 | GET | `/users/me/integrations` | Get third-party integration selections (task_management, sales_revops, team_communication) | "my integrations", "connected apps", "integration settings" | `/customize` |
@@ -475,7 +478,7 @@ UserRock fields: `id`, `name`, `status` ("on_track" | "off_track" | "completed" 
 
 FeedbackEntry fields: `id`, `message`, `from_user` (UserSimple + profile_photo_thumb_path), `to_user` (UserSimple + profile_photo_thumb_path), `created_at`.
 
-UserPreferences fields: `id`, `profile_photo_thumb_path`, `login`, `first_name`, `last_name`, `email`, `secondary_email`, `time_zone`, `notifications` ({ morning_day_ahead, week_ahead_sunday, end_of_day_digest, weekly_digest_friday } — all boolean, true=on, false=off; API inverts the raw DB `should_suppress` field so clients read/write logical on/off values directly), `update_frequency` ("once_daily" | "every_change"), `unsubscribe_all`, `startup_view_code`, `startup_view_label`, `preferred_team_id`, `slack_username`, `api_token`, `is_coach`.
+UserPreferences fields: `id`, `profile_photo_thumb_path`, `login`, `first_name`, `last_name`, `email`, `secondary_email`, `time_zone`, `notifications` ({ morning_day_ahead, week_ahead_sunday, end_of_day_digest, weekly_digest_friday } — all boolean, true=on, false=off; API inverts the raw DB `should_suppress` field so clients read/write logical on/off values directly), `update_frequency` ("once_daily" | "every_change"), `unsubscribe_all`, `startup_view_code`, `startup_view_label`, `preferred_team_id`, `slack_username`, `api_token`, `is_coach`, `subscriber_persona` (integer 1-7, read-only, default 3 = Leadership Team Member).
 
 PersonalProgress fields: `targets` ({ rocks_realized_all_time, milestones_realized_all_time, milestones_realized_this_quarter }), `practice_scorecard` ({ days: [{ date, day_name, completed }] }), `practice_totals` ({ all_time, current_streak, longest_streak }).
 
