@@ -63,7 +63,7 @@ Default `YEAR` = current year, `QUARTER` = current quarter. If user specified `-
 
 Extract:
 - `FRAMEWORK=$(echo "$RESPONSE" | jq -r '.body.data.framework')`
-- `STRATEGY=$(echo "$RESPONSE" | jq '.body.data.strategy')`
+- `STRATEGY=$(echo "$RESPONSE" | jq '.body.data.targets')`
 - `UNALIGNED=$(echo "$RESPONSE" | jq '.body.data.unaligned')`
 
 ---
@@ -74,11 +74,11 @@ Used by: `create` (for parent), `update`, `align`, `detach` subcommands.
 
 ### Step 1: Flatten the tree
 
-Recursively walk both `strategy` and `unaligned` arrays to build a flat list of all nodes:
+Recursively walk both `targets` and `unaligned` arrays to build a flat list of all nodes:
 
 ```bash
 FLAT=$(echo "$RESPONSE" | jq '
-  [.body.data.strategy, .body.data.unaligned] | add //[] |
+  [.body.data.targets, .body.data.unaligned] | add //[] |
   [recurse(.children[]?) | del(.children)]
 ')
 ```
@@ -440,12 +440,12 @@ echo "$RESPONSE"
 
 ## Schemas
 
-**StrategyResponse (from GET /teams/{id}/targets):**
+**TargetResponse (from GET /teams/{id}/targets):**
 ```json
 {
   "data": {
     "framework": "eos",
-    "strategy": [
+    "targets": [
       {
         "id": 6520,
         "name": "Annual Goal",
@@ -504,7 +504,7 @@ echo "$RESPONSE"
 Note: Milestone responses do NOT include `updated_at`.
 
 **Response envelopes:**
-- `GET /teams/{id}/targets` → `{ "data": { "framework": string, "strategy": StrategyNode[], "unaligned": StrategyNode[] } }` (200)
+- `GET /teams/{id}/targets` → `{ "data": { "framework": string, "targets": TargetNode[], "unaligned": TargetNode[] } }` (200)
 - `POST /teams/{id}/goals` → `{ "data": Goal }` (201)
 - `POST /teams/{id}/rocks` → `{ "data": Rock }` (201)
 - `POST /teams/{id}/milestones` → `{ "data": Milestone }` (201)

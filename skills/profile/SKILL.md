@@ -441,10 +441,10 @@ Extract from `body.data`. Display:
 ```
 ## My Progress
 
-**Strategy**
-Rocks realized (all time):          {strategy.rocks_realized_all_time}
-Milestones realized (all time):     {strategy.milestones_realized_all_time}
-Milestones realized (this quarter): {strategy.milestones_realized_this_quarter}
+**Targets**
+Rocks realized (all time):          {targets.rocks_realized_all_time}
+Milestones realized (all time):     {targets.milestones_realized_all_time}
+Milestones realized (this quarter): {targets.milestones_realized_this_quarter}
 
 **Practice Streak**
 Current streak:  {practice_totals.current_streak} days
