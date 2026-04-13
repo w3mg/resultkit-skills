@@ -70,6 +70,8 @@ Parse the user input to determine which flow to follow:
 | `templates create` | Create Template |
 | `templates {id} update` | Update Template |
 | `templates {id} delete` | Delete Template |
+| `templates {id} archive` | Archive Template |
+| `templates {id} unarchive` or `templates {id} restore` | Unarchive Template |
 | `--team {id}` *(anywhere in args)* | Override team ID for any flow |
 
 If the input doesn't match any pattern, show this usage summary and ask what they'd like to do.
@@ -622,6 +624,8 @@ Display as a table:
 
 **Empty result**: "No templates found."
 
+**Note**: Archived templates are excluded from this list. Use `templates {id}` (detail fetch) to view an archived template by ID.
+
 ---
 
 ## Flow: Create Template
@@ -776,6 +780,90 @@ echo "$RESPONSE"
 
 ---
 
+## Flow: Archive Template
+
+**Trigger**: `templates {id} archive`
+
+### Step 1: Fetch template
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" GET "/review-templates/TEMPLATE_ID")
+echo "$RESPONSE"
+```
+
+Show:
+
+```
+Template #{id}: {name}
+Owning Organization: {owning_organization.name | "—"}
+Archived: {archived}
+```
+
+If already archived (`archived == true`), report "Template #{id} is already archived." and stop.
+
+### Step 2: Confirm and archive
+
+> Archive template #{id} "{name}"? It will be hidden from the template list but can still be accessed by ID.
+
+Wait for confirmation. Then:
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" PATCH "/review-templates/TEMPLATE_ID" '{"archived":true}')
+echo "$RESPONSE"
+```
+
+### Step 3: Handle response
+
+- **Status 200**: "Template #{id} archived. It no longer appears in the template list."
+- **Status 403** → "Admin on the owning organization required."
+- **Error** → use Error Handling above
+
+---
+
+## Flow: Unarchive Template
+
+**Trigger**: `templates {id} unarchive` or `templates {id} restore`
+
+### Step 1: Fetch template
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" GET "/review-templates/TEMPLATE_ID")
+echo "$RESPONSE"
+```
+
+Show:
+
+```
+Template #{id}: {name}
+Owning Organization: {owning_organization.name | "—"}
+Archived: {archived}
+```
+
+If not archived (`archived == false`), report "Template #{id} is not archived." and stop.
+
+### Step 2: Confirm and unarchive
+
+> Restore template #{id} "{name}"? It will reappear in the template list.
+
+Wait for confirmation. Then:
+
+```bash
+API_SH="<api.sh path from Current State>"
+RESPONSE=$("$API_SH" PATCH "/review-templates/TEMPLATE_ID" '{"archived":false}')
+echo "$RESPONSE"
+```
+
+### Step 3: Handle response
+
+- **Status 200**: "Template #{id} restored. It now appears in the template list."
+- **Status 403** → "Admin on the owning organization required."
+- **Error** → use Error Handling above
+
+---
+
 ## Edge Cases
 
 - **No config** → "Config not found. Run `/rkit:setup` first."
@@ -788,6 +876,9 @@ echo "$RESPONSE"
 - **Sign off when not assessed** → "Review must be in assessed status to sign off. Current status: {status}."
 - **Void already-voided** → Show the API's error response.
 - **Archive already-archived** → Show the API's error response.
+- **Archive already-archived template** → Detect via `archived == true` in prefetch; report "Template #{id} is already archived." and stop.
+- **Unarchive non-archived template** → Detect via `archived == false` in prefetch; report "Template #{id} is not archived." and stop.
+- **Template `archived` field missing** → Treat as not archived (API default).
 - **Non-reviewer signs off** → "You must be the reviewer to sign off."
 - **Non-admin creates/voids/archives** → "Admin/people-ops permissions required."
 - **No core values defined** → "No core values defined for your organization."

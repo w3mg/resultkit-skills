@@ -661,9 +661,10 @@ Templates that define the prompts used in reviews. Access is role-based (`canVie
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/review-templates` | List review templates (params: page, per_page). Returns templates visible to the user through direct or group-inherited roles (viewer, editor, author, contributor) plus team-shared templates. Account admins see all. | "show templates", "list review templates", "review forms", "list templates" | — |
+| GET | `/review-templates` | List review templates (params: page, per_page). Returns templates visible to the user through direct or group-inherited roles (viewer, editor, author, contributor) plus team-shared templates. Account admins see all. **Excludes archived templates.** | "show templates", "list review templates", "review forms", "list templates" | — |
 | POST | `/review-templates` | Create template (body: name*, target_role?, reviewer_instructions?, owning_organization_id?, shared_with_organization_ids?). Admin on owning organization (team admin or account admin). Organization IDs must be root teams. | "create template", "new review template", "add review form" | — |
-| PATCH | `/review-templates/{id}` | Update template (body: name?, target_role?, reviewer_instructions?, shared_with_organization_ids? — replace-all). owning_organization_id is rejected (400). Requires `canEdit` — editor, author, or contributor role (or org admin). Organization IDs must be root teams (422 if sub-team IDs sent). | "update template", "edit review template", "rename template", "share template", "manage template sharing" | — |
+| PATCH | `/review-templates/{id}` | Update template (body: name?, target_role?, reviewer_instructions?, shared_with_organization_ids? — replace-all, archived? — boolean to archive/unarchive). owning_organization_id is rejected (400). Requires `canEdit`. Organization IDs must be root teams (422 if sub-team IDs sent). `archived` must be boolean (400 otherwise); idempotent. | "update template", "edit review template", "rename template", "share template", "manage template sharing", "archive template", "unarchive template", "restore template" | — |
+| GET | `/review-templates/{id}` | Fetch single template by ID. Returns archived templates (includes `archived` boolean field). | "get template", "fetch template", "view template" | — |
 | DELETE | `/review-templates/{id}` | Delete template (permanent). Requires `canDelete` (delegates to `canEdit`) — editor, author, contributor, or org admin. | "delete template", "remove review template" | — |
 | POST | `/review-templates/{id}/prompts` | Create assessment prompt (body: description*, answer_type*, hint?, answer_meta_data?). Requires `canEdit` on parent template. | "add prompt", "new question", "add review question" | — |
 | PATCH | `/review-templates/{id}/prompts/{pid}` | Update prompt (body: description?, hint?, answer_type?, answer_meta_data?). Requires `canEdit` on parent template. | "update prompt", "edit question", "change prompt" | — |
@@ -675,7 +676,7 @@ Templates that define the prompts used in reviews. Access is role-based (`canVie
 
 ReviewTemplateListItem fields: `id`, `name`, `target_role` (string | null), `prompt_count` (integer), `created_at`, `owning_organization` (`{ id, name }` | null), `organization_id` (integer | null — root team ID).
 
-ReviewTemplateDetail fields: `id`, `name`, `target_role`, `reviewer_instructions`, `prompts` (AssessmentPrompt[]), `created_at`, `updated_at`, `owning_organization` (`{ id, name }` | null), `shared_with_organizations` (`[{ id, name }]`), `organization_id` (integer | null — root team ID).
+ReviewTemplateDetail fields: `id`, `name`, `target_role`, `reviewer_instructions`, `archived` (boolean — true if archived), `prompts` (AssessmentPrompt[]), `created_at`, `updated_at`, `owning_organization` (`{ id, name }` | null), `shared_with_organizations` (`[{ id, name }]`), `organization_id` (integer | null — root team ID).
 
 422 on POST/PATCH when any organization ID is not a root team: `{ "error": "Organization ID(s) {ids} are not root teams" }`.
 
