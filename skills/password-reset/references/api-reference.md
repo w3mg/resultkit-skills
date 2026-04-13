@@ -638,6 +638,8 @@ Performance reviews with self-assessment and reviewer assessment workflow.
 | POST | `/reviews/{id}/attachments` | Upload attachment (multipart/form-data: file*). Beta. | "attach file", "upload to review", "add attachment" | — |
 | DELETE | `/reviews/{id}/attachments/{aid}` | Delete attachment | "remove attachment", "delete file from review" | — |
 | GET | `/reviews/{id}/audit-log` | Audit log entries for review | "review history", "audit log", "review changes" | — |
+| GET | `/reviews/{id}/seat-accountability-comments` | List all seat accountability comments for a review. Response: array of { id, review_id, seat_id, comment (HTML string), respondent_type ("self"\|"reviewer"), created_at, updated_at }. Auth: reviewer, reviewee, or review admin. | "seat accountability comments", "list accountability comments" | — |
+| PUT | `/reviews/{id}/seat-accountability-comments/{seatId}` | Create or update (upsert) a seat accountability comment (body: comment* (HTML), respondent_type* ("self"\|"reviewer")). respondent_type "self" — reviewee only; "reviewer" — reviewer only. 200 on update, 201 on create. 400 invalid input, 403 unauthorized for respondent_type, 404 review/seat not found. | "save accountability comment", "upsert seat comment", "update seat accountability" | — |
 
 Review status values: `in_progress`, `assessed`, `signed_off`, `voided`.
 
