@@ -7,6 +7,8 @@ Web App: `https://app.resultmaps.com` — Web URL column values are paths relati
 Auth: Bearer token in `Authorization` header or `token` query param. Find your token in your profile settings at https://app.resultmaps.com/customize.
 Interactive docs: <https://api.resultmaps.com/api-docs/v2>
 
+> **V1 endpoints**: Some newer endpoints use `/api/v1/` paths. When calling via `api.sh`, pass the full versioned path (e.g., `/api/v1/items/{id}/attachments`). The script detects paths starting with `/api/` and automatically strips the `/v2` suffix from the base URL.
+
 ## Common Query Parameters
 
 Many list endpoints accept these shared params:
@@ -68,6 +70,29 @@ Smart text: `POST /items` supports `@username` in name to auto-assign, and hasht
 | POST | `/items/{id}/comments` | Create comment (body: body*) | "add comment", "leave a note", "comment on" | `/items/{id}` |
 
 Comment fields: `id`, `body`, `author` (UserSimple), `created_at`.
+
+### Item Attachments (V1)
+
+> **Note**: These endpoints use the V1 API base. Pass the full versioned path to `api.sh` (e.g., `/api/v1/items/{id}/attachments`).
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/api/v1/items/{id}/attachments` | List all attachments (files + links) on an item | "show attachments", "list files", "what's attached", "item files", "show linked URLs" | `/items/{id}` |
+| POST | `/api/v1/items/{id}/attachments` | Upload file attachment (multipart/form-data: file*, name?, description?). Max 4.5 MB. | "upload file", "attach file", "add attachment", "upload to item" | `/items/{id}` |
+| POST | `/api/v1/items/{id}/links` | Add URL link (body: url* HTTPS required, title?, description?, media_type_code?) | "add link", "attach URL", "add resource link", "link to item" | `/items/{id}` |
+| DELETE | `/api/v1/attachments/{material_id}` | Delete file attachment. Use `material_id` from list response. | "delete attachment", "remove file", "delete file from item" | — |
+| GET | `/api/v1/attachments/{material_id}/download` | Download file — 302 redirect to pre-signed S3 URL (5-min expiry). Use `material_id`. | "download file", "get file", "download attachment" | — |
+| DELETE | `/api/v1/links/{material_id}` | Delete URL link. Use `material_id` from list response. | "delete link", "remove link", "remove URL from item" | — |
+
+Attachment list response: `{ "attachments": [AttachmentEntry] }`. Empty list: `{ "attachments": [] }`.
+
+AttachmentEntry (file): `type: "file"`, `id` (Document ID), `material_id` (ItemMaterial ID — **use for delete/download**), `name`, `filename`, `content_type`, `size` (bytes), `url` (pre-signed S3 URL, ~1h expiry), `user_id`, `created_at`.
+
+AttachmentEntry (link): `type: "link"`, `id` (LinkedUrl ID), `material_id` (ItemMaterial ID — **use for delete**), `title`, `url`, `description`, `media_type_code` (0=Article, 1=Video, 2=URL default, 3=Audio, 4=PDF, 5=Image, 6=Loom), `user_id`, `created_at`.
+
+Upload errors: `400 { "error": "unsupported_extension" }` — file type not allowed; `400 { "error": "mime_mismatch" }` — MIME doesn't match extension; `413` — file exceeds 4.5 MB. Supported extensions (29): `.pdf .doc .docx .txt .rtf .odt .md .mdx .xls .xlsx .csv .ods .ppt .pptx .odp .png .jpg .jpeg .gif .svg .webp .zip .gz .tar .json .yaml .yml .xml .html`.
+
+Auth: `canEdit` on Item for upload, add-link, and delete. `canView` on Item for list and download.
 
 ## Teams
 
@@ -454,7 +479,7 @@ All L10 Meeting Organizer endpoints share these error shapes:
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/users/me` | Authenticated user (includes api_token, default_team, current_team). Response wrapped in `{ data: { ... } }`. `current_team` reflects the team last set via `PATCH /users/me/team-context` (was always null before 2026-03-13 API fix). | "who am I", "my profile", "my token", "my API key" | `/customize` |
+| GET | `/users/me` | Authenticated user (includes api_token, default_team, current_team). Response wrapped in `{ data: { ... } }`. `current_team` reflects the team last set via `PATCH /users/me/team-context` (was always null before 2026-03-13 API fix). Optional param: `?include=access` enriches `default_team` and `current_team` with `access_level` object (`is_admin`, `designation`, `seats_owned`) plus `is_leadership_team` and `framework` — use for LLM/AI context needing role awareness. | "who am I", "my profile", "my token", "my API key", "my role", "my access level", "am I admin" | `/customize` |
 | GET | `/users/search` | Search users (params: q* — min 2 chars, page, per_page). Searches login, email, first_name, last_name. Returns active users visible to current user. | "find user", "search people", "look up user" | — |
 | GET | `/users/{id}` | User profile (no api_token). Returns UserPublic. | "show user", "user profile", "who is this" | `/users/{id}` |
 | GET | `/users/{id}/items` | User's items (requires same-team membership; params: page, per_page, q, status) | "show their tasks", "user's items", "what's assigned to them" | `/users/{id}` |
@@ -473,6 +498,8 @@ All L10 Meeting Organizer endpoints share these error shapes:
 
 User fields (`/users/me`): `id`, `login`, `email`, `first_name`, `last_name`,
 `api_token`, `default_team` (TeamSimple | null), `current_team` (TeamSimple | null — reflects the team last set via `PATCH /users/me/team-context`. Non-null after at least one team-context set call).
+
+With `?include=access`, `default_team` and `current_team` gain: `is_leadership_team` (boolean), `framework` (string), `access_level` (`{ is_admin: boolean, designation: "visionary"|"integrator"|"leadership_team"|"front_line", seats_owned: [{ id, name }] }`). `designation` is derived from seat ownership — not a stored field.
 
 UserPublic fields: `id`, `login`, `email`, `first_name`, `last_name`.
 
@@ -518,6 +545,7 @@ AccountMember fields: `id`, `login`, `first_name`, `last_name`, `email`, `profil
 | PUT | `/day-plans/today/items/{item_id}` | Attach existing item to today (auto-creates plan, body: position?) | "attach to today", "add to plan", "link to today" | `/day-plans/today` |
 | PATCH | `/day-plans/today/items/{item_id}` | Toggle completion (body: completed*) | "check off", "mark done for today", "complete for today", "undo" | `/day-plans/today` |
 | DELETE | `/day-plans/today/items/{item_id}` | Remove from plan (keeps item) | "remove from today", "take off plan", "drop from today" | — |
+| POST | `/day-plans/today/set-positions` | Reorder today's plan items (body: item_ids* — complete ordered array of item IDs; assigns position=1-based index to each). Empty array is valid. Subset allowed — only provided items get updated positions. Auto-creates today's plan if needed. Returns `{ "data": { "success": true } }`. | "reorder today", "sort plan", "drag to reorder", "set item order", "change order of today's items" | — |
 | GET | `/day-plans/{date}` | Plan by date (YYYY-MM-DD) | "show plan for Monday", "last Friday's plan" | `/day-plans/{date}` |
 | GET | `/day-plans/{date}/items` | Items by date (params: page, per_page, q, include_archived) | "items for that day", "what was on Monday" | `/day-plans/{date}` |
 | POST | `/day-plans/{date}/items` | Create item in date's plan (plan must already exist) | "add to that day's plan" | `/items/{item_id}` |
@@ -710,7 +738,7 @@ SeatSimple: `{ id: integer, name: string }`.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/seats/{id}/measures` | List measures aligned to seat. Response includes `chart_type` (string | null) on each measure object. | "seat measures", "show KPIs for seat", "aligned measures" | — |
+| GET | `/seats/{id}/measures` | List measures aligned to seat. Response includes `chart_type` (string | null), `current_value` (string | null), and `target_value` (string | null) on each measure object. | "seat measures", "show KPIs for seat", "aligned measures" | — |
 | PUT | `/seats/{id}/measures` | Align measure to seat (body: measure_id*). Moves alignment if already aligned elsewhere. | "align measure", "add KPI to seat", "link measure" | — |
 | DELETE | `/seats/{id}/measures/{measure_id}` | Remove measure alignment | "remove measure", "unlink KPI", "detach measure" | — |
 
@@ -718,7 +746,7 @@ SeatSimple: `{ id: integer, name: string }`.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/seats/{id}/goals` | List goals aligned to seat | "seat goals", "show rocks for seat", "aligned goals" | — |
+| GET | `/seats/{id}/goals` | List goals aligned to seat. Response includes `status` (string | null — mapped from `current_state`: `active`, `at_risk`, `off_track`, `complete`, `archived`) and `due_date` (string | null, YYYY-MM-DD) on each goal object. | "seat goals", "show rocks for seat", "aligned goals" | — |
 | PUT | `/seats/{id}/goals` | Align goal to seat (body: goal_id*). Moves alignment if already aligned elsewhere. | "align goal", "add rock to seat", "link goal" | — |
 | DELETE | `/seats/{id}/goals/{goal_id}` | Remove goal alignment | "remove goal", "unlink rock", "detach goal" | — |
 
@@ -782,14 +810,14 @@ TargetAssignee fields: `id`, `first_name` (string | null), `last_name` (string |
 
 **Inherited nodes**: Nodes with `inherited: true` come from a parent team and are read-only. `inherited_from` contains the source `team_id` and `team_name`.
 
-### Goals — Yearly (EOS only)
+### Goals — Yearly
 
-All goal endpoints return `422 Unprocessable Entity` with message "This endpoint is only available for EOS teams" when called against a non-EOS team.
+**EOS restriction**: POST endpoints return `422 Unprocessable Entity` with message "This endpoint is only available for EOS teams" when called against a non-EOS team. **GET is available for all team types** (EOS restriction removed as of 2026-04-16).
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/goals` | List yearly goals (params: year?) | "list goals", "show yearly goals", "annual goals", "1-year goals" | `/teams/{id}` |
-| POST | `/teams/{id}/goals` | Create a yearly goal (body: name*, achieve_by?, assignee_ids?) | "create goal", "add yearly goal", "new annual goal" | `/teams/{id}` |
+| GET | `/teams/{id}/goals` | List yearly goals (params: year?) — available for all team types | "list goals", "show yearly goals", "annual goals", "1-year goals" | `/teams/{id}` |
+| POST | `/teams/{id}/goals` | Create a yearly goal (body: name*, achieve_by?, assignee_ids?) — EOS teams only | "create goal", "add yearly goal", "new annual goal" | `/teams/{id}` |
 | PATCH | `/goals/{id}` | Update a yearly goal (body: name?, description?, status?, achieve_by?, assignee_ids?) | "update goal", "rename goal", "mark goal complete", "change goal status" | — |
 | DELETE | `/goals/{id}` | Archive a yearly goal | "archive goal", "delete goal", "remove goal" | — |
 
@@ -1062,6 +1090,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | attach, link to meeting | Attach Item to Meeting | `PUT /meetings/{id}/items/{item_id}` |
 | add to plan, add to today, put on my plan | Attach to Day Plan | `PUT /day-plans/today/items/{item_id}` |
 | check off, mark done for today, complete for today | Day Plan Completion | `PATCH /day-plans/today/items/{item_id}` |
+| reorder today, sort my plan, change order of today, drag to reorder, set item order | Reorder Day Plan | `POST /day-plans/today/set-positions` |
 | archive, soft delete, remove item | Archive Item (status→archived) | `DELETE /items/{id}` |
 | search, find, look up | Search (q param) | `GET /items?q=...`, `GET /users/search?q=...` |
 | my token, API key, api token | API Token | `GET /users/me` |

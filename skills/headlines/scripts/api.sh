@@ -38,8 +38,15 @@ fi
 # Strip trailing slash from base URL
 API_BASE="${API_BASE%/}"
 
-# --- Build curl command ---
-URL="${API_BASE}${API_PATH}"
+# --- Build URL ---
+# If path starts with /api/ (e.g. /api/v1/...), use only the origin (scheme+host)
+# so V1 endpoints work alongside the default /api/v2 base.
+if [[ "$API_PATH" == /api/* ]]; then
+  API_ORIGIN=$(echo "$API_BASE" | sed 's|^\(https\?://[^/]*\).*|\1|')
+  URL="${API_ORIGIN}${API_PATH}"
+else
+  URL="${API_BASE}${API_PATH}"
+fi
 
 CURL_ARGS=(
   -s
