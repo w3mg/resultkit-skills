@@ -22,6 +22,14 @@ If the output contains `worktrees` in the path (e.g. `.claude/worktrees/issue-42
 
 Do not fetch any issue, apply any label, or do any work. Exit the command entirely.
 
+**Ensure required labels exist** — run once before touching any issue:
+```bash
+gh label list --json name --jq '.[].name' | grep -q "^in-progress$" \
+  || gh label create "in-progress" --color "0075ca" --description "Being actively worked on"
+```
+
+This is a no-op if the label already exists.
+
 ### 1. Fetch the target issue
 
 **If an issue number was passed as an argument** (i.e., `$ARGUMENTS` is non-empty and contains a number):
