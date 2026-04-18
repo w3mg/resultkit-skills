@@ -544,6 +544,9 @@ UserIntegrations fields: `task_management` ({ selected, options }), `sales_revop
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
+| POST | `/accounts` | Create account / signup (unauthenticated). Body: `login`*, `email`*, `password`*, `password_confirmation`*, `name`?, `framework`? (`eos`,`okr`,`v2mom`,`srt`,`default`; defaults to `okr`). Returns 201 with user+account+team+api_token on success, 422 with field-level `details` on validation failure. Transactional — rolls back entirely on failure. Sends welcome email fire-and-forget. | "create account", "sign up", "new account", "register", "onboard new user" | — |
+| PUT | `/accounts/{id}/framework` | Set management framework for an account. Body: `framework`* (`eos`,`okr`,`v2mom`,`srt`,`default`). Account owner only. Returns 200 with `{ account_id, framework }`. | "set framework", "change framework", "select management framework" | — |
+| PUT | `/accounts/{id}/leadership-team` | Designate a team as the leadership team for an account. Body: `team_id`* (must belong to account). Account owner only. Returns 200 with `{ account_id, leadership_team_id, previous_leadership_team_id }`. One leadership team per account — designating a new one removes the previous. | "set leadership team", "designate leadership team", "change leadership team" | — |
 | GET | `/users/me/accounts` | List accounts the user belongs to (includes is_owner flag) | "my accounts", "list accounts", "which accounts" | — |
 | GET | `/accounts/{account_id}/members` | List account members (params: page, per_page). Any account member can view. | "account members", "who's in account", "list users in account" | — |
 | DELETE | `/accounts/{account_id}/members/{user_id}` | Remove member from account. Account owner only. Cannot remove owner. | "remove from account", "kick from account", "remove account member" | — |
@@ -551,6 +554,8 @@ UserIntegrations fields: `task_management` ({ selected, options }), `sales_revop
 UserAccount fields: `id`, `name`, `is_owner` (boolean).
 
 AccountMember fields: `id`, `login`, `first_name`, `last_name`, `email`, `profile_photo_thumb_path`, `is_owner` (boolean).
+
+Signup response (201): `{ data: { user: { id, login, email, api_token }, account: { id, name }, team: { id, name } } }`. Validation error (422): `{ error: { code: "validation_error", message, details: { field: [messages] } } }`.
 
 ## Day Plans
 
@@ -746,6 +751,7 @@ Seats represent positions on a team's accountability chart. Each seat can have a
 | DELETE | `/seats/{id}` | Archive seat and all descendants (soft delete). Cannot archive root seat. | "archive seat", "delete seat", "remove position" | — |
 | PUT | `/seats/{id}/restore` | Restore archived seat (children remain archived, restore individually) | "restore seat", "unarchive seat", "bring back seat" | — |
 | PUT | `/seats/{id}/move` | Re-parent seat (body: parent_id*). Validates no circular refs, same group. Cannot move root. | "move seat", "reparent seat", "reorganize chart" | — |
+| POST | `/teams/{id}/seats/scaffold` | Scaffold default accountability chart for a team (empty body). Idempotent — returns 200 with `seats_created: 0` if team already has seats, 201 with seat count and root seat details if created. Seat names depend on framework: EOS uses Visionary/Integrator, all others use CEO/COO-President. | "scaffold seats", "create default org chart", "set up accountability chart", "initialize seats" | — |
 
 Seat fields: `id`, `name`, `accountabilities` (string | null, HTML sanitized), `notes` (string | null, HTML sanitized), `parent` (SeatSimple | null — `{ id, name }` object), `creator` (UserSimple), `seat_owner` (UserSimple | null), `team` (TeamSimple + framework), `associated_team` (TeamSimple | null), `measures` ([{ id, name, description }]), `goals` ([{ id, name, description }]), `links` ([{ id, title, url }]), `children` (Seat[] in tree, SeatSimple[] in detail), `roles` (string[] | null — max 5, 500 chars each; Seat Builder accountability roles), `seat_level` ("leadership_team" | "department" | "individual_contributor" | null), `has_direct_reports` (boolean, computed, only on GET /seats/{id}), `created_at`, `updated_at`.
 
@@ -1239,6 +1245,10 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | activity log, team activity, membership changes | Team Activity Log | `GET /teams/{id}/activity-logs` |
 | quarterly review, team quarterly review, q1 review, q2 review, wins, went well, focus | Quarterly Review | `GET /teams/{id}/quarterly-review`, `PATCH /teams/{id}/quarterly-review` |
 | change role, promote to admin, demote, make admin | Change Member Role | `PATCH /teams/{id}/members/{user_id}` |
+| create account, sign up, new account, register, onboard new user | Create Account (Signup) | `POST /accounts` |
+| set framework, change framework, select management framework | Set Account Framework | `PUT /accounts/{id}/framework` |
+| set leadership team, designate leadership team, change leadership team | Set Leadership Team | `PUT /accounts/{id}/leadership-team` |
+| scaffold seats, create default org chart, set up accountability chart, initialize seats | Scaffold Seats | `POST /teams/{id}/seats/scaffold` |
 | account, my accounts, account list, account membership | Account | `GET /users/me/accounts` |
 | account members, who's in account, who's in my account | Account Members | `GET /accounts/{id}/members` |
 | remove from account, kick from account, remove account member | Remove Account Member | `DELETE /accounts/{id}/members/{user_id}` |
