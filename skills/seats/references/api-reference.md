@@ -778,6 +778,27 @@ SeatSimple: `{ id: integer, name: string }`.
 
 SeatLink fields: `id`, `title`, `url`.
 
+### Seat Snapshots
+
+Team admins can save, list, view, update, delete, and revert snapshots of their team's seat hierarchy. Seat edits (PATCH, move, archive, restore) automatically create a pre-change snapshot (non-blocking — seat ops always succeed even if snapshot fails).
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| POST | `/teams/{id}/snapshots` | Create a named snapshot (body: title*, description?) | "save snapshot", "create checkpoint", "save chart state", "backup accountability chart" | — |
+| GET | `/teams/{id}/snapshots` | List snapshots for team (newest first) | "list snapshots", "show chart history", "view saved charts", "snapshot history" | — |
+| GET | `/teams/{id}/snapshots/{snapshotId}` | Get snapshot detail with full seat data | "show snapshot", "view saved chart", "get checkpoint" | — |
+| PATCH | `/teams/{id}/snapshots/{snapshotId}` | Update snapshot title/description | "rename snapshot", "update snapshot", "edit checkpoint" | — |
+| DELETE | `/teams/{id}/snapshots/{snapshotId}` | Delete a snapshot | "delete snapshot", "remove checkpoint" | — |
+| PUT | `/teams/{id}/snapshots/{snapshotId}/revert` | Revert chart to snapshot (body: create_backup? boolean, default true) | "revert chart", "restore snapshot", "undo chart changes", "roll back chart" | — |
+
+All snapshot endpoints require team admin. Non-admins receive 403.
+
+Snapshot list fields: `id`, `title`, `description`, `creator_name`, `created_at`.
+
+Snapshot detail adds: `seats` (array of seat objects with `id`, `name`, `description`, `parent_id`, `user_id`, `accountability_owner_id`, `notes`).
+
+Revert response: `{ message, backup_snapshot_id }` — `backup_snapshot_id` is null if `create_backup: false`.
+
 ## Team Scorecard Measures
 
 Team scorecard measures are KPIs tracked weekly on a team's scorecard. Each measure can have a target, unit, direction (higher/lower is better), and an optional owner. Weekly history values are recorded against Monday dates.
@@ -1190,6 +1211,8 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | seat roles, accountability roles, LMA roles, seat responsibilities | Seat Roles | `PATCH /seats/{id}` (roles[]) |
 | seat level, org level, leadership team, department, individual contributor | Seat Level | `PATCH /seats/{id}` (seat_level) |
 | has direct reports, seat with reports, seat builder | Seat Builder | `GET /seats/{id}` (has_direct_reports) |
+| seat snapshot, chart snapshot, accountability chart history, save chart, checkpoint | Seat Snapshot | `/teams/{id}/snapshots` |
+| revert chart, restore snapshot, undo chart changes, roll back accountability chart | Snapshot Revert | `PUT /teams/{id}/snapshots/{snapshotId}/revert` |
 | strategy, strategy tree, goals and rocks, OKRs, annual goals, team objectives, targets, show targets | Strategy Tree | `GET /teams/{id}/targets` |
 | vision, V/TO, vision traction organizer, EOS vision, show VTO | EOS Vision (composite) | `GET /teams/{id}/eos-vision` |
 | core values, our values, company values (EOS V/TO) | EOS Core Values | `GET /teams/{id}/core-values` |
