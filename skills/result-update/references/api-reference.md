@@ -1005,6 +1005,33 @@ The Vision/Traction Organizer (V/TO) covers six EOS components: core values, cor
 - **Standalone core value routes**: PATCH/DELETE at `/core-values/{valueId}` — no team ID in URL. Team inferred from value's `group_id`.
 - **Auth**: All GET endpoints require Member role. All write endpoints (POST/PATCH/DELETE) require Admin role.
 
+## EOS Tools Checklist
+
+Tracks which EOS practice tools a team has adopted. State is stored as a JSON blob keyed by tool slug. Only available for EOS-framework teams.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/eos-tools-checklist` | Get saved EOS Tools checklist state | "show EOS tools checklist", "which EOS tools do we use", "EOS tools adoption", "show tools checklist" | — |
+| PATCH | `/teams/{id}/eos-tools-checklist` | Partial update — merge tool states (body: `tools*` — object of slug→boolean) | "update EOS tools checklist", "toggle EOS tool", "mark EOS tool adopted", "check off EOS tool" | — |
+
+**Request body (PATCH)**:
+```json
+{ "tools": { "the-eos-model": true, "the-five-leadership-abilities": false } }
+```
+
+**Response shape (GET 200 / PATCH 200)**:
+```json
+{ "data": { "tools": { "the-eos-model": true, "the-five-leadership-abilities": false } } }
+```
+
+**Behavior notes**:
+- **GET 404 = no checklist saved yet** — treat as all tools unchecked. Do not show an error; render a blank checklist.
+- **PATCH is a partial merge** — only supplied keys are updated; unspecified keys retain their existing values.
+- **Boolean values only** — all values in `tools` must be booleans. Non-boolean values yield 422.
+- **EOS teams only** — both endpoints return 403 if the team's `team_management_framework` is not `'EOS'`.
+- **Auth**: GET requires team Member; PATCH requires team Admin.
+- **Unknown keys are silently ignored** by the API (not stored).
+
 ## Quarterly Review
 
 Per-team HTML blob storage for quarterly review summaries. Data is persisted in `object_metas` keyed by team, year, and quarter. Writes are admin-only; reads require team membership.
@@ -1171,6 +1198,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | marketing strategy, target market, uniques, proven process, guarantee (EOS V/TO) | EOS Marketing Strategy | `GET /teams/{id}/eos-marketing-strategy` |
 | three-year picture, 3-year picture, where we'll be (EOS V/TO) | EOS Three-Year Picture | `GET /teams/{id}/eos-three-year-picture` |
 | annual plan, quarterly plan, year plan, Q1 plan (EOS V/TO) | EOS Plans | `GET /teams/{id}/eos-plans` |
+| EOS tools checklist, which EOS tools, tools adoption, EOS practice tools, tools we use, check off EOS tool, toggle EOS tool | EOS Tools Checklist | `GET /teams/{id}/eos-tools-checklist`, `PATCH /teams/{id}/eos-tools-checklist` |
 | yearly goal, annual goal, 1-year goal, create goal, add goal, new goal | Goal (yearly) | `POST /teams/{id}/goals`, `GET /teams/{id}/goals` |
 | rock, quarterly rock, 90-day priority, create rock, add rock, new rock | Rock (quarterly) | `POST /teams/{id}/rocks`, `GET /teams/{id}/rocks` |
 | milestone, deliverable, create milestone, add milestone, new milestone | Milestone | `POST /teams/{id}/milestones`, `GET /teams/{id}/milestones` |
