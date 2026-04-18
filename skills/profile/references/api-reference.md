@@ -197,6 +197,23 @@ Settings response shape: `{ "data": { "is_cascading_goals": bool, "is_strict": b
 
 PATCH body: any subset of the five recognized boolean keys (e.g. `{ "is_strict": false }`). Errors: 400 (invalid team id), 401 (no auth), 403 (GET: not a team member; PATCH: not a team admin), 404 (team not found), 422 (non-boolean value sent — `{ "error": { "code": "validation_error", "details": { "<key>": ["must be a boolean"] } } }`).
 
+### Team Rhythm Settings
+
+Per-team rhythm meeting time slots stored in `object_metas`. Returns defaults if no custom times saved — GET never returns 404.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/rhythm-settings` | Fetch rhythm meeting time slots (custom or system defaults). Auth: any team member. | "rhythm times", "meeting times", "rhythm settings", "what time is the meeting" | — |
+| PATCH | `/teams/{id}/rhythm-settings` | Set all 7 rhythm meeting time slots (full replacement). Auth: team admin only. | "set meeting times", "update rhythm times", "change meeting schedule", "set rhythm settings" | — |
+
+Response shape (both endpoints): `{ "data": { "times": string[] } }` — always exactly 7 time strings in 12-hour format (e.g. `"9:00 AM"`).
+
+PATCH body: `{ "times": ["9:00 AM", "9:15 AM", "9:30 AM", "9:45 AM", "10:00 AM", "10:15 AM", "10:30 AM"] }` — exactly 7 strings required, each must match `/^\d{1,2}:\d{2} (AM|PM)$/i`.
+
+Errors: 400 (invalid JSON), 403 (non-admin on PATCH), 404 (team not found / no access), 422 (wrong count or invalid time format — e.g. `"times must contain exactly 7 entries"` or `"times[2] is not a valid 12-hour time (e.g. 9:00 AM)"`).
+
+System defaults (returned when no custom times saved): `["9:00 AM", "9:15 AM", "9:30 AM", "9:45 AM", "10:00 AM", "10:15 AM", "10:30 AM"]`.
+
 ### Team Weekly Board (Items)
 
 | Method | Path | Description | User Phrases | Web URL |
@@ -988,6 +1005,35 @@ The Vision/Traction Organizer (V/TO) covers six EOS components: core values, cor
 - **Standalone core value routes**: PATCH/DELETE at `/core-values/{valueId}` — no team ID in URL. Team inferred from value's `group_id`.
 - **Auth**: All GET endpoints require Member role. All write endpoints (POST/PATCH/DELETE) require Admin role.
 
+## Quarterly Review
+
+Per-team HTML blob storage for quarterly review summaries. Data is persisted in `object_metas` keyed by team, year, and quarter. Writes are admin-only; reads require team membership.
+
+| Method | Path | Description | User Phrases | Auth |
+|--------|------|-------------|--------------|------|
+| GET | `/api/v2/teams/{id}/quarterly-review` | Fetch saved quarterly review blobs (params: `year`*, `quarter`* 1–4). Returns 404 if no data saved yet for this period. | "show quarterly review", "get quarterly review", "quarterly review data", "what's in our quarterly review" | Team member |
+| PATCH | `/api/v2/teams/{id}/quarterly-review` | Partially update quarterly review fields (params: `year`*, `quarter`* 1–4; body: `wins`?, `went_well`?, `focus`?). Creates record if none exists. | "save quarterly review", "update quarterly review", "set quarterly wins", "update went well", "update focus" | Team admin |
+
+**Request body (PATCH)** — all fields optional; omit to preserve, send `""` to clear:
+```json
+{ "wins": "<p>...</p>", "went_well": "<p>...</p>", "focus": "<p>...</p>" }
+```
+
+**Response shape** (both endpoints):
+```json
+{ "data": { "id": 42, "year": 2026, "quarter": 1, "wins": "", "went_well": "", "focus": "" } }
+```
+
+Response fields: `id` (team ID), `year`, `quarter`, `wins`, `went_well`, `focus` (all sanitized HTML strings; empty string if never set).
+
+**Behavior notes**:
+- **404 on GET**: No data saved yet — treat as empty editor, not an error.
+- **Partial PATCH**: Only provided fields are updated; omitted fields retain existing values.
+- **HTML sanitization**: All fields sanitized server-side on write.
+- **50 KB per field**: Each of `wins`, `went_well`, `focus` capped at 51,200 bytes (400 if exceeded).
+- **Admin gate**: PATCH requires `isTeamAdmin`; GET requires `canViewGroup`. Non-members/non-admins receive 403.
+- **Missing/invalid params**: Both endpoints return 400 if `year` or `quarter` is missing, non-integer, or `quarter` is outside 1–4.
+
 ## Favorites
 
 User-private bookmarks to any relative app URL. Ordered by position. All endpoints require Bearer auth.
@@ -1140,6 +1186,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | integration, webhook, Slack integration, Discord integration | Team Integration | `/teams/{id}/integrations` |
 | team logo, upload logo, remove logo, delete logo | Team Logo | `POST /teams/{id}/logo`, `DELETE /teams/{id}/logo` |
 | activity log, team activity, membership changes | Team Activity Log | `GET /teams/{id}/activity-logs` |
+| quarterly review, team quarterly review, q1 review, q2 review, wins, went well, focus | Quarterly Review | `GET /teams/{id}/quarterly-review`, `PATCH /teams/{id}/quarterly-review` |
 | change role, promote to admin, demote, make admin | Change Member Role | `PATCH /teams/{id}/members/{user_id}` |
 | account, my accounts, account list, account membership | Account | `GET /users/me/accounts` |
 | account members, who's in account, who's in my account | Account Members | `GET /accounts/{id}/members` |
