@@ -1109,6 +1109,28 @@ Favorite fields: `id`, `url`, `title`, `position`, `created_at`, `updated_at`.
 - Ownership violations return 403.
 - `PUT /favorites/reorder` body: `{ "favorite_ids": [3, 1, 2] }` — must include ALL user's favorite IDs in desired order. Response: `{ "data": [...] }` with updated positions.
 
+## Custom Labels
+
+User-scoped personal labels that can be attached to Items and Goals. Labels belong to the authenticated user — personal scope only, not shared across team members. All endpoints require Bearer / Token auth.
+
+| Method | Path | Description | User Phrases |
+|--------|------|-------------|--------------|
+| GET | `/api/v2/custom-labels` | List user's custom labels (paginated, sorted by name; params: page, per_page) | "list my labels", "show custom labels", "my tags", "my labels" |
+| POST | `/api/v2/custom-labels` | Create a custom label (body: name*, color?) | "create label", "add label", "new label", "create tag" |
+| PATCH | `/api/v2/custom-labels/{id}` | Update label name and/or color (body: name?, color?) | "rename label", "update label", "change label color" |
+| DELETE | `/api/v2/custom-labels/{id}` | Delete label — cascade deletes all associations | "delete label", "remove label", "delete tag" |
+| POST | `/api/v2/custom-labels/manage` | Bulk sync labels on an Item or Goal (body: labeled_type*, labeled_id*, custom_labels*) | "set labels on item", "tag item", "apply labels", "sync labels", "label this item", "attach labels" |
+| GET | `/api/v2/custom-labels/content` | Get attached + creator labels for an Item or Goal (params: labeled_type*, labeled_id*) | "labels on this item", "show item labels", "label picker", "which labels are attached" |
+
+Label object fields: `id`, `name`, `color` (hex string or null), `template_code` (null for user-created), `user_id`.
+
+- **Color**: hex string (`#fff` or `#ff00aa`) or null. Optional on create/update.
+- **Name**: required, max 255 chars, trimmed. Duplicate name per user returns `422 { name: ["already exists"] }`.
+- **Cascade delete**: `DELETE` removes all `custom_labelings` associations first, then the label.
+- **PATCH/DELETE ownership**: Returns `403` if the label belongs to another user.
+- **`/manage` semantics**: Diff-based sync — compares requested label names against current associations. Adds missing (find-or-create by name), removes stale. Sending `[]` clears all. Whitespace-only names silently ignored. Duplicates deduplicated. `labeled_type` must be `"Item"` or `"Goal"` (other values → `422`). User must have view access to the target.
+- **`/content` response**: `{ data: { attached_labels: [...], creator_labels: [...] } }`. `creator_labels` includes all user labels; `label_context: true` on any label means it is currently attached to this content.
+
 ## Pages
 
 Team-scoped hierarchical document pages. Pages form a tree via `parent_id`; the list endpoint returns a **flat array** — build the tree client-side. All endpoints require Bearer / Token auth and team membership.
@@ -1347,6 +1369,12 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | check login, login available, check username, is handle available, username taken | Check Login | `GET /users/check-login` |
 | switch team, use team, set active team, change my team, team context | Set Active Team | `PATCH /users/me/team-context` |
 | my context, full context, organizational context, load my context, everything about my teams, all my rocks and issues, my orgs and teams, session context | User Context Snapshot | `GET /users/me/context` |
+| custom label, personal label, tag, my label | Custom Label | `GET /api/v2/custom-labels` |
+| create label, add label, new label, create tag | Create Label | `POST /api/v2/custom-labels` |
+| rename label, update label, change label color | Update Label | `PATCH /api/v2/custom-labels/{id}` |
+| delete label, remove label, delete tag | Delete Label | `DELETE /api/v2/custom-labels/{id}` |
+| set labels on item, tag item, apply labels, sync labels, label this, attach labels | Manage Labels on Content | `POST /api/v2/custom-labels/manage` |
+| labels on this item, show item labels, label picker, which labels are attached | Labels for Content | `GET /api/v2/custom-labels/content` |
 | page, doc, wiki, team doc, team wiki, team note, team knowledge base | Page | `/teams/{team_id}/pages`, `/teams/{team_id}/pages/{page_id}` |
 | list pages, show team pages, team docs, team wiki | List Pages | `GET /teams/{team_id}/pages` |
 | create page, new page, new doc, new wiki page | Create Page | `POST /teams/{team_id}/pages` |
