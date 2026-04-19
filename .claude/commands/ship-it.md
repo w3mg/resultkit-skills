@@ -1,64 +1,98 @@
 ---
 model: claude-sonnet-4-6
-description: Commit all changes, push branch to origin, post implementation summary comment on GitHub issue, and close the issue
+description: Merge the current feature branch into main, bump the plugin version, commit all pending changes, push, post an implementation summary on the GitHub issue, and close it.
 ---
+
+Merge the current feature branch to main, bump the plugin version, push, and close the GitHub issue. Run all steps automatically — no pausing, no asking.
 
 1. Run `git branch --show-current` to capture the current branch name. Store it as BRANCH.
 
 2. If BRANCH is `main`, stop and tell the user: "Already on main — nothing to ship. Switch to a feature branch first."
 
-3. **Clean up debug test scaffolding** — delete any leftover debug test files that should never be committed:
-   - Run: `find __tests__ -name "test-debug*.test.*" -delete 2>/dev/null; find __tests__ -name "debug*.test.*" -delete 2>/dev/null; find e2e -name "test-debug*.spec.*" -delete 2>/dev/null`
-   - These files are always untracked; this is a no-op if none exist.
+3. **Find the GitHub issue number** — extract from BRANCH using this priority order:
+   1. **`-gh<N>` suffix** — match `-gh` followed by digits at the end (e.g. `028-gantt-kibo-ui-gh70` → `70`).
+   2. **`fix/<N>-` prefix** — match digits immediately after `fix/` (e.g. `fix/42-null-user-crash` → `42`).
+   3. **Leading digits (legacy fallback)** — match leading digits before the first `-` (e.g. `018-old-style` → `18`). Warn the user.
+   - Store as ISSUE_NUMBER. If no number found, skip the issue comment/close steps and note it in the final report.
 
-4. Run `git status` to check for uncommitted changes.
+4. **Commit any remaining changes on the feature branch**:
+   - Run `git status` to check for uncommitted changes.
+   - If there are staged or unstaged changes:
+     - `git add -u` to stage all tracked changes.
+     - Stage any new untracked files that belong to the feature (never `git add .` or `git add -A`).
+     - Commit with a descriptive message referencing the issue.
 
-5. If there are staged or unstaged changes (modified/added/deleted files):
-   - Stage all tracked changes with `git add -u`
-   - Stage any new untracked files that are NOT in .gitignore (use `git add` on specific files — never `git add .` or `git add -A` to avoid secrets)
-   - Commit with a descriptive message summarizing the changes
-
-6. Push the branch:
+5. **Exit worktree if in one**:
    ```bash
-   git push origin $BRANCH
+   git rev-parse --git-dir
+   ```
+   If the path contains `worktrees`, call `ExitWorktree` with `action=keep`. Wait until the session is back in the main repo root before continuing.
+
+6. **Merge the feature branch into main**:
+   ```bash
+   git checkout main
+   git pull origin main
+   ```
+   If the merge would be blocked by untracked files (git reports "would be overwritten by merge"), clean them:
+   ```bash
+   git clean -f <specific conflicting file paths listed by git>
+   ```
+   Then merge:
+   ```bash
+   git merge $BRANCH --no-edit
    ```
 
-7. **Find the GitHub issue number** — extract from BRANCH using this priority order:
-   1. **`-gh<N>` suffix** — match `-gh` followed by digits at the end (e.g. `028-gantt-kibo-ui-gh70` → `70`). Canonical format for `/next-issue` branches.
-   2. **`fix/<N>-` prefix** — match digits immediately after `fix/` (e.g. `fix/42-null-user-crash` → `42`). Canonical format for quick-fix branches.
-   3. **Leading digits (legacy fallback)** — match the leading digits before the first `-` only if neither pattern above matched (e.g. `018-old-style` → `18`). Warn the user that this is a legacy branch name and the issue number may be incorrect.
-   - Store as ISSUE_NUMBER. If no number is found, skip steps 8–9 and report: "No GitHub issue number found in branch name — skipping issue update."
+7. **Stage all pending changes** — there may be unstaged modifications left over (e.g. api-reference sync files modified before the session started):
+   ```bash
+   git add -u
+   ```
 
-8. **Post implementation summary comment on the GitHub issue**:
-   - Build the comment by gathering:
-     - `git log main..HEAD --oneline` — commits on this branch
-     - The feature spec at `specs/*/spec.md` matching this branch (by leading issue number or branch name)
-     - Completed tasks from that spec's `tasks.md` (lines matching `- [x]`)
-   - Write a comment in this format:
-     ```
-     ## Implemented
+8. **Bump the plugin version** — read `.claude-plugin/plugin.json`, increment the patch version (e.g. `1.2.90` → `1.2.91`), write it back. Then stage it:
+   ```bash
+   git add .claude-plugin/plugin.json
+   ```
 
-     <1–3 sentence summary of what was built, derived from the spec overview and completed tasks>
+9. **Commit everything** with a message that references the issue and new version:
+   ```bash
+   git commit -m "$(cat <<'EOF'
+   <summary of what was done> (closes #ISSUE_NUMBER); bump vX.Y.Z
+   
+   Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+   EOF
+   )"
+   ```
+   If `git status` shows nothing to commit (all changes were already in the merge commit), skip this step.
 
-     **Commits**:
-     - <each commit from git log, one per line>
-
-     **Tasks completed**: <count of [x] items> / <total tasks>
-     ```
-   - Post it: `gh issue comment $ISSUE_NUMBER --body "$(cat <<'EOF' ... EOF)"`
-
-9. **Close the issue**:
-   - `gh issue close $ISSUE_NUMBER`
-
-10. **Exit worktree if applicable** — check if currently in a worktree:
+10. **Push main**:
     ```bash
-    git rev-parse --git-dir
+    git stash   # only if git pull --rebase fails due to unstaged changes
+    git pull --rebase origin main
+    git stash pop   # if stashed
+    git push origin main
     ```
-    If the output contains `worktrees` in the path, call `ExitWorktree` with `action=keep`. The branch stays on origin for review; the session returns to the main repo root.
 
-11. **Report**:
+11. **Post implementation summary on the GitHub issue** (skip if no ISSUE_NUMBER):
+    - Gather: `git log origin/main~2..HEAD --oneline` — recent commits on this branch.
+    - Write a comment:
+      ```
+      ## Implemented
+
+      <1–3 sentence summary of what was built>
+
+      **Commits**:
+      - <each commit, one per line>
+      ```
+    - Post it: `gh issue comment $ISSUE_NUMBER --body "$(cat <<'EOF' ... EOF)"`
+
+12. **Close the issue** (skip if no ISSUE_NUMBER):
+    ```bash
+    gh issue close $ISSUE_NUMBER
     ```
-    Branch pushed: $BRANCH
+
+13. **Report**:
+    ```
+    Merged: $BRANCH → main
+    Version: vX.Y.Z
     Issue #$ISSUE_NUMBER: comment posted, issue closed
-    Worktree: exited (if applicable)
+    Next: run `/plugin marketplace update`
     ```

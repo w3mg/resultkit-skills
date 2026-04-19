@@ -219,46 +219,9 @@ These are responses from the API team after we filed a bug via `/open-issue:api-
    e. **Fix the code** (Green phase):
       - Make the minimal change to fix the bug.
       - Run the test again to confirm it now passes.
-   f. **Verify everything** (Refactor phase):
-      - Run `npm run build` to verify no build errors.
-      - Run `npm test` to verify all tests pass (no regressions).
-   g. **Commit both test and fix together** with message referencing the issue: `Fix #<number>: <description>`
-   h. Push the branch and mark the issue ready for review — do **NOT** merge to main or close the issue:
-      ```
-      git push origin fix/<issue>-<short-slug>
-      ```
-      Then poll GitHub Deployments for the Vercel preview URL (same as `/ship-it` — 3 min timeout, 10 s interval):
-      ```bash
-      BRANCH="fix/<issue>-<short-slug>"
-      VERCEL_URL=""
-      for i in $(seq 1 18); do
-        DEPLOYMENT_ID=$(gh api "repos/w3mg/resultmaps-web-ui-2/deployments?ref=$BRANCH&per_page=5" \
-          --jq '[.[] | select(.environment | test("Preview|preview"))][0].id // empty' 2>/dev/null)
-        if [ -n "$DEPLOYMENT_ID" ]; then
-          VERCEL_URL=$(gh api "repos/w3mg/resultmaps-web-ui-2/deployments/$DEPLOYMENT_ID/statuses?per_page=1" \
-            --jq '[.[] | select(.state == "success")][0].environment_url // empty' 2>/dev/null)
-          [ -n "$VERCEL_URL" ] && break
-        fi
-        echo "Waiting for Vercel deployment... ($i/18)"
-        sleep 10
-      done
-      ```
-      Build the comment (include Vercel URL if found, note pending if not):
-      ```
-      gh issue comment <number> --body "Fix pushed for review.
-
-      **Branch**: [fix/<issue>-<short-slug>](<repo-url>/tree/fix/<issue>-<short-slug>)
-      **Commit**: [<short-SHA>](<repo-url>/commit/<full-SHA>)
-      **Preview**: <VERCEL_URL or 'Pending — check the deployments tab'>
-      **What was done**: <commit subject line>"
-      ```
-      Update labels:
-      ```
-      gh issue edit <number> --add-label "ready-for-review"
-      gh issue edit <number> --remove-label "in-progress"
-      ```
-   i. **Exit the worktree**: Call `ExitWorktree` with `action=keep`. The branch stays on origin for review; the session returns to the main repo root.
-   j. Skip to Step 5 (Report).
+   f. **Commit the fix** with a message referencing the issue: `Fix #<number>: <description>`
+   g. **Run `/ship-it`** — this merges the branch to main, bumps the plugin version, stages any pending changes, pushes, posts a summary comment, and closes the issue. Do not do any of those steps manually; let `/ship-it` handle them end-to-end.
+   h. Skip to Step 5 (Report).
 
 5. **Full feature path** (speckit):
    a. Prepare the user input for `/speckit:specify` by composing a description that includes:
