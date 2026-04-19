@@ -983,6 +983,23 @@ Note: Milestone responses do NOT include `updated_at`.
 
 **Authorization**: Root-level creation requires team admin. Child creation requires team admin or node-level assignment on the parent (assignee of the parent or any ancestor).
 
+### Team Vision (cross-framework)
+
+Universal vision endpoint that returns framework-appropriate vision data for any team. Use this instead of `/eos-vision` when the team's framework is unknown or when building framework-agnostic views (e.g. TBR report).
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/vision` | Get framework-appropriate vision data (works for EOS, OKR, 4DX, and others). Response: `{ data: { framework, framework_supported, vision, mission, core_values, eos_vision } }`. `framework_supported` is `true` for EOS/OKR/4DX, `false` for V2MOM/SRT/Pinnacle/unknown. `vision`/`mission`/`core_values` present when supported. `eos_vision` non-null for EOS only (full V/TO composite). `core_values` ordered by position. Errors: 400 non-numeric ID, 403 not a team member, 404 team not found. | "team vision", "show vision", "vision and mission", "core values", "strategic direction", "what's our vision", "team mission" | — |
+
+**Framework behaviour**:
+
+| Framework | `framework_supported` | `vision` | `mission` | `core_values` | `eos_vision` |
+|-----------|----------------------|----------|-----------|---------------|--------------| 
+| `eos` | `true` | from DB | from DB | from labels | full composite |
+| `okr` | `true` | from DB | from DB | from labels | `null` |
+| `4dx` | `true` | from DB | from DB | from labels | `null` |
+| `v2mom` / `srt` / other | `false` | `null` | `null` | `[]` | `null` |
+
 ### EOS Vision (V/TO)
 
 The Vision/Traction Organizer (V/TO) covers six EOS components: core values, core focus (purpose/niche), BHAG (10-year target), marketing strategy, three-year picture, and year/quarter plans.
@@ -1326,6 +1343,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | seat snapshot, chart snapshot, accountability chart history, save chart, checkpoint | Seat Snapshot | `/teams/{id}/snapshots` |
 | revert chart, restore snapshot, undo chart changes, roll back accountability chart | Snapshot Revert | `PUT /teams/{id}/snapshots/{snapshotId}/revert` |
 | strategy, strategy tree, goals and rocks, OKRs, annual goals, team objectives, targets, show targets | Strategy Tree | `GET /teams/{id}/targets` |
+| team vision, vision and mission, strategic direction, what's our vision, team mission (any framework) | Team Vision (cross-framework) | `GET /teams/{id}/vision` |
 | vision, V/TO, vision traction organizer, EOS vision, show VTO | EOS Vision (composite) | `GET /teams/{id}/eos-vision` |
 | core values, our values, company values (EOS V/TO) | EOS Core Values | `GET /teams/{id}/core-values` |
 | core focus, purpose, niche, why we exist (EOS V/TO) | EOS Core Focus | `GET /teams/{id}/eos-core-focus` |
