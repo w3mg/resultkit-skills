@@ -1108,6 +1108,89 @@ Favorite fields: `id`, `url`, `title`, `position`, `created_at`, `updated_at`.
 - Ownership violations return 403.
 - `PUT /favorites/reorder` body: `{ "favorite_ids": [3, 1, 2] }` — must include ALL user's favorite IDs in desired order. Response: `{ "data": [...] }` with updated positions.
 
+## Pages
+
+Team-scoped hierarchical document pages. Pages form a tree via `parent_id`; the list endpoint returns a **flat array** — build the tree client-side. All endpoints require Bearer / Token auth and team membership.
+
+| Method | Path | Auth | Description | User Phrases |
+|--------|------|------|-------------|--------------|
+| GET | `/api/v2/teams/{team_id}/pages` | Bearer / Token | List all pages for a team (flat list) | "list pages", "show team pages", "team wiki", "team docs", "team notes" |
+| POST | `/api/v2/teams/{team_id}/pages` | Bearer / Token | Create a page (team admin only) | "create page", "add page", "new page", "new doc", "new wiki page" |
+| GET | `/api/v2/teams/{team_id}/pages/{page_id}` | Bearer / Token | Get a single page | "show page", "get page", "view page", "open page" |
+| PATCH | `/api/v2/teams/{team_id}/pages/{page_id}` | Bearer / Token | Update a page (title, body, parent_id, position) | "edit page", "update page", "rename page", "move page", "reorder page" |
+| DELETE | `/api/v2/teams/{team_id}/pages/{page_id}` | Bearer / Token | Delete page + all descendants (author or team admin) | "delete page", "remove page", "archive page" |
+| GET | `/api/v2/pages/{page_id}/permissions` | Bearer / Token | List page role assignments (author only) | "list page permissions", "who can edit page", "page roles" |
+| POST | `/api/v2/pages/{page_id}/permissions` | Bearer / Token | Grant role to user on page (author only) | "grant page access", "add page editor", "share page", "give page permission" |
+| DELETE | `/api/v2/pages/{page_id}/permissions` | Bearer / Token | Revoke role from user on page (author only) | "revoke page access", "remove page editor", "remove page permission" |
+
+**Page object shape**:
+```json
+{
+  "id": 1,
+  "title": "Getting Started",
+  "body": "<p>HTML content, sanitized server-side</p>",
+  "parent_id": null,
+  "position": 0,
+  "team_id": 10,
+  "user_id": 42,
+  "can_edit": true,
+  "can_delete": false,
+  "created_at": "2026-04-18T12:00:00.000Z",
+  "updated_at": "2026-04-18T12:00:00.000Z"
+}
+```
+
+**Page permission object shape**:
+```json
+{
+  "id": 101,
+  "role": "editor",
+  "user_id": 55,
+  "user": { "id": 55, "login": "jsmith", "first_name": "Jane", "last_name": "Smith" }
+}
+```
+
+**Permission model**:
+- **View** (`GET`): any team member
+- **Create** (`POST`): team admin only; creator automatically receives `author` role on the new page
+- **Edit** (`PATCH`): team admin OR user with `author`, `editor`, or `contributor` role on the page
+- **Delete** (`DELETE`): team admin OR user with `author` role (cascades to all descendants)
+- **Manage permissions** (`/permissions`): `author` role on the page only
+
+Role hierarchy on pages: `author` > `editor` > `contributor` > `viewer`
+
+**Create request** (body: `title`*, `body`, `parent_id`):
+```json
+{ "title": "Onboarding", "body": "<p>Welcome!</p>", "parent_id": null }
+```
+Response: `201` with `{ "data": { ...page } }`.
+
+**Update request** — all fields optional; send `parent_id` to move, `position` to reorder among siblings:
+```json
+{ "title": "New Title", "body": "<p>...</p>", "parent_id": 3, "position": 1 }
+```
+Cycle detection prevents moving a page to one of its own descendants (returns `400`).
+
+**Grant permission request** (body: `role`*, `user_id`*):
+```json
+{ "role": "editor", "user_id": 55 }
+```
+
+**Revoke permission request** (body: `user_id`*):
+```json
+{ "user_id": 55 }
+```
+
+**Error codes**:
+| Status | Condition |
+|--------|-----------|
+| `400` | Missing/empty title, title > 255 chars, body > 100KB, parent_id from different team, cycle detected, invalid role |
+| `401` | Missing or invalid token |
+| `403` | Insufficient permission (not admin, not author/editor, etc.) |
+| `404` | Team or page not found |
+
+Use `can_edit` / `can_delete` flags on each page object to gate write suggestions. The list endpoint returns a flat array — build the tree client-side from `parent_id`. Position is 0-based ordering among siblings, auto-maintained on create/move/delete.
+
 ## Error Responses
 
 All errors return: `{ "error": { "code": "<error_code>", "message": "<human-readable>", "details": { ... } } }`
@@ -1262,6 +1345,15 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | feedback, High5s, kudos, recognition | User Feedback | `GET /users/{user_id}/feedback` |
 | check login, login available, check username, is handle available, username taken | Check Login | `GET /users/check-login` |
 | switch team, use team, set active team, change my team, team context | Set Active Team | `PATCH /users/me/team-context` |
+| page, doc, wiki, team doc, team wiki, team note, team knowledge base | Page | `/teams/{team_id}/pages`, `/teams/{team_id}/pages/{page_id}` |
+| list pages, show team pages, team docs, team wiki | List Pages | `GET /teams/{team_id}/pages` |
+| create page, new page, new doc, new wiki page | Create Page | `POST /teams/{team_id}/pages` |
+| edit page, update page, rename page | Update Page | `PATCH /teams/{team_id}/pages/{page_id}` |
+| move page, nest page under, reparent page, reorder page | Move/Reorder Page | `PATCH /teams/{team_id}/pages/{page_id}` (parent_id / position) |
+| delete page, remove page | Delete Page | `DELETE /teams/{team_id}/pages/{page_id}` |
+| page permissions, who can edit page, page roles, share page | Page Permissions | `/pages/{page_id}/permissions` |
+| grant page access, add page editor, share page with | Grant Page Permission | `POST /pages/{page_id}/permissions` |
+| revoke page access, remove page editor | Revoke Page Permission | `DELETE /pages/{page_id}/permissions` |
 
 ### Item Types
 
