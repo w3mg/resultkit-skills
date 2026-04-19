@@ -512,6 +512,7 @@ All L10 Meeting Organizer endpoints share these error shapes:
 | PATCH | `/users/me/integrations` | Update integration selections (body: task_management?, sales_revops?, team_communication?). Set to null to disconnect. | "update integrations", "connect app", "disconnect integration" | `/customize` |
 | POST | `/users/me/password` | Change password (body: current_password?, password*, password_confirmation*). current_password required unless OAuth-only user. | "change password", "update password", "new password" | `/customize` |
 | PATCH | `/users/me/team-context` | Set the authenticated user's active team (body: team_id*). Returns `{ data: { id, name } }` of the newly active team. Idempotent. Errors: 400 (malformed body), 401 (unauthorized), 422 (team_id missing/invalid/not a member). | "switch team", "use team", "set active team", "change my team" | — |
+| GET | `/users/me/context` | Full organizational context snapshot for the authenticated user — profile, all organizations and their teams, complete strategic data per team (vision, three_year_plan, one_year_plan/goals, rocks with milestones, measures, projects with children, todos, issues), and today's day_plan. Designed for LLM consumption: one call gives full organizational grounding. No parameters accepted. Response: `{ data: { user, organizations: [{ id, name, role, teams: [{ id, name, framework, is_root, role, vision, three_year_plan, one_year_plan, rocks, measures, projects, todos, issues }] }], day_plan } }`. day_plan is root-level (not nested). Empty arrays for collections, null for absent objects. Active-item filtering excludes realized/archived/deleted items. | "my context", "full context", "organizational context", "load my context", "everything about my teams", "all my rocks and issues", "my orgs and teams", "session context" | — |
 
 User fields (`/users/me`): `id`, `login`, `email`, `first_name`, `last_name`,
 `api_token`, `default_team` (TeamSimple | null), `current_team` (TeamSimple | null — reflects the team last set via `PATCH /users/me/team-context`. Non-null after at least one team-context set call).
@@ -1345,6 +1346,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | feedback, High5s, kudos, recognition | User Feedback | `GET /users/{user_id}/feedback` |
 | check login, login available, check username, is handle available, username taken | Check Login | `GET /users/check-login` |
 | switch team, use team, set active team, change my team, team context | Set Active Team | `PATCH /users/me/team-context` |
+| my context, full context, organizational context, load my context, everything about my teams, all my rocks and issues, my orgs and teams, session context | User Context Snapshot | `GET /users/me/context` |
 | page, doc, wiki, team doc, team wiki, team note, team knowledge base | Page | `/teams/{team_id}/pages`, `/teams/{team_id}/pages/{page_id}` |
 | list pages, show team pages, team docs, team wiki | List Pages | `GET /teams/{team_id}/pages` |
 | create page, new page, new doc, new wiki page | Create Page | `POST /teams/{team_id}/pages` |
