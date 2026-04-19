@@ -513,6 +513,21 @@ All L10 Meeting Organizer endpoints share these error shapes:
 | POST | `/users/me/password` | Change password (body: current_password?, password*, password_confirmation*). current_password required unless OAuth-only user. | "change password", "update password", "new password" | `/customize` |
 | PATCH | `/users/me/team-context` | Set the authenticated user's active team (body: team_id*). Returns `{ data: { id, name } }` of the newly active team. Idempotent. Errors: 400 (malformed body), 401 (unauthorized), 422 (team_id missing/invalid/not a member). | "switch team", "use team", "set active team", "change my team" | — |
 | GET | `/users/me/context` | Full organizational context snapshot for the authenticated user — profile, all organizations and their teams, complete strategic data per team (vision, three_year_plan, one_year_plan/goals, rocks with milestones, measures, projects with children, todos, issues), and today's day_plan. Designed for LLM consumption: one call gives full organizational grounding. No parameters accepted. Response: `{ data: { user, organizations: [{ id, name, role, teams: [{ id, name, framework, is_root, role, vision, three_year_plan, one_year_plan, rocks, measures, projects, todos, issues }] }], day_plan } }`. day_plan is root-level (not nested). Empty arrays for collections, null for absent objects. Active-item filtering excludes realized/archived/deleted items. | "my context", "full context", "organizational context", "load my context", "everything about my teams", "all my rocks and issues", "my orgs and teams", "session context" | — |
+| GET | `/users/me/notifications` | Paginated list of notifications for the authenticated user. Query params: `is_read` (boolean), `is_archived` (boolean, defaults false — archived excluded by default), `subscribeable_type` (string), `since` (ISO timestamp), `page`, `per_page`. | "my notifications", "what's new", "unread notifications", "notification inbox" | — |
+| GET | `/users/me/notifications/unread-count` | Fast count of unread, non-archived notifications. Returns `{ "data": { "count": N } }`. | "unread count", "notification badge", "how many notifications", "do I have notifications" | — |
+| POST | `/users/me/notifications/mark-all-read` | Mark all notifications as read. Body: `{ "subscribeable_type"?: string, "subscribeable_id"?: number }` — both optional. Omit both to mark all read. Scoped by type marks only that type's notifications. | "mark all read", "clear notifications", "dismiss notifications" | — |
+| PATCH | `/users/me/notifications/:id` | Update a single notification. Body: `{ "is_read"?: boolean, "is_archived"?: boolean }`. Returns updated notification. 404 for another user's notification (no data leakage). | "mark notification read", "archive notification", "dismiss notification" | — |
+| DELETE | `/users/me/notifications/:id` | Soft-archive a notification (sets `is_archived=true`, never hard-deletes). Returns 204. 404 for another user's notification. | "delete notification", "remove notification", "archive notification" | — |
+| GET | `/users/me/activity-feed` | Paginated activity feed events for objects the user subscribes to. Query params: `page`, `per_page`, `since` (ISO timestamp). | "activity feed", "recent activity", "what happened", "feed" | — |
+| GET | `/users/me/muted-items` | Paginated list of muted items (items with suppressed notifications) for the authenticated user. | "muted items", "what I've muted", "notification mutes" | — |
+| POST | `/users/me/muted-items` | Mute an item (suppress notifications for it). Body: `{ "subscribeable_type": string, "subscribeable_id": number }`. | "mute item", "silence notifications for item", "stop notifications" | — |
+| DELETE | `/users/me/muted-items/:id` | Unmute an item. `:id` is the `subscribeable_id` (the item ID), not a row ID. Muted items stored as JSON blob in `object_metas`. | "unmute item", "restore notifications for item" | — |
+| GET | `/items/:id/activity-feed` | Item-scoped activity feed events. Paginated; params: `page`, `per_page`, `since`. Returns 403 (not 404) when user lacks read access. | "item activity", "what happened on this item", "item history", "item feed" | — |
+| GET | `/subscriptions` | Lists authenticated user's subscriptions. Query param: `subscribeable_type` (filter). | "my subscriptions", "what I'm subscribed to", "subscriptions" | — |
+| POST | `/subscriptions` | Subscribe to an object. Body: `{ "subscribeable_type": string, "subscribeable_id": number }`. Idempotent: returns 200 with existing record if already subscribed, 201 if newly created. | "subscribe", "follow item", "watch item", "get notifications for" | — |
+| DELETE | `/subscriptions/:id` | Unsubscribe. Returns 404 for another user's subscription. | "unsubscribe", "unfollow item", "stop following", "stop watching" | — |
+| GET | `/communication-trackers` | Returns all 8 scheduled email tracker records for the authenticated user. Not paginated — always exactly 8 records; missing records created on demand. | "email trackers", "communication preferences", "email schedule", "digest settings" | — |
+| PATCH | `/communication-trackers/:id` | Toggle email suppression for a tracker. Body: `{ "should_supress": boolean }` (intentional legacy typo — matches DB column name). Recomputes `next_send` after update. | "suppress emails", "turn off digest", "enable digest", "toggle email notifications" | — |
 
 User fields (`/users/me`): `id`, `login`, `email`, `first_name`, `last_name`,
 `api_token`, `default_team` (TeamSimple | null), `current_team` (TeamSimple | null — reflects the team last set via `PATCH /users/me/team-context`. Non-null after at least one team-context set call).
@@ -535,7 +550,17 @@ UserRock fields: `id`, `name`, `status` ("on_track" | "off_track" | "completed" 
 
 FeedbackEntry fields: `id`, `message`, `from_user` (UserSimple + profile_photo_thumb_path), `to_user` (UserSimple + profile_photo_thumb_path), `created_at`.
 
-UserPreferences fields: `id`, `profile_photo_thumb_path`, `login`, `first_name`, `last_name`, `email`, `secondary_email`, `time_zone`, `notifications` ({ morning_day_ahead, week_ahead_sunday, end_of_day_digest, weekly_digest_friday } — all boolean, true=on, false=off; API inverts the raw DB `should_suppress` field so clients read/write logical on/off values directly), `update_frequency` ("once_daily" | "every_change"), `unsubscribe_all`, `startup_view_code`, `startup_view_label`, `preferred_team_id`, `slack_username`, `api_token`, `is_coach`, `subscriber_persona` (integer 1-7, read-only, default 3 = Leadership Team Member).
+UserPreferences fields: `id`, `profile_photo_thumb_path`, `login`, `first_name`, `last_name`, `email`, `secondary_email`, `time_zone`, `notifications` ({ morning_day_ahead, week_ahead_sunday, end_of_day_digest, weekly_digest_friday, weekly_status_request, daily_status_request, daily_status_request_to_slack, confirmation_link } — all boolean, true=on, false=off; API inverts the raw DB `should_suppress` field so clients read/write logical on/off values directly), `update_frequency` ("once_daily" | "every_change"), `unsubscribe_all`, `startup_view_code`, `startup_view_label`, `preferred_team_id`, `slack_username`, `api_token`, `is_coach`, `subscriber_persona` (integer 1-7, read-only, default 3 = Leadership Team Member).
+
+Notification fields: `id`, `subscription_id`, `subscribeable_type`, `subscribeable_id`, `subscribeable_title`, `body` (HTML string), `is_read` (boolean), `is_archived` (boolean), `sent_at`, `created_at`, `actor` ({ user_id, user_name, user_avatar_url } — all null if no actor can be determined).
+
+Subscription fields: `id`, `subscribeable_type`, `subscribeable_id`, `created_at`.
+
+CommunicationTracker fields: `id`, `email_type_id` (1=end_of_week_digest, 2=end_of_day_digest, 3=mentions, 4=weekly_status_request, 5=item_assigned, 6=daily_status_request, 7=daily_status_request_to_slack, 8=confirmation_link), `email_type_key`, `should_supress` (boolean — intentional legacy typo matching DB column; true=suppressed/off), `next_send`, `last_sent` (nullable).
+
+ActivityFeedEntry fields: `id`, `trackable_type`, `trackable_id`, `verb_clause`, `user_friendly_detail`, `comment_text` (nullable), `comment_id` (nullable), `document_id` (nullable), `progress_id` (nullable), `created_at`, `user` ({ id, name, avatar_url }).
+
+MutedItem fields: `id`, `subscribeable_type`, `subscribeable_id`.
 
 PersonalProgress fields: `targets` ({ rocks_realized_all_time, milestones_realized_all_time, milestones_realized_this_quarter }), `practice_scorecard` ({ days: [{ date, day_name, completed }] }), `practice_totals` ({ all_time, current_streak, longest_streak }).
 
@@ -983,6 +1008,23 @@ Note: Milestone responses do NOT include `updated_at`.
 
 **Authorization**: Root-level creation requires team admin. Child creation requires team admin or node-level assignment on the parent (assignee of the parent or any ancestor).
 
+### Team Vision (cross-framework)
+
+Universal vision endpoint that returns framework-appropriate vision data for any team. Use this instead of `/eos-vision` when the team's framework is unknown or when building framework-agnostic views (e.g. TBR report).
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/vision` | Get framework-appropriate vision data (works for EOS, OKR, 4DX, and others). Response: `{ data: { framework, framework_supported, vision, mission, core_values, eos_vision } }`. `framework_supported` is `true` for EOS/OKR/4DX, `false` for V2MOM/SRT/Pinnacle/unknown. `vision`/`mission`/`core_values` present when supported. `eos_vision` non-null for EOS only (full V/TO composite). `core_values` ordered by position. Errors: 400 non-numeric ID, 403 not a team member, 404 team not found. | "team vision", "show vision", "vision and mission", "core values", "strategic direction", "what's our vision", "team mission" | — |
+
+**Framework behaviour**:
+
+| Framework | `framework_supported` | `vision` | `mission` | `core_values` | `eos_vision` |
+|-----------|----------------------|----------|-----------|---------------|--------------| 
+| `eos` | `true` | from DB | from DB | from labels | full composite |
+| `okr` | `true` | from DB | from DB | from labels | `null` |
+| `4dx` | `true` | from DB | from DB | from labels | `null` |
+| `v2mom` / `srt` / other | `false` | `null` | `null` | `[]` | `null` |
+
 ### EOS Vision (V/TO)
 
 The Vision/Traction Organizer (V/TO) covers six EOS components: core values, core focus (purpose/niche), BHAG (10-year target), marketing strategy, three-year picture, and year/quarter plans.
@@ -1326,6 +1368,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | seat snapshot, chart snapshot, accountability chart history, save chart, checkpoint | Seat Snapshot | `/teams/{id}/snapshots` |
 | revert chart, restore snapshot, undo chart changes, roll back accountability chart | Snapshot Revert | `PUT /teams/{id}/snapshots/{snapshotId}/revert` |
 | strategy, strategy tree, goals and rocks, OKRs, annual goals, team objectives, targets, show targets | Strategy Tree | `GET /teams/{id}/targets` |
+| team vision, vision and mission, strategic direction, what's our vision, team mission (any framework) | Team Vision (cross-framework) | `GET /teams/{id}/vision` |
 | vision, V/TO, vision traction organizer, EOS vision, show VTO | EOS Vision (composite) | `GET /teams/{id}/eos-vision` |
 | core values, our values, company values (EOS V/TO) | EOS Core Values | `GET /teams/{id}/core-values` |
 | core focus, purpose, niche, why we exist (EOS V/TO) | EOS Core Focus | `GET /teams/{id}/eos-core-focus` |
