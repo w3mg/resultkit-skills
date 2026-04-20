@@ -607,6 +607,23 @@ DayPlanItem fields: Item fields + `completed` (boolean), `position` (integer).
 
 Day plan completion: regular items also get status=done. Recurring/daily items only toggle `completed` for that day — item stays active for tomorrow.
 
+### Day Plan Columns (Custom Columns / Personal Planner Buckets)
+
+Personal Planner custom column lanes. All endpoints require auth. Items embedded in column responses are automatically scoped to the caller's today DayPlan — no filter param needed.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/day-plan-columns` | List all active (non-archived) columns owned by the caller, with embedded items scoped to today's plan. | "list my columns", "show custom columns", "what are my planner buckets", "show planner columns" | `/prioritizer/custom-columns` |
+| POST | `/day-plan-columns` | Create a new column (body: name* — 1–255 chars). Position auto-assigned to end. Returns 201 with new column. | "add a column", "create a planner bucket", "new column called X" | `/prioritizer/custom-columns` |
+| PATCH | `/day-plan-columns/{id}` | Rename a column (body: name* — 1–255 chars). Returns 404 if not owned or archived. | "rename column", "change column name" | `/prioritizer/custom-columns` |
+| DELETE | `/day-plan-columns/{id}` | Soft-archive a column (sets is_archived=true, removes all action rows). Returns 200 with archived column. Items in the column are unlinked but not deleted. | "delete column", "archive column", "remove planner bucket" | `/prioritizer/custom-columns` |
+| POST | `/day-plan-columns/{id}/reposition` | Move column to new 0-indexed position (body: position* — non-negative integer, clamped to end). Siblings re-numbered. Returns `{ data: { success: true } }`. | "reorder columns", "move column", "drag column" | `/prioritizer/custom-columns` |
+| POST | `/day-plan-columns/drop-action` | Place an item into a column at a position (body: item_id*, new_column_id* (number or null), position?). One-column-per-item enforced globally — removes item from all other columns first. Pass new_column_id: null to unlink from all columns. Returns 200 `{ data: { success: true } }`. 403 if item not viewable; 404 for missing/archived/unowned column. | "put item in column", "move item to column", "drop into bucket", "unlink item from columns", "remove item from planner" | `/prioritizer/custom-columns` |
+
+DayPlanColumn fields: `id`, `name`, `position` (0-indexed), `is_archived` (boolean), `created_at`, `updated_at`, `items` (DayPlanColumnItem[]).
+
+DayPlanColumnItem fields: `id`, `name`, `completed` (boolean), `due` (YYYY-MM-DD or null), `recur_daily` (boolean), `position` (0-indexed within column).
+
 ## Result Feed
 
 The "90-second practice" — a daily check-in report where users record what they got done, what's next, and what's blocked.
