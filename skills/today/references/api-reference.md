@@ -594,16 +594,21 @@ Signup response (201): `{ data: { user: { id, login, email, api_token }, account
 | PATCH | `/day-plans/today/items/{item_id}` | Toggle completion (body: completed*) | "check off", "mark done for today", "complete for today", "undo" | `/day-plans/today` |
 | DELETE | `/day-plans/today/items/{item_id}` | Remove from plan (keeps item) | "remove from today", "take off plan", "drop from today" | — |
 | POST | `/day-plans/today/set-positions` | Reorder today's plan items (body: item_ids* — complete ordered array of item IDs; assigns position=1-based index to each). Empty array is valid. Subset allowed — only provided items get updated positions. Auto-creates today's plan if needed. Returns `{ "data": { "success": true } }`. | "reorder today", "sort plan", "drag to reorder", "set item order", "change order of today's items" | — |
+| POST | `/day-plans/today/items/{item_id}/set-quadrant-position` | Assign an Eisenhower quadrant to an item on today's plan, keyed by item_id (body: quadrant* — one of: urgent_important, not_urgent_important, urgent_not_important, not_urgent_not_important, unassigned). Returns `{ data: { action, quadrant_position } }` where quadrant_position is 1–4 (or 0 for unassigned). 404 if item not on today's plan. | "put in quadrant", "assign to Q1", "set quadrant", "prioritize to urgent", "Eisenhower quadrant", "move to do first", "unassign quadrant" | `/prioritizer/quadrants` |
 | GET | `/day-plans/{date}` | Plan by date (YYYY-MM-DD) | "show plan for Monday", "last Friday's plan" | `/day-plans/{date}` |
 | GET | `/day-plans/{date}/items` | Items by date (params: page, per_page, q, include_archived) | "items for that day", "what was on Monday" | `/day-plans/{date}` |
 | POST | `/day-plans/{date}/items` | Create item in date's plan (plan must already exist) | "add to that day's plan" | `/items/{item_id}` |
 | PUT | `/day-plans/{date}/items/{item_id}` | Attach existing item to date (plan must already exist, body: position?) | "attach to that plan" | `/day-plans/{date}` |
 | PATCH | `/day-plans/{date}/items/{item_id}` | Toggle completion (body: completed*) | "check off for that day" | `/day-plans/{date}` |
 | DELETE | `/day-plans/{date}/items/{item_id}` | Remove from plan (keeps item) | "remove from that day" | — |
+| POST | `/day-plans/{date}/items/{item_id}/set-quadrant-position` | Assign an Eisenhower quadrant to an item on a specific date's plan, keyed by item_id (body: quadrant* — one of: urgent_important, not_urgent_important, urgent_not_important, not_urgent_not_important, unassigned). Returns `{ data: { action, quadrant_position } }`. 400 if date invalid. 404 if no plan for date or item not on that plan. | "set quadrant for past day", "assign quadrant for date" | — |
+| POST | `/day-plan-actions/{id}/set-quadrant-position` | Assign an Eisenhower quadrant to a day-plan action, keyed by action id (body: quadrant* — same enum as above). Returns `{ data: { action, quadrant_position } }`. Legacy endpoint — prefer item-keyed variants when you have item_id. | "set action quadrant" | — |
 
 DayPlan fields: `id`, `date`, `creator` (UserSimple), `items` (DayPlanItem[]).
 
-DayPlanItem fields: Item fields + `completed` (boolean), `position` (integer).
+DayPlanItem fields: Item fields + `completed` (boolean), `position` (integer), `quadrant_position` (integer 0–4; 0 = unassigned, 1 = urgent+important, 2 = not urgent+important, 3 = urgent+not important, 4 = not urgent+not important).
+
+Eisenhower quadrant values: `urgent_important` (Q1), `not_urgent_important` (Q2), `urgent_not_important` (Q3), `not_urgent_not_important` (Q4), `unassigned` (0).
 
 Day plan completion: regular items also get status=done. Recurring/daily items only toggle `completed` for that day — item stays active for tomorrow.
 
