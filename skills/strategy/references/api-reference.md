@@ -1176,25 +1176,48 @@ Favorite fields: `id`, `url`, `title`, `position`, `created_at`, `updated_at`.
 
 ## Custom Labels
 
-User-scoped personal labels that can be attached to Items and Goals. Labels belong to the authenticated user — personal scope only, not shared across team members. All endpoints require Bearer / Token auth.
+Labels that can be attached to Items and Goals. Labels support three scopes: **personal** (user-owned), **team** (shared across team members), and **project** (shared within a project). All endpoints require Bearer / Token auth.
+
+### Custom Label Endpoints
 
 | Method | Path | Description | User Phrases |
 |--------|------|-------------|--------------|
-| GET | `/api/v2/custom-labels` | List user's custom labels (paginated, sorted by name; params: page, per_page) | "list my labels", "show custom labels", "my tags", "my labels" |
-| POST | `/api/v2/custom-labels` | Create a custom label (body: name*, color?) | "create label", "add label", "new label", "create tag" |
-| PATCH | `/api/v2/custom-labels/{id}` | Update label name and/or color (body: name?, color?) | "rename label", "update label", "change label color" |
-| DELETE | `/api/v2/custom-labels/{id}` | Delete label — cascade deletes all associations | "delete label", "remove label", "delete tag" |
-| POST | `/api/v2/custom-labels/manage` | Bulk sync labels on an Item or Goal (body: labeled_type*, labeled_id*, custom_labels*) | "set labels on item", "tag item", "apply labels", "sync labels", "label this item", "attach labels" |
-| GET | `/api/v2/custom-labels/content` | Get attached + creator labels for an Item or Goal (params: labeled_type*, labeled_id*) | "labels on this item", "show item labels", "label picker", "which labels are attached" |
+| GET | `/api/v2/custom-labels` | List accessible custom labels (params: page, per_page, scope, team_id, project_id — omit scope for union of all accessible) | "list my labels", "show custom labels", "my tags", "my labels", "team labels", "project labels" |
+| POST | `/api/v2/custom-labels` | Create a custom label (body: name*, color?, scope?, scope_id? — scope defaults to personal; team/project scope requires admin) | "create label", "add label", "new label", "create tag" |
+| PATCH | `/api/v2/custom-labels/{id}` | Update label name and/or color — scope-aware auth (admin required for team/project labels) (body: name?, color?) | "rename label", "update label", "change label color" |
+| DELETE | `/api/v2/custom-labels/{id}` | Delete label — scope-aware auth; returns 422 `reserved_label` for reserved labels | "delete label", "remove label", "delete tag" |
+| POST | `/api/v2/custom-labels/manage` | Bulk sync labels on an Item or Goal (body: labeled_type*, labeled_id*, custom_label_ids* — array of label IDs) | "set labels on item", "tag item", "apply labels", "sync labels", "label this item", "attach labels" |
+| GET | `/api/v2/custom-labels/content` | Get attached + creator labels for an Item or Goal — returns scope metadata (params: labeled_type*, labeled_id*) | "labels on this item", "show item labels", "label picker", "which labels are attached" |
 
-Label object fields: `id`, `name`, `color` (hex string or null), `template_code` (null for user-created), `user_id`.
+**BREAKING CHANGE**: `POST /api/v2/custom-labels/manage` body field changed from `custom_labels: string[]` (names) to `custom_label_ids: number[]` (IDs). Sending old `custom_labels` field returns 422 with migration guidance.
+
+### Team Admin Endpoints
+
+| Method | Path | Description | User Phrases |
+|--------|------|-------------|--------------|
+| GET | `/api/v2/teams/{id}/admins` | List team admins | "list team admins", "who are team admins" |
+| POST | `/api/v2/teams/{id}/admins` | Grant team admin (body: user_id*) | "make team admin", "grant team admin" |
+| DELETE | `/api/v2/teams/{id}/admins/{user_id}` | Revoke team admin | "remove team admin", "revoke team admin" |
+
+### Project Admin Endpoints
+
+| Method | Path | Description | User Phrases |
+|--------|------|-------------|--------------|
+| GET | `/api/v2/projects/{id}/admins` | List project admins | "list project admins", "who are project admins" |
+| POST | `/api/v2/projects/{id}/admins` | Grant project admin (body: user_id*) | "make project admin", "grant project admin" |
+| DELETE | `/api/v2/projects/{id}/admins/{user_id}` | Revoke project admin | "remove project admin", "revoke project admin" |
+
+Custom Label object fields: `id`, `name`, `color` (hex string or null), `scope` (personal/team/project), `scope_id` (null for personal), `template_code` (null for user-created), `group_id`, `item_id`, `is_inverted`.
+
+Admin object fields: `user_id`, `login`, `email`, `role`, `is_owner`.
 
 - **Color**: hex string (`#fff` or `#ff00aa`) or null. Optional on create/update.
 - **Name**: required, max 255 chars, trimmed. Duplicate name per user returns `422 { name: ["already exists"] }`.
 - **Cascade delete**: `DELETE` removes all `custom_labelings` associations first, then the label.
-- **PATCH/DELETE ownership**: Returns `403` if the label belongs to another user.
-- **`/manage` semantics**: Diff-based sync — compares requested label names against current associations. Adds missing (find-or-create by name), removes stale. Sending `[]` clears all. Whitespace-only names silently ignored. Duplicates deduplicated. `labeled_type` must be `"Item"` or `"Goal"` (other values → `422`). User must have view access to the target.
-- **`/content` response**: `{ data: { attached_labels: [...], creator_labels: [...] } }`. `creator_labels` includes all user labels; `label_context: true` on any label means it is currently attached to this content.
+- **Scope-aware auth**: Personal labels — owner only. Team/project labels — team/project admin required for PATCH/DELETE.
+- **`/manage` semantics**: Diff-based sync by ID — adds missing associations, removes stale. Sending `[]` clears all. `labeled_type` must be `"Item"` or `"Goal"` (other values → `422`). User must have view access to the target.
+- **`/content` response**: `{ data: { attached_labels: [...], creator_labels: [...] } }`. Returns scope metadata (`scope`, `scope_id`) on each label. Multi-scope visibility.
+- **Item response**: `GET /api/v2/items/{id}` now includes `custom_labels` array with scope-aware visibility.
 
 ## Pages
 
@@ -1435,12 +1458,18 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | check login, login available, check username, is handle available, username taken | Check Login | `GET /users/check-login` |
 | switch team, use team, set active team, change my team, team context | Set Active Team | `PATCH /users/me/team-context` |
 | my context, full context, organizational context, load my context, everything about my teams, all my rocks and issues, my orgs and teams, session context | User Context Snapshot | `GET /users/me/context` |
-| custom label, personal label, tag, my label | Custom Label | `GET /api/v2/custom-labels` |
-| create label, add label, new label, create tag | Create Label | `POST /api/v2/custom-labels` |
+| custom label, personal label, team label, project label, tag, my label | Custom Label | `GET /api/v2/custom-labels` |
+| create label, add label, new label, create tag, create team label, create project label | Create Label | `POST /api/v2/custom-labels` |
 | rename label, update label, change label color | Update Label | `PATCH /api/v2/custom-labels/{id}` |
 | delete label, remove label, delete tag | Delete Label | `DELETE /api/v2/custom-labels/{id}` |
-| set labels on item, tag item, apply labels, sync labels, label this, attach labels | Manage Labels on Content | `POST /api/v2/custom-labels/manage` |
+| set labels on item, tag item, apply labels, sync labels, label this, attach labels, update item labels | Manage Labels on Content | `POST /api/v2/custom-labels/manage` |
 | labels on this item, show item labels, label picker, which labels are attached | Labels for Content | `GET /api/v2/custom-labels/content` |
+| team admin, who is team admin, list team admins | Team Admin | `GET /api/v2/teams/{id}/admins` |
+| make team admin, grant team admin, add team admin | Grant Team Admin | `POST /api/v2/teams/{id}/admins` |
+| remove team admin, revoke team admin | Revoke Team Admin | `DELETE /api/v2/teams/{id}/admins/{user_id}` |
+| project admin, who is project admin, list project admins | Project Admin | `GET /api/v2/projects/{id}/admins` |
+| make project admin, grant project admin, add project admin | Grant Project Admin | `POST /api/v2/projects/{id}/admins` |
+| remove project admin, revoke project admin | Revoke Project Admin | `DELETE /api/v2/projects/{id}/admins/{user_id}` |
 | page, doc, wiki, team doc, team wiki, team note, team knowledge base | Page | `/teams/{team_id}/pages`, `/teams/{team_id}/pages/{page_id}` |
 | list pages, show team pages, team docs, team wiki | List Pages | `GET /teams/{team_id}/pages` |
 | create page, new page, new doc, new wiki page | Create Page | `POST /teams/{team_id}/pages` |
