@@ -218,6 +218,23 @@ Errors: 400 (invalid JSON), 403 (non-admin on PATCH), 404 (team not found / no a
 
 System defaults (returned when no custom times saved): `["9:00 AM", "9:15 AM", "9:30 AM", "9:45 AM", "10:00 AM", "10:15 AM", "10:30 AM"]`.
 
+### Team Customer-to-Cash Departments
+
+Ordered list of departments a customer passes through from first contact to revenue collection. Stored in `object_metas` (`meta_key = 'customer_to_cash_data'`). GET returns defaults if none saved — never returns 404.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/teams/{id}/customer-to-cash` | Get department list (custom or defaults). Auth: any team member. | "customer to cash departments", "c2c departments", "department flow", "c2c flow" | — |
+| PUT | `/teams/{id}/customer-to-cash` | Replace entire department list (full replacement). Auth: team admin only. | "set departments", "update c2c departments", "save department flow", "set customer to cash departments" | — |
+
+Response shape (both endpoints): `{ "data": { "departments": string[] } }`.
+
+Default departments (returned when none saved): `["Marketing", "Sales", "Customer Success", "Engineering/Product/Service Delivery", "Finance"]`.
+
+PUT body: `{ "departments": ["Marketing", "Sales", ...] }` — non-empty array, max 50 items, each ≤255 chars.
+
+Errors: 400 (invalid team ID or malformed JSON), 401 (unauthenticated), 403 (GET: not a team member; PUT: not a team admin), 404 (team not found), 422 (validation failure — `{ "error": { "code": "validation_error", "details": { "departments": ["departments must not be empty"] } } }`).
+
 ### Team Weekly Board (Items)
 
 | Method | Path | Description | User Phrases | Web URL |
