@@ -22,7 +22,7 @@ Many list endpoints accept these shared params:
 
 Endpoints that support `q` and `include_archived` are noted below.
 
-`include_archived`: by default, archived items are excluded from all list endpoints. Pass `include_archived=true` to include them. Supported on `GET /items`, `GET /projects`, `GET /meetings/{id}/items`, and `GET /meetings/{id}/items/{section}` (next section only).
+`include_archived`: by default, archived items are excluded from all list endpoints. Pass `include_archived=true` to include them. Supported on `GET /items`, `GET /projects`, `GET /1-on-1/{id}/items`, and `GET /1-on-1/{id}/items/{section}` (next section only).
 
 ## Items
 
@@ -704,23 +704,28 @@ Behavioral notes:
 - Adding items triggers status side-effects: done→done, next→next, blocked→blocked.
 - Removing items does NOT revert status side-effects.
 
-## Meetings
+## One-on-Ones (1-on-1)
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/meetings` | List meetings (params: team_id, page, per_page) | "show meetings", "my meetings", "list 1:1s", "L10s", "team 1:1s" | — |
-| GET | `/meetings/{id}` | Meeting detail (includes blocked, done, next arrays) | "show meeting", "meeting details", "open meeting" | `/meetings/{id}` |
-| GET | `/meetings/{id}/items` | All meeting items (params: creator_id?, page, per_page, q, include_archived) | "meeting items", "what's on the agenda" | `/meetings/{id}` |
-| POST | `/meetings/{id}/items` | Create item in meeting | "add to meeting", "new meeting item" | `/items/{item_id}` |
-| PUT | `/meetings/{id}/items/{item_id}` | Attach existing item | "attach to meeting", "link item to meeting" | `/meetings/{id}` |
-| DELETE | `/meetings/{id}/items/{item_id}` | Remove from meeting (keeps item) | "remove from meeting", "detach from meeting" | — |
-| GET | `/meetings/{id}/items/{section}` | Items by section (params: creator_id?, page, per_page, q, include_archived). Section: `done`, `next`, `blocked`. | "meeting next items", "meeting done items", "meeting blockers", "meeting issues" | `/meetings/{id}` |
+| GET | `/1-on-1` | List one-on-ones (params: group_id, page, per_page) | "show 1:1s", "my one-on-ones", "list 1:1s", "one-on-one meetings" | — |
+| GET | `/1-on-1/{id}` | Meeting detail (response includes `items.next`, `items.done`, `items.issues` arrays) | "show meeting", "meeting details", "open 1:1" | `/1-on-1/{id}` |
+| GET | `/1-on-1/{id}/items` | All meeting items (params: creator_id?, page, per_page, q, include_archived) | "meeting items", "what's on the agenda" | `/1-on-1/{id}` |
+| GET | `/1-on-1/{id}/items/{section}` | Items by section (params: creator_id?, page, per_page, q, include_archived). Section: `next`, `blocked`. | "meeting next items", "meeting blockers", "meeting issues" | `/1-on-1/{id}` |
+| GET | `/1-on-1/{id}/done` | Done items (params: since? YYYY-MM-DD, page, per_page) | "meeting done items", "completed items", "done since date" | `/1-on-1/{id}` |
+| POST | `/1-on-1/{id}/items` | Create item in meeting | "add to meeting", "new meeting item", "add to 1:1" | `/items/{item_id}` |
+| PUT | `/1-on-1/{id}/items/{item_id}` | Attach existing item | "attach to meeting", "link item to 1:1", "add existing item to meeting" | `/1-on-1/{id}` |
+| DELETE | `/1-on-1/{id}/items/{item_id}` | Remove from meeting (keeps item) | "remove from meeting", "detach from 1:1" | — |
+| PUT | `/1-on-1/{id}/notes` | Save meeting notes (body: `{"notes":"text"}`). Overwrites existing notes. | "save notes", "add notes to 1:1", "write meeting notes" | `/1-on-1/{id}` |
 
-MeetingSimple fields: `id`, `type` (one_on_one | project), `date`,
-`person1` (UserSimple), `person2` (UserSimple),
-`project` ({ id, name } | null).
+OneOnOneSimple fields: `id`, `date` (YYYY-MM-DD | null), `human_name` (pre-formatted display string),
+`persons`: `{ person1: UserSimple, person2: UserSimple }`,
+`can_edit` (boolean), `can_view` (boolean).
 
-Meeting fields: MeetingSimple + `blocked` (Item[]), `done` (Item[]), `next` (Item[]).
+OneOnOne (detail) fields: OneOnOneSimple + `items`: `{ next: Item[], done: Item[], issues: Item[] }`,
+`notes` (string | null), `can_edit_notes` (boolean), `measures`, `goals`, `attachments`, `assistants`.
+
+> **Terminology**: The `issues` array in the API is the "blocked/issues" column in the UI. The `group_id` param filters by team.
 
 ## Sessions
 
@@ -1377,9 +1382,9 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | outcome, objective (as item type) | Item (type=Outcome) | `/items` (type: "Outcome") |
 | key result, KR, measure (as item type) | Item (type=KeyResult) | `/items` (type: "KeyResult") |
 | team, group | Team | `/teams` |
-| meeting, weekly meeting, weekly sync, L10, team meeting | Meeting | `/meetings` |
-| 1:1, 1x1, one-on-one | Meeting (type=one_on_one) | `/meetings` |
-| project meeting | Meeting (type=project) | `/meetings` |
+| meeting, weekly meeting, weekly sync, L10, team meeting | Team Weekly Board (L10) | `/teams/{id}/items` |
+| 1:1, 1x1, one-on-one | One-on-One | `/1-on-1` |
+| project meeting | (separate skill — out of scope) | — |
 | day plan, daily plan, prioritizer, tasks for today, my plan | Day Plan | `/day-plans/today`, `/day-plans/{date}` |
 | check-in, 90-second practice, result feed, daily report | Result Feed (daily check-in report) | `/result-feed/today`, `/result-feed/{date}` |
 | team check-ins, team feed, team result feed | Team Result Feeds (shared check-ins) | `/teams/{id}/result-feed` |
@@ -1424,7 +1429,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | convert to project, promote to project | Convert Item to Project | `PUT /teams/{id}/projects/{item_id}` |
 | put on weekly, add to board, show on weekly | Set on_weekly=true | `PUT /teams/{id}/items/{item_id}` |
 | remove from weekly, take off board | Set on_weekly=false | `DELETE /teams/{id}/items/{item_id}` |
-| attach, link to meeting | Attach Item to Meeting | `PUT /meetings/{id}/items/{item_id}` |
+| attach, link to meeting, link item to 1:1 | Attach Item to One-on-One | `PUT /1-on-1/{id}/items/{item_id}` |
 | add to plan, add to today, put on my plan | Attach to Day Plan | `PUT /day-plans/today/items/{item_id}` |
 | check off, mark done for today, complete for today | Day Plan Completion | `PATCH /day-plans/today/items/{item_id}` |
 | reorder today, sort my plan, change order of today, drag to reorder, set item order | Reorder Day Plan | `POST /day-plans/today/set-positions` |
@@ -1584,7 +1589,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | Archive (`DELETE /items/{id}`) | Delete (`DELETE /teams/{id}`) | Items are soft-deleted (status→archived). Teams are permanently deleted. |
 | Completed (day plan) | Done (item status) | Day plan `completed: true` checks off for that day. Item status `done` marks it globally done. For recurring items only the day plan toggles. |
 | on_weekly (item field) | status (item field) | `on_weekly` controls board visibility. `status` controls the column. An item can be `status: next` but `on_weekly: false`. |
-| One-on-one meeting | Project meeting | `type: "one_on_one"` has person1/person2. `type: "project"` has a project field. Same endpoints. |
+| One-on-one meeting | Project meeting | One-on-ones use `/1-on-1` endpoints; persons nested under `persons.person1`/`persons.person2`. Project meetings are out of scope for rkit:1on1 and will get a separate skill. |
 | Team projects (`/teams/{id}/projects`) | Standalone projects (`/projects`) | Team projects are scoped to a team. Standalone are user-level. Same underlying data (type=TodoList). |
 | `DELETE /teams/{id}/projects/{pid}` | `DELETE /projects/{id}` | Team version removes from team (clears group_id). Standalone version archives the project. |
 | Headline (`/teams/{id}/headlines`) | Comment (`/items/{id}/comments`) | Headlines are team-level announcements (EOS only, auto-expire after 7 days). Comments are item-level notes. |

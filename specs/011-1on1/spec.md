@@ -126,10 +126,20 @@ User wants to move an item to a different column within a one-on-one.
 - **FR-003**: Move MUST update item status (next, done, blocked)
 - **FR-004**: Adding MUST support both new creation and adding existing items using `add` for both
 - **FR-005**: Display MUST show item ID, name, owner, due date per item
-- **FR-006**: Done column MUST follow same time-window rules as team weekly
+- **FR-006**: Done column MUST follow same time-window rules as team weekly (default: last 7 days; use `GET /1-on-1/{id}/done?since=YYYY-MM-DD` to filter)
 - **FR-007**: Confirm-before-write on all POST/PUT/PATCH/DELETE operations
 - **FR-008**: Show IDs in all output so users can reference them
 - **FR-009**: Use `add`/`remove` terminology consistent with `/rkit:weekly`
+
+## Terminology Note
+
+The "blocked" column (user-facing label, consistent with `/rkit:weekly`) corresponds to the `issues` array in the API response (`items.issues`). The spec uses "blocked" and "issues/blocked" interchangeably. The skill uses `blocked` as the user-facing trigger word; `/rkit:1on1 {id} issues` is an accepted alias (same endpoint, same display). API field: `items.issues`.
+
+## Enhancements (Not in Original Scope)
+
+These were discovered during API inspection (issue #97) and are included in the implementation plan as low-risk additions:
+
+- **Notes**: `PUT /1-on-1/{id}/notes` — save meeting notes text. Trigger: `{meeting_id} notes "text"`. Overwrites existing notes.
 
 ## Edge Cases
 
@@ -145,13 +155,13 @@ User wants to move an item to a different column within a one-on-one.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/meetings` | List meetings (filter client-side to one_on_one) |
-| GET | `/meetings/{id}` | Meeting detail with next/done/issues arrays |
-| GET | `/meetings/{id}/items/next` | Next items |
-| GET | `/meetings/{id}/items/done` | Done items |
-| GET | `/meetings/{id}/items/blocked` | Blocked/issues items |
-| POST | `/meetings/{id}/items` | Create new item in meeting |
-| PUT | `/meetings/{id}/items/{item_id}` | Add existing item |
-| DELETE | `/meetings/{id}/items/{item_id}` | Remove item from meeting |
+| GET | `/1-on-1` | List one-on-ones (params: group_id, page, per_page) |
+| GET | `/1-on-1/{id}` | Meeting detail (`items.next`, `items.done`, `items.issues` arrays) |
+| GET | `/1-on-1/{id}/items/{section}` | Items by section (`next`, `blocked`); not used for `done` |
+| GET | `/1-on-1/{id}/done` | Done items (params: since? YYYY-MM-DD) |
+| POST | `/1-on-1/{id}/items` | Create new item in meeting |
+| PUT | `/1-on-1/{id}/items/{item_id}` | Add existing item |
+| DELETE | `/1-on-1/{id}/items/{item_id}` | Remove item from meeting |
+| PUT | `/1-on-1/{id}/notes` | Save meeting notes (Enhancement) |
 | PATCH | `/items/{id}` | Update item status (for moves) |
 | GET | `/items/{id}` | Get item detail (for move status check) |
