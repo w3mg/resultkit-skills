@@ -441,10 +441,10 @@ MaterialCategory fields: `id`, `name`, `user_id`, `created_at`, `updated_at`. Re
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/l10/weekly-ratings` | Get all-time average rating and total count | "show weekly rating", "team rating", "meeting rating", "how are meetings rated" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/weekly-ratings` | Get all-time average rating, total count, and per-week history (param: weeks — int 1–52, default 12) | "show weekly rating", "team rating", "meeting rating", "how are meetings rated", "rating trend", "meeting rating history" | `/teams/{id}` |
 | POST | `/teams/{id}/l10/weekly-ratings` | Submit or update weekly rating (body: rating*, date*). One rating per user per week — upserts. Member auth. | "rate meeting", "submit rating", "rate the week", "rate weekly" | `/teams/{id}` |
 
-GET response: `{ data: { average_rating, total_ratings } }`.
+GET response: `{ data: { average_rating, total_ratings, weekly_history: [{ week_of, average_rating, count }] } }`. `weekly_history` is ordered most-recent-first; weeks with no ratings appear with `average_rating: null` and `count: 0`. `week_of` is the Monday of the week (YYYY-MM-DD). Use `?weeks=N` to control the number of slots (default 12, max 52).
 POST response (201 new, 200 updated): `{ data: { id, stars, created_at } }`.
 
 #### Braindump
