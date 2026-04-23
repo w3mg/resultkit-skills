@@ -34,8 +34,12 @@ Endpoints that support `q` and `include_archived` are noted below.
 | PATCH | `/items/{id}` | Update item (body: name, description, due, status, on_weekly) | "update item", "change status", "rename task", "set due date" | `/items/{id}` |
 | DELETE | `/items/{id}` | Archive item (soft delete, sets status=archived) | "archive item", "delete task", "remove item", "soft delete" | — |
 | GET | `/items/{id}/children` | List child items as nested tree (params: page, per_page, q, depth). `depth` default 2, range 1-20. | "show sub-tasks", "list children", "nested items", "what's under this" | `/items/{id}` |
-| PUT | `/items/{id}/move` | Reposition item in tree (body: parent_id, left_id, right_id) | "move item", "reparent", "nest under", "reorder" | `/items/{id}` |
+| PUT | `/items/{id}/move` | Reposition item in tree (body: parent_id, left_id, right_id, position?). Optional `position` (0-based integer) places item at a specific slot within the new parent. | "move item", "reparent", "nest under", "reorder" | `/items/{id}` |
 | PATCH | `/items/bulk-move` | Move up to 1000 items under a target parent (body: item_ids, parent_id). Items removed from all weekly boards. | "bulk move", "move items", "move these under", "reparent multiple" | — |
+| POST | `/items/{id}/reposition` | Move item to a new 0-based position among its siblings (body: position*). Returns updated item. | "reorder item", "move to position", "drag item", "reposition" | — |
+| POST | `/items/{id}/indent` | Make item a child of its nearest left sibling (outliner indent). No body. Returns 400 if no left sibling exists. | "indent item", "make subtask", "nest under previous", "demote item" | — |
+| POST | `/items/{id}/outdent` | Promote item to sibling of its parent (outliner outdent). No body. Returns 400 if item is already at top level. | "outdent item", "promote task", "move to parent level", "unindent" | — |
+| POST | `/items/{id}/duplicate` | Duplicate an item (body: include_children? boolean). Due dates, start dates, and completion status are cleared; assignments are copied. Returns 201 with `{ data: { item, children: [] } }`. | "duplicate item", "copy task", "clone item" | — |
 
 Item fields: `id`, `name`, `description`, `due`, `status`, `on_weekly`,
 `is_long_term` (boolean, defaults to `false`),
@@ -266,6 +270,44 @@ Default filtering: returns only active, non-parkinglot, non-muted projects. Use 
 **Project completion stats** (`percent_complete`, `total_children`, `realized_count`, `blocked_count`, `overdue_count`, `active_count`): returned on all GET project responses (list and detail). All fields are always numeric (never null); projects with no children have all zeros. Stats are NOT returned on POST/PATCH responses. Counts exclude archived children.
 
 `default_view` valid values: `"overview"`, `"board"`, `"table"`, `"roadmap"`, `"outline"`, `"mindmap"`, `null` (resets to no preference; treated as `"overview"` by clients). Per-project, shared across all team members. `PATCH /projects/{id}/default-view` body: `{ "default_view": string | null }`. Response 200: `{ "data": { "id": integer, "default_view": string | null } }`. Response 422: `{ "errors": ["default_view is not a valid view"] }`.
+
+### Project Columns
+
+Columns are plain `Item` records with `parent_id = projectId`, distinguished by an `is_project_column` ObjectMeta flag. Color uses the native `Item.color` column.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/api/v2/projects/{id}/columns` | List all columns for a project, ordered by position. Each column includes embedded `items[]` by default. Use `?include_items=false` for columns-only (header row). | "list project columns", "show columns", "project table headers", "view board columns" | — |
+| POST | `/api/v2/projects/{id}/columns` | Create a new column (body: name* 1–255 chars, color? hex string). Position auto-assigned to end. Returns 201 with new column. | "add column", "create project column", "new board column" | — |
+| PATCH | `/api/v2/projects/{id}/columns/{columnId}` | Update a column's name and/or color (body: name?, color?). | "rename column", "change column color", "update column" | — |
+| DELETE | `/api/v2/projects/{id}/columns/{columnId}` | Archive a column; child items are reparented to the project root automatically. | "delete column", "archive column", "remove board column" | — |
+| POST | `/api/v2/projects/{id}/columns/{columnId}/reposition` | Move a column to a new 0-based position (body: position*). Clamped to valid range; siblings renumber. | "reorder columns", "move column", "drag column to position" | — |
+| POST | `/api/v2/projects/{id}/columns/{columnId}/duplicate` | Duplicate a column with all its child items. | "duplicate column", "copy column", "clone board column" | — |
+| PUT | `/api/v2/projects/{id}/columns/{columnId}/move` | Nest one column under another (body: parent_id*). Circular-reference prevention enforced. | "nest column", "move column under", "reparent column" | — |
+
+Column shape: `id`, `name`, `color` (hex or null), `position` (0-based), `parent_id`, `status`, `number_of_children`, `created_at`, `updated_at`, `items[]` (embedded by default).
+
+Item shape within a column: `id`, `name`, `status`, `due` (YYYY-MM-DD or null), `position`, `color`, `assignee_id_cache`, `number_of_children`.
+
+### Process Rules
+
+Automation rules on columns. Fire when an item's `parent_id` changes to a rule-bearing column (via move, indent, or outdent). Failures are logged but do not block the move.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/api/v2/projects/{id}/columns/{columnId}/process-rules` | List automation rules on a column. | "list rules", "show automation rules", "column rules" | — |
+| POST | `/api/v2/projects/{id}/columns/{columnId}/process-rules` | Create an automation rule (body: rule_type*, config*). Returns 201. | "add automation rule", "create process rule", "automate column" | — |
+| PATCH | `/api/v2/process-rules/{id}` | Update a process rule (body: rule_type?, config?, enabled?). All fields optional. | "update rule", "disable rule", "toggle automation" | — |
+| DELETE | `/api/v2/process-rules/{id}` | Delete a process rule permanently. | "delete rule", "remove automation rule" | — |
+
+Process rule `rule_type` values and `config` shapes:
+- `assign` — `{ "user_id": integer }` — assigns user to item on entry
+- `status` — `{ "status": "completed" }` — sets item status on entry
+- `hashtag` — `{ "tag": "urgent" }` — applies label to item on entry
+- `due_date` (relative) — `{ "mode": "relative", "days": integer }` — sets due to today + N days
+- `due_date` (absolute) — `{ "mode": "absolute", "date": "YYYY-MM-DD" }` — sets specific due date
+
+Process rule fields: `id`, `item_id` (the column's item ID), `rule_type`, `config` (JSON object), `enabled` (boolean), `created_at`, `updated_at`.
 
 ### Team Headlines
 
