@@ -82,6 +82,7 @@ Master copies of shared files live at the repo root. Each skill gets its own cop
 |-------------|-----------|---------|
 | `scripts/api.sh` | `skills/*/scripts/api.sh` | API caller script |
 | `api-reference.md` | `skills/*/references/api-reference.md` | API endpoint reference |
+| `user-context-schema.md` | `skills/*/references/user-context-schema.md` | Full schema + disambiguation patterns for `/users/me/context` |
 
 After editing a master file, run `/sync-plugin` to copy it to all skills and bump the plugin version.
 

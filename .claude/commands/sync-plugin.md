@@ -35,6 +35,20 @@ done
 
 Report which skills received the updated reference.
 
+### 2b. Sync user-context-schema.md
+
+The master copy is `user-context-schema.md` at the repo root. Copy it into each skill that has a `references/` directory:
+
+```bash
+for skill in skills/*/; do
+  if [ -d "$skill/references" ]; then
+    cp user-context-schema.md "$skill/references/user-context-schema.md"
+  fi
+done
+```
+
+Report which skills received the context schema reference.
+
 ### 3. Bump version in all manifests
 
 Read `.claude-plugin/plugin.json`. Increment the patch version (e.g. `1.0.0` -> `1.0.1`). If the user provided an argument, use it as the new version instead:
