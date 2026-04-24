@@ -1011,11 +1011,14 @@ All rock endpoints return `422 Unprocessable Entity` for non-EOS teams.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/rocks` | List quarterly rocks (params: year?, quarter?, parent_id?) | "list rocks", "show rocks", "quarterly rocks", "90-day priorities" | `/teams/{id}` |
+| GET | `/teams/{id}/rocks` | List quarterly rocks (params: year?, quarter?, parent_id?). Each rock includes `aligned_measurables` array (may be empty). | "list rocks", "show rocks", "quarterly rocks", "90-day priorities" | `/teams/{id}` |
 | POST | `/teams/{id}/rocks` | Create a rock (body: name*, parent_id?, assignee_ids?) | "create rock", "add rock", "new quarterly rock" | `/teams/{id}` |
 | PUT | `/rocks/{id}` | Align rock to a yearly goal (body: parent_id*) | "align rock to goal", "link rock", "move rock under goal" | — |
 | PATCH | `/rocks/{id}` | Update a rock (body: name?, description?, status?, assignee_ids?) | "update rock", "rename rock", "mark rock complete", "change rock status" | — |
 | DELETE | `/rocks/{id}` | Archive a rock | "archive rock", "delete rock", "remove rock" | — |
+| GET | `/rocks/{id}/alignments` | List scorecard measurables aligned to a rock, ordered by position | "rock alignments", "rock measurables", "linked measurables for rock" | — |
+| POST | `/rocks/{id}/alignments` | Link a rock to a scorecard measurable (body: measurable_id*). Returns 409 if already linked, 422 if measurable archived | "link rock to measurable", "align rock to scorecard", "connect rock to measurable" | — |
+| DELETE | `/rocks/{id}/alignments/{alignment_id}` | Remove a rock–measurable alignment. Returns 204 No Content. Requires edit access to the rock. | "remove rock alignment", "unlink rock from measurable", "detach rock measurable" | — |
 
 **Rock response shape** (verified via curl 2026-03-18):
 ```json
@@ -1039,12 +1042,49 @@ All rock endpoints return `422 Unprocessable Entity` for non-EOS teams.
 }
 ```
 
+**Rock list includes `aligned_measurables`** on every rock (added 2026-04-24):
+```json
+"aligned_measurables": [
+  {
+    "alignment_id": 7,
+    "measurable_id": 42,
+    "name": "Monthly Recurring Revenue",
+    "current_value": "85000",
+    "target_value": "100000",
+    "unit_measure_id": 3
+  }
+]
+```
+Field is always present (empty array `[]` when no alignments exist). Applies to `GET /teams/{id}/rocks` and `GET /users/{id}/rocks`.
+
+**Rock alignment response shape** (POST /rocks/{id}/alignments → 201):
+```json
+{
+  "id": 7,
+  "rock_id": 5,
+  "measure_id": 42,
+  "position": 1,
+  "measurable": {
+    "id": 42,
+    "name": "Monthly Recurring Revenue",
+    "current_value": "85000",
+    "target_value": "100000",
+    "unit_measure_id": 3
+  },
+  "created_at": "2026-04-23T12:00:00.000Z",
+  "updated_at": "2026-04-23T12:00:00.000Z"
+}
+```
+
 **Response envelopes**:
 - `GET /teams/{id}/rocks` → `{ "data": [Rock], "meta": { page, per_page, total, total_pages } }` (200)
 - `POST /teams/{id}/rocks` → `{ "data": Rock }` (201)
 - `PUT /rocks/{id}` → `{ "data": Rock }` (200)
 - `PATCH /rocks/{id}` → `{ "data": Rock }` (200)
 - `DELETE /rocks/{id}` → `{ "data": Rock }` (200, status: "archived")
+- `GET /rocks/{id}/alignments` → array of alignment records (200)
+- `POST /rocks/{id}/alignments` → alignment record (201); 409 already linked; 422 archived measurable
+- `DELETE /rocks/{id}/alignments/{alignment_id}` → 204 No Content
 
 ### Milestones (EOS only)
 
@@ -1501,6 +1541,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | update milestone, rename milestone, mark milestone complete | Update Milestone | `PATCH /milestones/{id}` |
 | align rock to goal, link rock, move rock under goal | Align Rock | `PUT /rocks/{id}` |
 | align milestone to rock, link milestone, move milestone under rock | Align Milestone | `PUT /milestones/{id}` |
+| rock measurable alignment, link rock to measurable, aligned measurables for rock, rock KPI link | Rock–Measurable Alignment | `GET /rocks/{id}/alignments`, `POST /rocks/{id}/alignments`, `DELETE /rocks/{id}/alignments/{alignment_id}` |
 | detach goal, unlink goal, archive goal, delete goal | Archive/Unlink Goal | `PATCH /goals/{id}` (unlink), `DELETE /goals/{id}` (archive) |
 | detach rock, unlink rock, archive rock, remove rock from goal | Archive/Unlink Rock | `PATCH /rocks/{id}` (unlink), `DELETE /rocks/{id}` (archive) |
 | detach milestone, unlink milestone, archive milestone, remove milestone | Archive/Unlink Milestone | `PATCH /milestones/{id}` (unlink), `DELETE /milestones/{id}` (archive) |
