@@ -1241,6 +1241,9 @@ Per-team HTML blob storage for quarterly review summaries. Data is persisted in 
 |--------|------|-------------|--------------|------|
 | GET | `/api/v2/teams/{id}/quarterly-review` | Fetch saved quarterly review blobs (params: `year`*, `quarter`* 1–4). Returns 404 if no data saved yet for this period. | "show quarterly review", "get quarterly review", "quarterly review data", "what's in our quarterly review" | Team member |
 | PATCH | `/api/v2/teams/{id}/quarterly-review` | Partially update quarterly review fields (params: `year`*, `quarter`* 1–4; body: `wins`?, `went_well`?, `focus`?). Creates record if none exists. | "save quarterly review", "update quarterly review", "set quarterly wins", "update went well", "update focus" | Team admin |
+| GET | `/api/v2/teams/{id}/quarterly-review/linked-urls` | List file/URL attachments for a quarterly review (params: `year`*, `quarter`* 1–4). Auto-creates the review record if none exists. Returns `{ linked_urls: [...] }`. | "quarterly review attachments", "quarterly review links", "quarterly review files", "list quarterly review urls" | Team member |
+| POST | `/api/v2/teams/{id}/quarterly-review/linked-urls` | Add a URL attachment to a quarterly review (params: `year`*, `quarter`* 1–4; body: `url`*, `name`?). Returns 201 with `{ linked_url: { id, url, name, created_at } }`. | "attach url to quarterly review", "add link to quarterly review", "upload quarterly review file", "add quarterly review attachment" | Team admin |
+| DELETE | `/api/v2/teams/{id}/quarterly-review/linked-urls/{url_id}` | Remove a URL attachment from a quarterly review (params: `year`*, `quarter`* 1–4). Returns 204 No Content. Returns 404 if url_id doesn't belong to the requested review. | "remove quarterly review attachment", "delete quarterly review link", "remove attachment from quarterly review" | Team admin |
 
 **Request body (PATCH)** — all fields optional; omit to preserve, send `""` to clear:
 ```json
@@ -1254,6 +1257,15 @@ Per-team HTML blob storage for quarterly review summaries. Data is persisted in 
 
 Response fields: `id` (team ID), `year`, `quarter`, `wins`, `went_well`, `focus` (all sanitized HTML strings; empty string if never set).
 
+**Linked-URL response shape** (GET returns array, POST returns single object):
+```json
+{
+  "linked_urls": [
+    { "id": 301, "url": "https://docs.google.com/...", "name": "Q2 Review Notes", "created_at": "2026-04-10T14:22:00.000Z" }
+  ]
+}
+```
+
 **Behavior notes**:
 - **404 on GET**: No data saved yet — treat as empty editor, not an error.
 - **Partial PATCH**: Only provided fields are updated; omitted fields retain existing values.
@@ -1261,6 +1273,8 @@ Response fields: `id` (team ID), `year`, `quarter`, `wins`, `went_well`, `focus`
 - **50 KB per field**: Each of `wins`, `went_well`, `focus` capped at 51,200 bytes (400 if exceeded).
 - **Admin gate**: PATCH requires `isTeamAdmin`; GET requires `canViewGroup`. Non-members/non-admins receive 403.
 - **Missing/invalid params**: Both endpoints return 400 if `year` or `quarter` is missing, non-integer, or `quarter` is outside 1–4.
+- **Linked-URL scoping**: Attachments are scoped to the specific quarterly review (team + year + quarter). Not the same as L10 meeting linked URLs. GET auto-creates the review record if missing.
+- **Linked-URL DELETE 404**: Returned if `url_id` doesn't belong to the requested quarterly review (cross-review deletion prevented).
 
 ## Favorites
 
@@ -1550,6 +1564,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | team logo, upload logo, remove logo, delete logo | Team Logo | `POST /teams/{id}/logo`, `DELETE /teams/{id}/logo` |
 | activity log, team activity, membership changes | Team Activity Log | `GET /teams/{id}/activity-logs` |
 | quarterly review, team quarterly review, q1 review, q2 review, wins, went well, focus | Quarterly Review | `GET /teams/{id}/quarterly-review`, `PATCH /teams/{id}/quarterly-review` |
+| quarterly review attachments, quarterly review links, quarterly review files, attach url to quarterly review | Quarterly Review Linked URLs | `GET /teams/{id}/quarterly-review/linked-urls`, `POST /teams/{id}/quarterly-review/linked-urls`, `DELETE /teams/{id}/quarterly-review/linked-urls/{url_id}` |
 | change role, promote to admin, demote, make admin | Change Member Role | `PATCH /teams/{id}/members/{user_id}` |
 | create account, sign up, new account, register, onboard new user | Create Account (Signup) | `POST /accounts` |
 | set framework, change framework, select management framework | Set Account Framework | `PUT /accounts/{id}/framework` |
