@@ -1426,6 +1426,38 @@ Cycle detection prevents moving a page to one of its own descendants (returns `4
 
 Use `can_edit` / `can_delete` flags on each page object to gate write suggestions. The list endpoint returns a flat array — build the tree client-side from `parent_id`. Position is 0-based ordering among siblings, auto-maintained on create/move/delete.
 
+## Project Templates
+
+Reusable project blueprints created from existing items. Templates are backed by archived items and can be shared across teams, launched as new projects, or applied to existing items.
+
+Template object fields: `id`, `name`, `description` (string | null), `template_type` (string — e.g. `"project_or_process"`), `templateable_id` (integer — backing item ID), `templateable_type` (string — e.g. `"Item"`), `shared_with_teams` ([{ id, name }]), `default_view` (`"show"` | `"board"` | `"outline"` | `"roadmap"` | null), `can_edit` (boolean), `can_delete` (boolean), `created_at`, `updated_at`.
+
+| Method | Path | Description | User Phrases |
+|--------|------|-------------|--------------|
+| GET | `/api/v2/templates` | List templates visible to the user (params: `page?`, `per_page?` (default 100, max 100), `team_id?` for optional filter). Returns paginated list with `meta.page`, `meta.per_page`, `meta.total`, `meta.total_pages`. | "list templates", "show templates", "browse templates", "available templates", "project templates" |
+| POST | `/api/v2/templates` | Create template from an existing item (body: `name`*, `source_item_id`*, `description?`, `include_attachments?` (bool), `keep_alignments?` (bool)). Requires edit access on source item. Returns 201 with template object. | "create template", "save as template", "make template from project", "turn project into template" |
+| GET | `/api/v2/templates/{id}` | Get template detail. Includes `backing_item` ({ id, name, type, descendant_count }) and `can_edit`/`can_delete` flags. | "get template", "show template detail", "view template" |
+| PATCH | `/api/v2/templates/{id}` | Update template name and/or description (body: `name?`, `description?`). Requires edit access. Returns full template object. | "rename template", "update template", "edit template description" |
+| DELETE | `/api/v2/templates/{id}` | Delete template and its backing item tree. Requires team admin or account admin. Returns 204. | "delete template", "remove template" |
+| POST | `/api/v2/templates/{id}/launch` | Launch template as a new active project (body: `name`*, `due?`, `assignee_id?`, `parent_id?`, `group_id?`). Returns 201 with new item (`id`, `name`, `type`, `status`, `due`, `group_id`, `parent_id`, `descendant_count`, `created_at`). | "launch template", "use template", "create project from template", "start project from template", "apply template as new project" |
+| POST | `/api/v2/templates/{id}/apply` | Apply template's child items to an existing item (body: `target_item_id`*, `assign_to_object_assignees?` (bool)). Inserts template descendants under the target without creating a root item. Returns 201 with `{ target_item_id, items_created, items: [{id, name, parent_id}] }`. | "apply template", "add template to project", "inject template checklist", "apply template items" |
+| POST | `/api/v2/templates/{id}/share` | Share template with a team (body: `team_id`*). Returns updated `shared_with_teams` list. | "share template", "share template with team", "add team to template" |
+| DELETE | `/api/v2/templates/{id}/share` | Remove team from template sharing (body: `team_id`*). Returns updated `shared_with_teams` list. | "unshare template", "remove team from template", "stop sharing template" |
+| PATCH | `/api/v2/templates/{id}/default-view` | Set default launch view (body: `default_view`* — one of: `"show"`, `"board"`, `"outline"`, `"roadmap"`). Returns `{ data: { id, default_view } }`. | "set template view", "default view for template", "set template default" |
+
+**Response envelopes**:
+- `GET /api/v2/templates` → `{ "data": Template[], "meta": { "page": int, "per_page": int, "total": int, "total_pages": int } }`
+- `POST /api/v2/templates` → `{ "data": Template }` (201)
+- `GET /api/v2/templates/{id}` → `{ "data": Template }` (includes `backing_item`)
+- `PATCH /api/v2/templates/{id}` → `{ "data": Template }` (200)
+- `DELETE /api/v2/templates/{id}` → 204 No Content
+- `POST /api/v2/templates/{id}/launch` → `{ "data": { id, name, type, status, due, group_id, parent_id, descendant_count, created_at } }` (201)
+- `POST /api/v2/templates/{id}/apply` → `{ "data": { target_item_id, items_created, items: [{id, name, parent_id}] } }` (201)
+- `POST /api/v2/templates/{id}/share` / `DELETE /api/v2/templates/{id}/share` → `{ "data": { id, shared_with_teams } }` (200)
+- `PATCH /api/v2/templates/{id}/default-view` → `{ "data": { id, default_view } }` (200)
+
+**Validation**: `name` required, max 255 chars (422). `source_item_id` must be viewable and editable (403/404). `default_view` must be one of the four valid values (422). Template delete requires team admin or account admin (403). Launch/apply require view access to template and edit access to parent/target (403).
+
 ## Error Responses
 
 All errors return: `{ "error": { "code": "<error_code>", "message": "<human-readable>", "details": { ... } } }`
@@ -1495,6 +1527,9 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | core value, company value | Core Value | `/core-values` |
 | core value rating, value score | Core Values Rating | `/core-values-ratings` |
 | review prompt, review question | Assessment Prompt | `/review-templates/{id}/prompts` |
+| project template, template, blueprint, reusable project | Project Template | `/api/v2/templates` |
+| launch template, use template, create from template | Template Launch | `POST /api/v2/templates/{id}/launch` |
+| apply template, add template to project, inject template | Template Apply | `POST /api/v2/templates/{id}/apply` |
 | action item (review), follow-up | Review Action Item | `POST /reviews/{id}/action-items` |
 | show archived, include archived | Archived filter | `?include_archived=true` on list endpoints |
 | comment, note | Comment | `/items/{id}/comments` |
