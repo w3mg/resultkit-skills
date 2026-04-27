@@ -116,7 +116,7 @@ Auth: `canEdit` on Item for upload, add-link, and delete. `canView` on Item for 
 `created_at`, `updated_at`.
 
 Team detail fields: `id`, `name`, `description`, `framework`, `parent_id` (integer | null — ID of parent team, or null for root teams),
-`logo_url` (string | null — Filestack CDN URL or null if no logo set), `creator` (UserSimple), `created_at`, `updated_at`, `members` (TeamMember[]).
+`logo_url` (string | null — Filestack CDN URL or null if no logo set), `has_slack_webhook` (boolean — team has a Slack webhook configured), `has_discord_webhook` (boolean — team has a Discord webhook configured), `creator` (UserSimple), `created_at`, `updated_at`, `members` (TeamMember[]).
 
 TeamMember: `id`, `team` (TeamSimple), `user` (UserSimple), `role` ("member" | "admin").
 
@@ -701,10 +701,26 @@ The "90-second practice" — a daily check-in report where users record what the
 | DELETE | `/result-feed/{date}/{section}/{item_id}` | Remove item from section (keeps item, does not revert status) | "remove {id} from done", "take {id} off next", "drop {id} from blocked" | — |
 | POST | `/result-feed/{date}/submit` | Submit + share check-in (body: optional team_id, item_ids). Requires ≥1 item in both done and next. Idempotent. | "submit", "finalize", "done for the day", "submit check-in" | — |
 | GET | `/teams/{id}/result-feed` | List team's shared check-ins (params: page, per_page). Reverse chronological. Requires team membership. | "team check-ins", "team feed", "team result feed", "show team check-ins" | — |
+| PUT | `/result-feed/{date}/{section}` | Update section metadata (body: notes, attachment_ids). `notes: null` clears notes. `attachment_ids` replaces current list (filtered to IDs the user owns). | "add notes to done", "update notes", "set notes on done/next/blocked", "edit section notes", "attach files" | — |
+| POST | `/result-feed/{date}/push-to-slack` | Push check-in to team's Slack webhook (body: team_id*, exclude_item_ids[]). 422 if no webhook configured, 502 if webhook fails, 403 if not a team member. | "share to slack", "push to slack", "send check-in to slack" | — |
+| POST | `/result-feed/{date}/push-to-discord` | Push check-in to team's Discord webhook (body: team_id*, exclude_item_ids[]). Same error codes as push-to-slack. | "share to discord", "push to discord", "send check-in to discord" | — |
+| POST | `/result-feed/{date}/react` | Toggle high-five reaction on a report. No request body. Returns `{ data: { high_five_count, user_has_reacted } }`. | "high-five", "react", "give kudos", "high five check-in" | — |
+| GET | `/result-feed/{date}/comments` | List comments on a report. Returns `{ data: [{ id, body, user_id, created_at }] }`. | "show comments", "read comments", "comments on check-in" | — |
+| POST | `/result-feed/{date}/comments` | Add comment to a report (body: body*). body required, non-empty, ≤ 10,000 chars. Returns 201 with created comment. | "comment on check-in", "add comment", "reply to check-in" | — |
+| GET | `/teams/{id}/result-feed/{date}/{user_id}` | View a specific user's report for a date. Returns `{ data: { report: ResultFeed, is_quiet: boolean } }`. `is_quiet: true` when shared to a different team context. 403 if not a member, 404 if no report. | "show user's check-in", "view teammate's report", "team member report" | — |
+| POST | `/users/me/group-context` | Set the calling user's active group context (body: group_id*). Same effect as `PATCH /users/me/team-context`. Returns `{ data: { success: true } }`. | "set team context", "switch team", "set group context" | — |
 
-ResultFeed fields: `id`, `date`, `is_completed`, `done` (Item[]), `next` (Item[]), `blocked` (Item[]).
+ResultFeed fields: `id`, `date`, `is_completed`, `done` (ResultFeedSection), `next` (ResultFeedSection), `blocked` (ResultFeedSection).
+
+ResultFeedSection fields: `items` (Item[]), `notes` (string | null), `attachments` (Attachment[]).
+
+Attachment fields: `id`, `filename`, `url`.
 
 TeamResultFeed fields: ResultFeed fields + `user` (UserSimple).
+
+Comment fields: `id`, `body`, `user_id`, `created_at`.
+
+Reaction response fields: `high_five_count` (integer), `user_has_reacted` (boolean).
 
 Submit request body (all optional): `team_id` (integer — team to share with), `item_ids` (integer[] — items to highlight).
 
@@ -712,14 +728,22 @@ Section path parameter: `done`, `next`, `blocked`.
 
 Date path parameter: `YYYY-MM-DD` or literal `today` (resolved server-side via user timezone).
 
+Push-to-slack/discord request body: `team_id` (integer — required), `exclude_item_ids` (integer[] — optional items to omit from the push).
+
 Behavioral notes:
 - GET auto-creates an empty report if none exists for the date.
+- GET result-feed sections are objects (`{ items, notes, attachments }`), NOT flat arrays.
+- PUT section metadata: `notes: null` clears notes; `attachment_ids` replaces the full list (filtered to IDs the caller owns).
 - PUT (add item) is idempotent — adding an already-present item returns 200.
 - DELETE (remove item) returns 404 if item is not in that section. Does NOT delete the item or revert its status.
 - Submit is idempotent — re-submitting a completed report returns 200.
 - Submit validation: requires ≥1 item in both `done` and `next` (422 otherwise).
 - Adding items triggers status side-effects: done→done, next→next, blocked→blocked.
 - Removing items does NOT revert status side-effects.
+- React (high-five) is a toggle — calling again removes the reaction.
+- Comments: body is required, non-empty, max 10,000 characters.
+- Push-to-slack/discord: 422 if team has no webhook configured, 502 if webhook returns non-2xx, 403 if caller is not a team member.
+- Team-feed detail: `is_quiet: true` when the report was shared to a different team than the requester's active group context.
 
 ## One-on-Ones (1-on-1)
 
@@ -1496,6 +1520,13 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | day plan, daily plan, prioritizer, tasks for today, my plan | Day Plan | `/day-plans/today`, `/day-plans/{date}` |
 | check-in, 90-second practice, result feed, daily report | Result Feed (daily check-in report) | `/result-feed/today`, `/result-feed/{date}` |
 | team check-ins, team feed, team result feed | Team Result Feeds (shared check-ins) | `/teams/{id}/result-feed` |
+| teammate's check-in, user's report, team member report | Team Result Feed Detail (single user's report) | `/teams/{id}/result-feed/{date}/{user_id}` |
+| high-five, react, kudos | Result Feed Reaction (toggle) | `/result-feed/{date}/react` |
+| comments on check-in, check-in comments | Result Feed Comments | `/result-feed/{date}/comments` |
+| share to slack, push to slack | Push Result Feed to Slack | `/result-feed/{date}/push-to-slack` |
+| share to discord, push to discord | Push Result Feed to Discord | `/result-feed/{date}/push-to-discord` |
+| section notes, done notes, add notes | Result Feed Section Metadata | `PUT /result-feed/{date}/{section}` |
+| set group context, switch team context | Group Context (active team for sharing) | `/users/me/group-context` |
 | weekly, team weekly, weekly board, Level 10, L10 (EOS) | Team Items (weekly board; called "Level 10" for EOS teams) | `/teams/{id}/items` |
 | issue, blocker, blocked item, challenge | Item with status=blocked | `/teams/{id}/items/blocked` |
 | next, to-do (column), priority for the week | Item with status=next | `/teams/{id}/items/next` |
