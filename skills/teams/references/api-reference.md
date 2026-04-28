@@ -98,6 +98,21 @@ Upload errors: `400 { "error": "unsupported_extension" }` — file type not allo
 
 Auth: `canEdit` on Item for upload, add-link, and delete. `canView` on Item for list and download.
 
+### Item Recurrence
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/items/{id}/recurrence` | Read current recurrence state | "show recurrence", "item schedule", "how often does this repeat", "recurrence settings" | `/items/{id}` |
+| PUT | `/items/{id}/recurrence` | Set or clear recurrence (body: type*, day_within_interval?) | "set recurrence", "make daily", "repeat weekly", "set schedule", "clear recurrence", "remove recurrence" | `/items/{id}` |
+
+Recurrence response: `{ "data": { "type": string|null, "day_within_interval": integer|null, "ends_after": null } }`
+
+`type` values: `"daily"`, `"weekly"`, `"monthly"`, `"quarterly"`, or `null` (clears recurrence). Case-sensitive — `"DAILY"` or `"yearly"` → 422.
+
+`day_within_interval` rules: required for weekly (0–6, Sun=0), monthly (1–31), quarterly (1–91). Ignored for daily. Pass `null` for `type` to clear.
+
+Behavior: Setting any cadence clears the previous recurrence. Every successful write creates an activity feed entry. PUT response returns the updated state — no second GET needed. Returns 404 if item not found or not accessible (uniform, no existence leak).
+
 ## Teams
 
 | Method | Path | Description | User Phrases | Web URL |
@@ -1586,6 +1601,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | change role, change member role, promote to admin, demote member, demote to member | Member Role Change | `PATCH /teams/{id}/members/{user_id}` |
 | upload logo, team logo, set team logo, remove logo, delete logo | Team Logo | `POST /teams/{id}/logo`, `DELETE /teams/{id}/logo` |
 | recurring, daily item, repeating task | Recurring Item | Day plan completion doesn't change item status |
+| set recurrence, repeat item, recurrence schedule, make daily, repeat weekly, item cadence | Item Recurrence | `GET /items/{id}/recurrence`, `PUT /items/{id}/recurrence` |
 | reset password, send password reset, password reset for user | Password Reset (admin) | `POST /passwords/reset` |
 | set new password, complete password reset | Password Update (unauthenticated) | `PUT /passwords` |
 | change password, update my password, new password, set password | Change Password (authenticated) | `POST /users/me/password` |
