@@ -40,9 +40,11 @@ Endpoints that support `q` and `include_archived` are noted below.
 | POST | `/items/{id}/indent` | Make item a child of its nearest left sibling (outliner indent). No body. Returns 400 if no left sibling exists. | "indent item", "make subtask", "nest under previous", "demote item" | — |
 | POST | `/items/{id}/outdent` | Promote item to sibling of its parent (outliner outdent). No body. Returns 400 if item is already at top level. | "outdent item", "promote task", "move to parent level", "unindent" | — |
 | POST | `/items/{id}/duplicate` | Duplicate an item (body: include_children? boolean). Due dates, start dates, and completion status are cleared; assignments are copied. Returns 201 with `{ data: { item, children: [] } }`. | "duplicate item", "copy task", "clone item" | — |
+| POST | `/items/{id}/toggle_is_top` | Toggle item must-do (is_top) flag. No body. Each call flips the current value. Turning OFF strips `#must` hashtag from item name. Returns updated item. Errors: 400 (invalid ID), 401, 403, 404. | "mark must-do", "tag as must do", "remove must tag", "toggle priority flag" | `/items/{id}` |
 
 Item fields: `id`, `name`, `description`, `due`, `status`, `on_weekly`,
 `is_long_term` (boolean, defaults to `false`),
+`is_top` (boolean — must-do / prioritizer flag; included in all v2 item responses),
 `team` (TeamSimple | null), `creator` (UserSimple), `assignees` (UserSimple[]),
 `parent_id`, `created_at`, `updated_at`.
 
@@ -597,6 +599,8 @@ All L10 Meeting Organizer endpoints share these error shapes:
 | POST | `/users/me/muted-items` | Mute an item (suppress notifications for it). Body: `{ "subscribeable_type": string, "subscribeable_id": number }`. | "mute item", "silence notifications for item", "stop notifications" | — |
 | DELETE | `/users/me/muted-items/:id` | Unmute an item. `:id` is the `subscribeable_id` (the item ID), not a row ID. Muted items stored as JSON blob in `object_metas`. | "unmute item", "restore notifications for item" | — |
 | GET | `/api/v2/users/me/upcoming-tasks` | Upcoming tasks for the current user across three sources: items assigned to caller (not authored), items authored by caller, and today's day-plan items. Params: `start_date` (YYYY-MM-DD, default today), `end_date` (YYYY-MM-DD, default start_date+30d), `include_done` (string, optional — pass literal `"true"` to include past-realized items from sources 1 and 2; any other value or absent = exclude). Returns `{ items: [...] }`. Sort: day-plan items first, then due ASC (nulls last), then created_at ASC. Excludes #parkinglot items and deferred day-plan actions. `day_plan_date` is non-null only for day-plan source items. | "upcoming tasks", "my tasks", "tasks this week", "timeline tasks", "what's due soon", "my upcoming items", "tasks due next week", "show done tasks", "include completed tasks" | `/timeline` |
+| POST | `/api/v2/users/me/history` | Record a visited entity. Body: `{ "entity_type": string, "entity_id": integer }`. Upserts `visited_at` if same tuple exists; prunes oldest entries beyond 100. Returns `{ ok: true }`. Valid entity_type values: `Item`, `Rock`, `Measure`, `Project`, `Person`, `Meeting`, `Page`, `Review`. Returns 422 for invalid entity_type. | "record visit", "track visit", "add to history", "mark visited" | — |
+| GET | `/api/v2/users/me/history` | Retrieve recent visit history for the authenticated user. Returns up to 50 entries ordered newest-first. Names resolved at read time from entity tables; deleted entities are omitted. Returns `{ history: [{ id, entity_type, entity_id, name, team_name, visited_at }] }`. | "my history", "recently visited", "visit history", "recent items", "what I visited" | — |
 | GET | `/items/:id/activity-feed` | Item-scoped activity feed events. Paginated; params: `page`, `per_page`, `since`. Returns 403 (not 404) when user lacks read access. | "item activity", "what happened on this item", "item history", "item feed" | — |
 | GET | `/subscriptions` | Lists authenticated user's subscriptions. Query param: `subscribeable_type` (filter). | "my subscriptions", "what I'm subscribed to", "subscriptions" | — |
 | POST | `/subscriptions` | Subscribe to an object. Body: `{ "subscribeable_type": string, "subscribeable_id": number }`. Idempotent: returns 200 with existing record if already subscribed, 201 if newly created. | "subscribe", "follow item", "watch item", "get notifications for" | — |
@@ -657,6 +661,12 @@ UserAccount fields: `id`, `name`, `is_owner` (boolean).
 AccountMember fields: `id`, `login`, `first_name`, `last_name`, `email`, `profile_photo_thumb_path`, `is_owner` (boolean).
 
 Signup response (201): `{ data: { user: { id, login, email, api_token }, account: { id, name }, team: { id, name } } }`. Validation error (422): `{ error: { code: "validation_error", message, details: { field: [messages] } } }`.
+
+## Search
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/api/v2/search` | Full-text search across 8 entity types. Params: `q`* (min 2 chars), `types` (comma-separated: `items,rocks,measures,projects,people,meetings,pages,reviews`; default: all), `limit` (per type; default 20). Returns `{ groups: { items: [...], rocks: [...], measures: [...], projects: [...], people: [...], meetings: [...], pages: [...], reviews: [...] }, total: N }`. Each result: `{ id, entity_type, name, status, assignee, due_date, team_id, team_name, url_hint }`. Returns 400 if q < 2 chars. | "search", "find", "look up", "search for item", "search everything", "full-text search", "find across teams" | — |
 
 ## Day Plans
 
@@ -1591,6 +1601,9 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | check off, mark done for today, complete for today | Day Plan Completion | `PATCH /day-plans/today/items/{item_id}` |
 | reorder today, sort my plan, change order of today, drag to reorder, set item order | Reorder Day Plan | `POST /day-plans/today/set-positions` |
 | archive, soft delete, remove item | Archive Item (status→archived) | `DELETE /items/{id}` |
+| search, find, look up, search everything, search across teams, full-text search | Search (full-text) | `GET /api/v2/search` |
+| my history, recently visited, visit history, recent items, what I visited | Visit History | `GET /api/v2/users/me/history` |
+| record visit, track visit, mark visited | Record Visit | `POST /api/v2/users/me/history` |
 | search, find, look up | Search (q param) | `GET /items?q=...`, `GET /users/search?q=...` |
 | my token, API key, api token | API Token | `GET /users/me` |
 | admin, team admin, make admin | Team Member Role | `PUT /teams/{id}/members` (role: "admin") |
