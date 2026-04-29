@@ -64,6 +64,14 @@ All skills use the `rkit:` prefix: `/rkit:setup`, `/rkit:today`, `/rkit:board`, 
 - Be concise. No filler.
 - Questions get answers, not actions.
 
+## Prototype = Spec (binding, non-negotiable)
+
+When an issue, spec, or user request references an HTML prototype (anywhere under `docs/design-intent/`, `resultkit-design-content/source/app-design-wip/`, or any path described as a "prototype"), that prototype is the **binding spec**. Built UI must match it visually and behaviorally with complete fidelity — no reinterpretation, no "spirit of," no partial substitutions.
+
+**Caveat — explicit deviation only.** If the user explicitly says to deviate, follow that. Otherwise presume complete fidelity is required.
+
+**When generating an issue or spec from a prototype:** put the prototype path at the very top of the body in a callout that says it is the source of truth. Do not bury it.
+
 ## Mandatory: Verify Before Writing Skills
 
 **NEVER write or modify API-related skill logic based on assumptions.** Before changing any skill that calls the API:
