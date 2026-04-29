@@ -720,40 +720,44 @@ The "90-second practice" — a daily check-in report where users record what the
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/result-feed/{date}` | Get check-in for date (auto-creates empty report). `{date}` accepts `YYYY-MM-DD` or literal `today`. | "show my check-in", "90 seconds", "result feed", "daily report", "what did I do", "show check-in for {date}" | — |
+| GET | `/result-feed/{date}` | Get check-in for date (auto-creates empty report). `{date}` accepts `YYYY-MM-DD` or literal `today`. Returns `{ data: ResultFeed }` with 4 sections: `done`, `review`, `next`, `blocked` — each a structured object `{ items, notes, attachments }`. | "show my check-in", "90 seconds", "result feed", "daily report", "what did I do", "show check-in for {date}" | — |
 | POST | `/result-feed/{date}/{section}` | Create new item in section (body: name*) | "add done", "add next", "add blocked", "new done item", "got something done" | — |
 | PUT | `/result-feed/{date}/{section}/{item_id}` | Add existing item to section (idempotent) | "add item {id} to done", "put {id} in next", "attach {id} to blocked" | — |
 | DELETE | `/result-feed/{date}/{section}/{item_id}` | Remove item from section (keeps item, does not revert status) | "remove {id} from done", "take {id} off next", "drop {id} from blocked" | — |
 | POST | `/result-feed/{date}/submit` | Submit + share check-in (body: optional team_id, item_ids). Requires ≥1 item in both done and next. Idempotent. | "submit", "finalize", "done for the day", "submit check-in" | — |
 | GET | `/teams/{id}/result-feed` | List team's shared check-ins (params: page, per_page). Reverse chronological. Requires team membership. | "team check-ins", "team feed", "team result feed", "show team check-ins" | — |
-| PUT | `/result-feed/{date}/{section}` | Update section metadata (body: notes, attachment_ids). `notes: null` clears notes. `attachment_ids` replaces current list (filtered to IDs the user owns). | "add notes to done", "update notes", "set notes on done/next/blocked", "edit section notes", "attach files" | — |
-| POST | `/result-feed/{date}/push-to-slack` | Push check-in to team's Slack webhook (body: team_id*, exclude_item_ids[]). 422 if no webhook configured, 502 if webhook fails, 403 if not a team member. | "share to slack", "push to slack", "send check-in to slack" | — |
-| POST | `/result-feed/{date}/push-to-discord` | Push check-in to team's Discord webhook (body: team_id*, exclude_item_ids[]). Same error codes as push-to-slack. | "share to discord", "push to discord", "send check-in to discord" | — |
-| POST | `/result-feed/{date}/react` | Toggle high-five reaction on a report. No request body. Returns `{ data: { high_five_count, user_has_reacted } }`. | "high-five", "react", "give kudos", "high five check-in" | — |
-| GET | `/result-feed/{date}/comments` | List comments on a report. Returns `{ data: [{ id, body, user_id, created_at }] }`. | "show comments", "read comments", "comments on check-in" | — |
-| POST | `/result-feed/{date}/comments` | Add comment to a report (body: body*). body required, non-empty, ≤ 10,000 chars. Returns 201 with created comment. | "comment on check-in", "add comment", "reply to check-in" | — |
+| PUT | `/result-feed/{date}/{section}` | Update section metadata (body: notes, attachment_ids). `notes: null` clears notes. `attachment_ids` replaces current list (filtered to IDs the user owns). Valid sections: `done`, `review`, `next`, `blocked`. | "add notes to done", "update notes", "set notes on done/next/blocked/review", "edit section notes", "attach files" | — |
+| POST | `/result-feed/{date}/push-to-slack` | Push check-in to team's Slack webhook (body: group_context_id*, exclude_item_ids[]). 422 if no webhook configured, 502 if webhook fails, 403 if not a team member. | "share to slack", "push to slack", "send check-in to slack" | — |
+| POST | `/result-feed/{date}/push-to-discord` | Push check-in to team's Discord webhook (body: group_context_id*, exclude_item_ids[]). Same error codes as push-to-slack. | "share to discord", "push to discord", "send check-in to discord" | — |
+| POST | `/result-feed/{date}/reactions` | Toggle high-five reaction on a report (body: user_id — whose report to react to). Returns `{ data: { reacted: boolean, count: integer } }`. | "high-five", "react", "give kudos", "high five check-in" | — |
+| GET | `/result-feed/{date}/reactions` | Get current reaction state for a report (query: user_id*). Returns `{ data: { reacted: boolean, count: integer } }`. | "show reactions", "reaction count", "did I react", "high-five count" | — |
+| POST | `/result-feed/{date}/attachments` | Upload a file attachment to a check-in (multipart/form-data: file*). Max 4.5 MB. Returns `{ data: { id, filename, content_type, filesize, parent_object_type } }`. Use returned `id` as `attachment_id` in PUT section metadata. | "upload file to check-in", "attach file", "upload attachment" | — |
+| GET | `/result-feed/{date}/comments` | List comments on a report (query: user_id* — whose report). Returns `{ data: [{ id, comment, user_id, created_at }] }`. | "show comments", "read comments", "comments on check-in" | — |
+| POST | `/result-feed/{date}/comments` | Add comment to a report (body: body*, user_id* — whose report). body required, non-empty, ≤ 10,000 chars. Returns 201 with created comment `{ id, comment, user_id, created_at }`. | "comment on check-in", "add comment", "reply to check-in" | — |
 | GET | `/teams/{id}/result-feed/{date}/{user_id}` | View a specific user's report for a date. Returns `{ data: { report: ResultFeed, is_quiet: boolean } }`. `is_quiet: true` when shared to a different team context. 403 if not a member, 404 if no report. | "show user's check-in", "view teammate's report", "team member report" | — |
 | POST | `/users/me/group-context` | Set the calling user's active group context (body: group_id*). Same effect as `PATCH /users/me/team-context`. Returns `{ data: { success: true } }`. | "set team context", "switch team", "set group context" | — |
 
-ResultFeed fields: `id`, `date`, `is_completed`, `done` (ResultFeedSection), `next` (ResultFeedSection), `blocked` (ResultFeedSection).
+ResultFeed fields: `id`, `date`, `is_completed`, `done` (ResultFeedSection), `review` (ResultFeedSection), `next` (ResultFeedSection), `blocked` (ResultFeedSection).
 
 ResultFeedSection fields: `items` (Item[]), `notes` (string | null), `attachments` (Attachment[]).
 
-Attachment fields: `id`, `filename`, `url`.
+Attachment fields: `id`, `filename`, `content_type` (MIME type, e.g. "image/png"), `size` (integer — bytes).
+
+UploadedDocument fields (returned by POST attachments): `id`, `filename`, `content_type`, `filesize`, `parent_object_type` (always "CustomContent"). Use `id` as `attachment_id` in PUT section metadata.
 
 TeamResultFeed fields: ResultFeed fields + `user` (UserSimple).
 
-Comment fields: `id`, `body`, `user_id`, `created_at`.
+Comment fields: `id`, `comment` (text body), `user_id`, `created_at`.
 
-Reaction response fields: `high_five_count` (integer), `user_has_reacted` (boolean).
+Reaction response fields: `reacted` (boolean — whether the requesting user has reacted), `count` (integer — total reaction count).
 
 Submit request body (all optional): `team_id` (integer — team to share with), `item_ids` (integer[] — items to highlight).
 
-Section path parameter: `done`, `next`, `blocked`.
+Section path parameter: `done`, `review`, `next`, `blocked`.
 
 Date path parameter: `YYYY-MM-DD` or literal `today` (resolved server-side via user timezone).
 
-Push-to-slack/discord request body: `team_id` (integer — required), `exclude_item_ids` (integer[] — optional items to omit from the push).
+Push-to-slack/discord request body: `group_context_id` (integer — required, the team/group context ID), `exclude_item_ids` (integer[] — optional items to omit from the push).
 
 Behavioral notes:
 - GET auto-creates an empty report if none exists for the date.
@@ -763,6 +767,7 @@ Behavioral notes:
 - DELETE (remove item) returns 404 if item is not in that section. Does NOT delete the item or revert its status.
 - Submit is idempotent — re-submitting a completed report returns 200.
 - Submit validation: requires ≥1 item in both `done` and `next` (422 otherwise).
+- Submit side-effects (server-side, no skill action required): upserts ObjectMeta `last_status_provided` timestamp for the user, triggers daily recurrence item rollover (recurrent items due today roll to tomorrow).
 - Adding items triggers status side-effects: done→done, next→next, blocked→blocked.
 - Removing items does NOT revert status side-effects.
 - React (high-five) is a toggle — calling again removes the reaction.
@@ -1546,11 +1551,13 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | check-in, 90-second practice, result feed, daily report | Result Feed (daily check-in report) | `/result-feed/today`, `/result-feed/{date}` |
 | team check-ins, team feed, team result feed | Team Result Feeds (shared check-ins) | `/teams/{id}/result-feed` |
 | teammate's check-in, user's report, team member report | Team Result Feed Detail (single user's report) | `/teams/{id}/result-feed/{date}/{user_id}` |
-| high-five, react, kudos | Result Feed Reaction (toggle) | `/result-feed/{date}/react` |
+| high-five, react, kudos, toggle reaction | Result Feed Reaction (toggle) | `POST /result-feed/{date}/reactions` |
+| show reactions, reaction count, did I react, high-five count | Result Feed Reaction (read) | `GET /result-feed/{date}/reactions` |
 | comments on check-in, check-in comments | Result Feed Comments | `/result-feed/{date}/comments` |
 | share to slack, push to slack | Push Result Feed to Slack | `/result-feed/{date}/push-to-slack` |
 | share to discord, push to discord | Push Result Feed to Discord | `/result-feed/{date}/push-to-discord` |
-| section notes, done notes, add notes | Result Feed Section Metadata | `PUT /result-feed/{date}/{section}` |
+| section notes, done notes, add notes, review notes | Result Feed Section Metadata | `PUT /result-feed/{date}/{section}` |
+| upload file to check-in, attach file, upload attachment | Result Feed File Upload | `POST /result-feed/{date}/attachments` |
 | set group context, switch team context | Group Context (active team for sharing) | `/users/me/group-context` |
 | weekly, team weekly, weekly board, Level 10, L10 (EOS) | Team Items (weekly board; called "Level 10" for EOS teams) | `/teams/{id}/items` |
 | issue, blocker, blocked item, challenge | Item with status=blocked | `/teams/{id}/items/blocked` |

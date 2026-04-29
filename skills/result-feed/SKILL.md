@@ -36,7 +36,9 @@ Match the user's message against the **Triggers** column. Pick the first matchin
 | "show {user}'s check-in", "view {user}'s report", "team member report", "what did {user} do", "check-in for user {id}" | View a specific team member's report | `view_team_member_report` |
 | "add notes", "update notes", "set notes on done", "set notes on next", "set notes on blocked", "edit section notes", "attach files", "add attachment", "clear notes" | Update section notes/attachments | `update_section_meta` |
 | "high-five", "react", "high five {user}", "give kudos", "🙏", "toggle reaction" | React (high-five) to a check-in | `react_to_report` |
+| "show reactions", "reaction count", "did I react", "high-five count", "how many reactions" | View reaction state without toggling | `view_reactions` |
 | "show comments", "read comments", "comments on check-in", "comments on {date}" | List comments on a check-in | `list_comments` |
+| "upload file", "attach file", "upload attachment" | Upload a file attachment to a check-in | `upload_attachment` |
 | "comment on check-in", "add comment", "reply to {user}", "leave a comment" | Add a comment to a check-in | `add_comment` |
 | "share to slack", "push to slack", "send to slack", "share check-in to slack" | Push check-in to Slack | `push_to_slack` |
 | "share to discord", "push to discord", "send to discord", "share check-in to discord" | Push check-in to Discord | `push_to_discord` |
@@ -105,9 +107,11 @@ Extract `body.data` array and `body.meta` pagination.
 
   **Done**
   - [{id}] {name}
-  - [{id}] {name}
-  > Notes: {done.notes}
-  > Attachments: {filename1}, {filename2}
+  > Notes: {done.notes}                              ← only when notes non-null
+  > Attachments: file.pdf (application/pdf, 42 KB)   ← only when attachments non-empty
+
+  **Review**
+  - [{id}] {name}                                    ← only when review.items non-empty
 
   **Next**
   - [{id}] {name}
@@ -118,9 +122,10 @@ Extract `body.data` array and `body.meta` pagination.
 
   **Section rendering rules** (IMPORTANT — sections are objects, not arrays):
   - Items: read from `section.items` (array), NOT directly from the section. Display each as `- [{id}] {name}`.
-  - Notes: if `section.notes` is non-null and non-empty, display `> Notes: {section.notes}` after the items. Omit if null.
-  - Attachments: if `section.attachments` is non-empty, display `> Attachments: {filename1}, {filename2}` (comma-separated filenames). Omit if empty array.
+  - Notes: if `section.notes` is non-null and non-empty, display `> Notes: {section.notes}` after the items. Omit if null or empty.
+  - Attachments: if `section.attachments` is non-empty, display `> Attachments: filename1 (content_type, size), filename2 (content_type, size)`. Show size human-readable: < 1024 → "N B"; < 1048576 → "N KB"; else → "N MB". Omit if empty array.
   - Empty sections (no items, no notes, no attachments): show "None."
+  - Section order: Done → Review → Next → Blocked.
 
   After all feeds, show pagination summary:
   > Page {page}/{total_pages} — {total} check-ins
@@ -147,7 +152,7 @@ echo "$RESPONSE"
 
 #### Step 3: Handle response
 
-- **Status 200**: Extract `body.data.report` and `body.data.is_quiet`. Display the full report using Section rendering rules (same as view_team_feeds). If `is_quiet` is true, show `> ⚡ Quiet — shared to a different team context`.
+- **Status 200**: Extract `body.data.report` and `body.data.is_quiet`. Display the full report using Section rendering rules (same as view_team_feeds) — render all four sections in order: Done, Review, Next, Blocked. If `is_quiet` is true, show `> ⚡ Quiet — shared to a different team context`.
 - **Status 403**: "Not authorized — you are not a member of this team."
 - **Status 404**: "No report found for this user on this date."
 - **Other errors**: Handle per Error Handling table.
@@ -161,7 +166,7 @@ Update notes and/or attachments on a section of the user's result-feed.
 #### Step 1: Resolve parameters
 
 - **date**: Use Date Resolution. Default to `today`.
-- **section**: Extract from args — must be `done`, `next`, or `blocked`.
+- **section**: Extract from args — must be `done`, `review`, `next`, or `blocked`.
 - **notes**: Extract text from args. Use `null` if user says "clear notes".
 - **attachment_ids**: Extract IDs if provided. These are pre-existing attachment IDs (upload is handled outside this skill).
 
@@ -211,18 +216,47 @@ This is a non-destructive toggle (Constitution IV requires confirmation for POST
 
 Wait for confirmation.
 
-#### Step 3: Execute
+#### Step 3: Resolve user_id
+
+- **`user_id`**: Extract from args if specified (e.g., "high-five user 7", "react to {user}'s check-in"). If omitted, use the current user's ID from config or omit from body (server defaults to own report).
+
+#### Step 4: Execute
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" POST "/result-feed/DATE/react")
+RESPONSE=$("$API_SH" POST "/result-feed/DATE/reactions" '{"user_id":USER_ID}')
 echo "$RESPONSE"
 ```
 
-#### Step 4: Handle response
+#### Step 5: Handle response
 
-- **Status 200**: Extract `body.data.high_five_count` and `body.data.user_has_reacted`. Display:
-  > 🙌 High-five count: {high_five_count} — You: {reacted? "yes" : "no"}
+- **Status 200**: Extract `body.data.reacted` and `body.data.count`. Display:
+  > 🙌 High-five count: {count} — You: {reacted? "reacted ✓" : "not reacted"}
+- **Other errors**: Handle per Error Handling table.
+
+---
+
+### view_reactions
+
+View the current reaction state for a result-feed report without toggling.
+
+#### Step 1: Resolve parameters
+
+- **date**: Use Date Resolution. Default to `today`.
+- **user_id**: Extract from args if specified (e.g., "reactions on user 7's check-in"). If omitted, use the current user's ID.
+
+#### Step 2: Fetch reactions
+
+```bash
+API_SH="<api.sh path>"
+RESPONSE=$("$API_SH" GET "/result-feed/DATE/reactions?user_id=USER_ID")
+echo "$RESPONSE"
+```
+
+#### Step 3: Handle response
+
+- **Status 200**: Extract `body.data.reacted` and `body.data.count`. Display:
+  > 🙌 High-five count: {count} — You: {reacted? "reacted ✓" : "not reacted"}
 - **Other errors**: Handle per Error Handling table.
 
 ---
@@ -234,12 +268,13 @@ List comments on a result-feed report.
 #### Step 1: Resolve parameters
 
 - **date**: Use Date Resolution. Default to `today`.
+- **user_id**: Extract from args if specified (e.g., "comments on user 7's check-in"). If omitted, use the current user's ID.
 
 #### Step 2: Fetch comments
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" GET "/result-feed/DATE/comments")
+RESPONSE=$("$API_SH" GET "/result-feed/DATE/comments?user_id=USER_ID")
 echo "$RESPONSE"
 ```
 
@@ -255,6 +290,8 @@ echo "$RESPONSE"
   | 1 | 12 | User 7 | Nice work! | 2026-04-26 14:00 |
   ```
 
+  Use the `comment` field (not `body`) for the Comment column.
+
 - **Other errors**: Handle per Error Handling table.
 
 ---
@@ -267,6 +304,7 @@ Add a comment to a result-feed report.
 
 - **date**: Use Date Resolution. Default to `today`.
 - **body**: Extract comment text from args.
+- **user_id**: Extract from args if specified. If omitted, use the current user's ID.
 
 #### Step 2: Confirm
 
@@ -282,7 +320,7 @@ Wait for confirmation.
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" POST "/result-feed/DATE/comments" '{"body":"COMMENT_TEXT"}')
+RESPONSE=$("$API_SH" POST "/result-feed/DATE/comments" '{"body":"COMMENT_TEXT","user_id":USER_ID}')
 echo "$RESPONSE"
 ```
 
@@ -291,7 +329,9 @@ Escape any double quotes in COMMENT_TEXT.
 #### Step 4: Handle response
 
 - **Status 201**: Extract the created comment. Display:
-  > Comment added (ID: {id}).
+  > Comment added (ID: {id}): "{comment}"
+  
+  Use the `comment` field (not `body`) for the text.
 - **Status 422**: Show validation error (body is required, non-empty, max 10,000 chars).
 - **Other errors**: Handle per Error Handling table.
 
@@ -334,7 +374,7 @@ Wait for confirmation.
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" POST "/result-feed/DATE/push-to-slack" '{"team_id":TEAM_ID,"exclude_item_ids":[IDS]}')
+RESPONSE=$("$API_SH" POST "/result-feed/DATE/push-to-slack" '{"group_context_id":TEAM_ID,"exclude_item_ids":[IDS]}')
 echo "$RESPONSE"
 ```
 
@@ -353,6 +393,7 @@ echo "$RESPONSE"
 Push a result-feed check-in to the team's Discord webhook. Same flow as `push_to_slack` but:
 - Check `has_discord_webhook` instead of `has_slack_webhook`.
 - Call `POST /result-feed/DATE/push-to-discord` instead of `push-to-slack`.
+- Use `group_context_id` in the request body (same as push_to_slack).
 - Replace "Slack" with "Discord" in all messages.
 
 ---
@@ -387,6 +428,48 @@ echo "$RESPONSE"
 
 ---
 
+### upload_attachment
+
+Upload a file attachment to a result-feed check-in. The returned document ID can be used as an `attachment_id` in `update_section_meta`.
+
+#### Step 1: Resolve parameters
+
+- **date**: Use Date Resolution. Default to `today`.
+- **file_path**: Extract local file path from args (e.g., "upload /path/to/file.pdf", "attach ~/Downloads/report.pdf").
+
+#### Step 2: Confirm
+
+Display:
+> Upload **{filename}** to {date}'s check-in?
+
+Wait for confirmation.
+
+#### Step 3: Execute
+
+```bash
+API_SH="<api.sh path>"
+CONFIG="$HOME/.config/resultkit/config.json"
+TOKEN=$(jq -r '.api_token' "$CONFIG")
+BASE=$(jq -r '.api_base' "$CONFIG")
+RESPONSE=$(curl -s -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@FILE_PATH" \
+  "$BASE/result-feed/DATE/attachments")
+echo "$RESPONSE"
+```
+
+Replace `FILE_PATH` with the actual local path and `DATE` with the resolved date.
+
+#### Step 4: Handle response
+
+- **Status 200**: Extract `body.data`. Display:
+  > Uploaded: {filename} (ID: {id}) — use this ID in "attach files" to add it to a section.
+- **Status 400**: "Upload failed — unsupported file type or missing file."
+- **Status 413**: "File too large — maximum size is 4.5 MB."
+- **Other errors**: Handle per Error Handling table.
+
+---
+
 ## How to Interpret
 
 1. **Read the user's message.** Look for trigger words/phrases from the routing table.
@@ -394,7 +477,7 @@ echo "$RESPONSE"
    - A **team ID** (integer, e.g., "team 5", "--team 5")
    - A **user ID** (integer, e.g., "user 7", "user_id 7")
    - A **date** (e.g., "today", "yesterday", "2026-04-27") → convert to `YYYY-MM-DD`
-   - A **section** ("done", "next", "blocked")
+   - A **section** ("done", "review", "next", "blocked")
    - **Text content** (comment body, notes text)
 3. **Pick the matching tool row.** Use the routing table.
 4. **Default to `view_team_feeds`** if no clear intent is detected.
@@ -411,19 +494,20 @@ echo "$RESPONSE"
   "date": "2026-02-26",
   "is_completed": true,
   "user": { "id": 1, "login": "pat", "first_name": "Pat", "last_name": "A" },
-  "done": { "items": [Item, ...], "notes": "string or null", "attachments": [Attachment, ...] },
-  "next": { "items": [Item, ...], "notes": null, "attachments": [] },
+  "done":    { "items": [Item, ...], "notes": "string or null", "attachments": [Attachment, ...] },
+  "review":  { "items": [Item, ...], "notes": null, "attachments": [] },
+  "next":    { "items": [Item, ...], "notes": null, "attachments": [] },
   "blocked": { "items": [Item, ...], "notes": null, "attachments": [] }
 }
 ```
 
-**ResultFeedSection** (each of `done`, `next`, `blocked`):
+**ResultFeedSection** (each of `done`, `review`, `next`, `blocked`):
 ```json
 {
   "items": [Item, ...],
   "notes": "Free-text notes or null",
   "attachments": [
-    { "id": 42, "filename": "spec.pdf", "url": "https://..." }
+    { "id": 42, "filename": "spec.pdf", "content_type": "application/pdf", "size": 43008 }
   ]
 }
 ```
@@ -451,7 +535,8 @@ echo "$RESPONSE"
 {
   "id": 42,
   "filename": "spec.pdf",
-  "url": "https://cdn.example.com/spec.pdf"
+  "content_type": "application/pdf",
+  "size": 43008
 }
 ```
 
