@@ -41,6 +41,9 @@ Endpoints that support `q` and `include_archived` are noted below.
 | POST | `/items/{id}/outdent` | Promote item to sibling of its parent (outliner outdent). No body. Returns 400 if item is already at top level. | "outdent item", "promote task", "move to parent level", "unindent" | — |
 | POST | `/items/{id}/duplicate` | Duplicate an item (body: include_children? boolean). Due dates, start dates, and completion status are cleared; assignments are copied. Returns 201 with `{ data: { item, children: [] } }`. | "duplicate item", "copy task", "clone item" | — |
 | POST | `/items/{id}/toggle_is_top` | Toggle item must-do (is_top) flag. No body. Each call flips the current value. Turning OFF strips `#must` hashtag from item name. Returns updated item. Errors: 400 (invalid ID), 401, 403, 404. | "mark must-do", "tag as must do", "remove must tag", "toggle priority flag" | `/items/{id}` |
+| POST | `/items/context` | Batch context lookup for up to 500 item IDs (body: `{ "item_ids": integer[] }`). Returns 10-field context projection per item. Unviewable/non-existent IDs silently dropped. | "get item context", "batch context", "breadcrumbs for items", "item badges" | — |
+
+Batch context response: `{ "data": { "<item_id>": { "stored_ancestor_path": string\|null, "on_weekly": boolean, "is_long_term": boolean, "1x1_id": integer\|null, "1x1_name": string\|null, "todolist_id": integer\|null, "todolist_group_id": integer\|null, "day_plan_date": string\|null, "group_id": integer\|null, "group_name": string\|null } } }`. All 10 keys always present per entry. Fields `1x1_id`, `1x1_name`, and `day_plan_date` are scoped to the requesting user (not item owner). Empty object `{}` when input is empty or all IDs are unviewable.
 
 Item fields: `id`, `name`, `description`, `due`, `status`, `on_weekly`,
 `is_long_term` (boolean, defaults to `false`),
@@ -617,7 +620,7 @@ With `?include=access`, `default_team` and `current_team` gain: `is_leadership_t
 
 UserPublic fields: `id`, `login`, `email`, `first_name`, `last_name`.
 
-UserSimple fields: `id`, `login`, `first_name`, `last_name`.
+UserSimple fields: `id`, `login`, `first_name`, `last_name`. In 1-on-1 person objects (`persons.person1`, `persons.person2`), also includes `title` (string | null — organizational role from participant's most recently updated non-archived Seat; null if no active Seat).
 
 TeamSimple: `{ id: integer, name: string }`.
 
@@ -790,9 +793,13 @@ Behavioral notes:
 | PUT | `/1-on-1/{id}/items/{item_id}` | Attach existing item | "attach to meeting", "link item to 1:1", "add existing item to meeting" | `/1-on-1/{id}` |
 | DELETE | `/1-on-1/{id}/items/{item_id}` | Remove from meeting (keeps item) | "remove from meeting", "detach from 1:1" | — |
 | PUT | `/1-on-1/{id}/notes` | Save meeting notes (body: `{"notes":"text"}`). Overwrites existing notes. | "save notes", "add notes to 1:1", "write meeting notes" | `/1-on-1/{id}` |
+| PUT | `/1-on-1/{id}` | Schedule (or clear) next meeting. Body: `{"next_meeting_at":"<ISO 8601 datetime>"}` or `{"next_meeting_at":null}`. Returns updated MeetingSimple. | "schedule next meeting", "set next 1:1", "clear next meeting date" | `/1-on-1/{id}` |
 
 OneOnOneSimple fields: `id`, `date` (YYYY-MM-DD | null), `human_name` (pre-formatted display string),
-`persons`: `{ person1: UserSimple, person2: UserSimple }`,
+`persons`: `{ person1: UserSimple+title, person2: UserSimple+title }`,
+`cadence` (string | null — e.g. `"weekly"`, `"biweekly"`, `"monthly"`; null if no cadence configured),
+`cadence_interval` (integer | null — multiplier, e.g. 1 = every period, 2 = every 2 periods; null if no cadence),
+`next_meeting_at` (string | null — UTC ISO 8601 datetime of next scheduled meeting; null if not scheduled),
 `can_edit` (boolean), `can_view` (boolean).
 
 OneOnOne (detail) fields: OneOnOneSimple + `items`: `{ next: Item[], done: Item[], issues: Item[] }`,
