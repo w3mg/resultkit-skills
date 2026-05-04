@@ -922,6 +922,7 @@ Seats represent positions on a team's accountability chart. Each seat can have a
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/teams/{id}/seats` | Get team accountability chart — full hierarchical tree (params: `include_archived`, `context`). Pass `?context=organization` to resolve the org root from the team ID and return the full org-level seat tree (for accountability charts visible to subteam members); omit for team-scoped results (default). Each node includes `roles` (string[] | null) and `seat_level` ("leadership_team"\|"department"\|"individual_contributor"\|null). | "show org chart", "accountability chart", "team seats", "who does what", "org-level seat tree", "full organization chart" | `/teams/{id}` |
+| GET | `/users/{id}/seats` | Flat list of seats owned by user `id`, scoped to teams the requester can access (teams where requester is a member or admin; others are silently excluded). Returns same `SeatTreeNode` shape as `/teams/{id}/seats` but `children` is always `[]`. Param: `include_archived` (boolean, default false — when true each node has `archived: true`). Errors: 400 (invalid id), 401 (no auth), 404 (user not found). | "seats for user", "what seats does this person own", "user's positions on org chart" | — |
 | POST | `/seats` | Create seat (body: name*, team_id or parent_id, accountabilities?, notes?, seat_owner_id?, associated_team_id?). Root requires team_id; child requires parent_id. One root per team. | "create seat", "add position", "new role on chart" | — |
 | GET | `/seats/{id}` | Get seat detail (children as SeatSimple, one level deep). Includes `roles`, `seat_level`, and `has_direct_reports` (boolean, computed). | "show seat", "seat details", "position details" | — |
 | PATCH | `/seats/{id}` | Update seat (body: name?, accountabilities?, notes?, seat_owner_id?, associated_team_id?, roles?, seat_level?). Owner changes cascade to aligned measures/goals. `roles`: string[] | null, max 5 items, 500 chars each. `seat_level`: "leadership_team"\|"department"\|"individual_contributor"\|null. | "update seat", "rename seat", "change seat owner", "assign seat", "set seat roles", "set seat level" | — |
@@ -1637,6 +1638,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | set new password, complete password reset | Password Update (unauthenticated) | `PUT /passwords` |
 | change password, update my password, new password, set password | Change Password (authenticated) | `POST /users/me/password` |
 | seat, position, role on chart, accountability chart | Seat | `/teams/{id}/seats`, `/seats/{id}` |
+| seats for user, user's seats, person's positions, what seats does someone own | User Seats | `GET /users/{id}/seats` |
 | org chart, accountability chart, who does what | Team Seats (chart) | `GET /teams/{id}/seats` |
 | seat owner, who owns the seat, assigned to seat | Seat Owner | `PATCH /seats/{id}` (seat_owner_id) |
 | seat measure, KPI for seat, aligned measure | Seat Measure | `/seats/{id}/measures` |
