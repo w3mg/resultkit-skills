@@ -308,6 +308,53 @@ Default filtering: returns only active, non-parkinglot, non-muted projects. Use 
 
 `default_view` valid values: `"overview"`, `"board"`, `"table"`, `"roadmap"`, `"outline"`, `"mindmap"`, `null` (resets to no preference; treated as `"overview"` by clients). Per-project, shared across all team members. `PATCH /projects/{id}/default-view` body: `{ "default_view": string | null }`. Response 200: `{ "data": { "id": integer, "default_view": string | null } }`. Response 422: `{ "errors": ["default_view is not a valid view"] }`.
 
+### Project Hierarchy (read this before pulling project contents)
+
+A project is a container for items, and **its contents are usually two levels deep**. Treating a project as a flat list of to-dos will surface column headers as if they were tasks.
+
+**Standard shape (columnar — most projects):**
+
+```
+Project
+├── Column A    ← direct child #1 (a section header, NOT a to-do)
+│   ├── Item   ← grandchild — the actual task
+│   └── Item
+├── Column B    ← direct child #2
+│   └── Item
+└── Column C    ← direct child #3
+```
+
+Direct children of the project are **columns / section names** (Backlog, Doing, Done, etc.). The actual to-dos are **grandchildren** — children of the columns.
+
+**Flat-checklist shape (minority case):**
+
+```
+Project
+├── Item       ← direct child IS the to-do (no column layer)
+├── Item
+└── Item
+```
+
+A project with no columns has items as its direct children. Treat the direct-children list as the to-dos.
+
+**How to detect which shape a project uses:**
+
+1. **Fastest** — `GET /api/v2/projects/{id}/columns`. If the response returns columns, the project is columnar. An empty result means flat-checklist.
+2. **From a fetched child** — columns carry the `is_project_column` ObjectMeta flag (see Project Columns section). A direct child without that flag is a to-do, meaning the project is flat.
+3. **From `default_view`** — `"board"`, `"table"`, `"roadmap"` strongly imply columns are in use. `"outline"`, `"mindmap"`, `"overview"` may be either; do not rely on this alone.
+
+**Recommended fetch patterns:**
+
+- **Get the columns + items in one call (preferred):** `GET /api/v2/projects/{id}/columns` returns columns with embedded `items[]` by default. Use `?include_items=false` for the header row only.
+- **Manual two-level walk:** `GET /items/{project_id}/children` for columns, then `GET /items/{column_id}/children` for items in each column. Use this only if you need fields not returned by the columns endpoint.
+
+**Rules for any consumer (skills, MCP servers, integrations):**
+
+- Never present a project's direct children as to-dos without first checking whether they are columns.
+- When listing "to-dos in project X," walk to the grandchild level for columnar projects.
+- Always handle the flat-checklist case — don't assume columns exist.
+- When showing a kanban / board view, columns are the direct children; items are the grandchildren.
+
 ### Project Columns
 
 Columns are plain `Item` records with `parent_id = projectId`, distinguished by an `is_project_column` ObjectMeta flag. Color uses the native `Item.color` column.

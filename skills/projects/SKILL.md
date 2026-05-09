@@ -21,6 +21,7 @@ List active projects for a team. Drill into a project to see its columns and add
 - **Show IDs.** Always include project and item IDs in output.
 - **Concise output.** Tables and short summaries. No filler.
 - **Direct execution.** Use Bash with api.sh for all API calls. Never use Task agents.
+- **Two-level shape.** A project's direct children are usually **columns / section names**, not to-dos. The actual to-dos are **grandchildren** under those columns. A minority of projects are flat checklists (items as direct children, no columns). Never present direct children as to-dos without first checking. See the **Project Hierarchy** section in `references/api-reference.md` for detection and fetch patterns.
 
 ## Argument Parsing
 

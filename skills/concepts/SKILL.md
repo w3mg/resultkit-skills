@@ -114,6 +114,8 @@ Something stuck, blocked, or newly identified as a problem. Issues always genera
 ### Project
 A collection of related action items. A container, not a task itself. Projects that support a rock/objective carry higher priority.
 
+**Shape:** A project's contents are usually two levels deep — direct children are **columns / section names** (Backlog, Doing, Done, etc.) and the actual to-dos are **grandchildren** under those columns. A minority of projects are flat checklists where items are direct children with no column layer. Any code or skill that pulls project contents must handle both shapes — see the Project Hierarchy section in `api-reference.md`.
+
 ### Rock
 A 90-day target (EOS terminology). Not created as an item — rocks are goals. But knowing that an item supports a rock increases that item's priority weighting.
 
