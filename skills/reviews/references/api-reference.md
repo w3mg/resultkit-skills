@@ -832,7 +832,7 @@ Behavioral notes:
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/1-on-1` | List one-on-ones (params: group_id, page, per_page) | "show 1:1s", "my one-on-ones", "list 1:1s", "one-on-one meetings" | — |
+| GET | `/1-on-1` | List one-on-ones (params: group_id, page, per_page, archived — `true`/`false`/`all`; default `false` = active only) | "show 1:1s", "my one-on-ones", "list 1:1s", "one-on-one meetings", "show archived 1:1s" | — |
 | GET | `/1-on-1/{id}` | Meeting detail (response includes `items.next`, `items.done`, `items.issues` arrays) | "show meeting", "meeting details", "open 1:1" | `/1-on-1/{id}` |
 | GET | `/1-on-1/{id}/items` | All meeting items (params: creator_id?, page, per_page, q, include_archived) | "meeting items", "what's on the agenda" | `/1-on-1/{id}` |
 | GET | `/1-on-1/{id}/items/{section}` | Items by section (params: creator_id?, page, per_page, q, include_archived). Section: `next`, `blocked`. | "meeting next items", "meeting blockers", "meeting issues" | `/1-on-1/{id}` |
@@ -842,12 +842,15 @@ Behavioral notes:
 | DELETE | `/1-on-1/{id}/items/{item_id}` | Remove from meeting (keeps item) | "remove from meeting", "detach from 1:1" | — |
 | PUT | `/1-on-1/{id}/notes` | Save meeting notes (body: `{"notes":"text"}`). Overwrites existing notes. | "save notes", "add notes to 1:1", "write meeting notes" | `/1-on-1/{id}` |
 | PUT | `/1-on-1/{id}` | Schedule (or clear) next meeting. Body: `{"next_meeting_at":"<ISO 8601 datetime>"}` or `{"next_meeting_at":null}`. Returns updated MeetingSimple. | "schedule next meeting", "set next 1:1", "clear next meeting date" | `/1-on-1/{id}` |
+| POST | `/1-on-1/{id}/archive` | Archive a session (participants only — creator or other participant; 403 if not participant; 404 for project sessions). Idempotent. | "archive 1:1", "archive meeting", "hide one-on-one" | — |
+| POST | `/1-on-1/{id}/unarchive` | Restore an archived session. Idempotent. | "unarchive 1:1", "restore meeting", "unarchive one-on-one" | — |
 
 OneOnOneSimple fields: `id`, `date` (YYYY-MM-DD | null), `human_name` (pre-formatted display string),
 `persons`: `{ person1: UserSimple+title, person2: UserSimple+title }`,
 `cadence` (string | null — e.g. `"weekly"`, `"biweekly"`, `"monthly"`; null if no cadence configured),
 `cadence_interval` (integer | null — multiplier, e.g. 1 = every period, 2 = every 2 periods; null if no cadence),
 `next_meeting_at` (string | null — UTC ISO 8601 datetime of next scheduled meeting; null if not scheduled),
+`archived` (boolean — `true` if archived by a participant; archived sessions excluded from default list),
 `can_edit` (boolean), `can_view` (boolean).
 
 OneOnOne (detail) fields: OneOnOneSimple + `items`: `{ next: Item[], done: Item[], issues: Item[] }`,
