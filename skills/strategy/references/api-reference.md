@@ -648,7 +648,7 @@ All L10 Meeting Organizer endpoints share these error shapes:
 | GET | `/users/me/muted-items` | Paginated list of muted items (items with suppressed notifications) for the authenticated user. | "muted items", "what I've muted", "notification mutes" | — |
 | POST | `/users/me/muted-items` | Mute an item (suppress notifications for it). Body: `{ "subscribeable_type": string, "subscribeable_id": number }`. | "mute item", "silence notifications for item", "stop notifications" | — |
 | DELETE | `/users/me/muted-items/:id` | Unmute an item. `:id` is the `subscribeable_id` (the item ID), not a row ID. Muted items stored as JSON blob in `object_metas`. | "unmute item", "restore notifications for item" | — |
-| GET | `/api/v2/users/me/upcoming-tasks` | Upcoming tasks for the current user across three sources: items assigned to caller (not authored), items authored by caller, and today's day-plan items. Params: `start_date` (YYYY-MM-DD, default today), `end_date` (YYYY-MM-DD, default start_date+30d), `include_done` (string, optional — pass literal `"true"` to include past-realized items from sources 1 and 2; any other value or absent = exclude). Returns `{ items: [...] }`. Sort: day-plan items first, then due ASC (nulls last), then created_at ASC. Excludes #parkinglot items and deferred day-plan actions. `day_plan_date` is non-null only for day-plan source items. | "upcoming tasks", "my tasks", "tasks this week", "timeline tasks", "what's due soon", "my upcoming items", "tasks due next week", "show done tasks", "include completed tasks" | `/timeline` |
+| GET | `/api/v2/users/me/upcoming-tasks` | Upcoming tasks for the current user across three sources: items assigned to caller (not authored), items authored by caller, and today's day-plan items. Params: `start_date` (YYYY-MM-DD, default today), `end_date` (YYYY-MM-DD, default start_date+30d), `include_done` (string, optional — pass literal `"true"` to include past-realized items from sources 1 and 2; any other value or absent = exclude). Returns `{ items: [...] }`. Sort: day-plan items first, then due ASC (nulls last), then created_at ASC. Excludes #parkinglot items and deferred day-plan actions. `day_plan_date` is non-null only for day-plan source items. Priority-tag filter applied to day-plan-sourced items (source 3): non-active priority-tagged items are excluded. Due-date sources (1 and 2) are unaffected. | "upcoming tasks", "my tasks", "tasks this week", "timeline tasks", "what's due soon", "my upcoming items", "tasks due next week", "show done tasks", "include completed tasks" | `/timeline` |
 | POST | `/api/v2/users/me/history` | Record a visited entity. Body: `{ "entity_type": string, "entity_id": integer }`. Upserts `visited_at` if same tuple exists; prunes oldest entries beyond 100. Returns `{ ok: true }`. Valid entity_type values: `Item`, `Rock`, `Measure`, `Project`, `Person`, `Meeting`, `Page`, `Review`. Returns 422 for invalid entity_type. | "record visit", "track visit", "add to history", "mark visited" | — |
 | GET | `/api/v2/users/me/history` | Retrieve recent visit history for the authenticated user. Returns up to 50 entries ordered newest-first. Names resolved at read time from entity tables; deleted entities are omitted. Returns `{ history: [{ id, entity_type, entity_id, name, team_name, visited_at }] }`. | "my history", "recently visited", "visit history", "recent items", "what I visited" | — |
 | GET | `/api/v2/users/me/onboarding-state` | Returns the authenticated user's onboarding state. Fields: `onboarding_role` ("visionary"\|"integrator"\|"manager"\|null), `total_steps` (int), `completed_steps` (int), `completed_step_names` (string[]), `is_complete` (boolean), `should_show_onboarding` (boolean — true only when flag is set, valid account+team context exists, onboarding not complete, and user qualifies). Wrapped in `{ data: { ... } }`. | "onboarding status", "onboarding progress", "should I show onboarding", "is onboarding complete", "my onboarding role" | — |
@@ -725,7 +725,7 @@ Signup response (201): `{ data: { user: { id, login, email, api_token }, account
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/day-plans/today` | Today's plan (auto-creates if none exists) | "show today", "my plan", "daily plan", "prioritizer" | `/day-plans/today` |
+| GET | `/day-plans/today` | Today's plan (auto-creates if none exists). Priority-tag filter applied: items whose name contains a priority hashtag (`#next`, `#priority`, `#toppriority`, `#must`, `#1`–`#4`) are excluded when their status is not `active`. | "show today", "my plan", "daily plan", "prioritizer" | `/day-plans/today` |
 | GET | `/day-plans/today/items` | Today's items (params: page, per_page, q, include_archived) | "today's tasks", "what's on today", "my plan items" | `/day-plans/today` |
 | POST | `/day-plans/today/items` | Create item in today's plan (auto-creates plan) | "add to today", "new task for today", "put on my plan" | `/items/{item_id}` |
 | PUT | `/day-plans/today/items/{item_id}` | Attach existing item to today (auto-creates plan, body: position?) | "attach to today", "add to plan", "link to today" | `/day-plans/today` |
@@ -733,7 +733,7 @@ Signup response (201): `{ data: { user: { id, login, email, api_token }, account
 | DELETE | `/day-plans/today/items/{item_id}` | Remove from plan (keeps item) | "remove from today", "take off plan", "drop from today" | — |
 | POST | `/day-plans/today/set-positions` | Reorder today's plan items (body: item_ids* — complete ordered array of item IDs; assigns position=1-based index to each). Empty array is valid. Subset allowed — only provided items get updated positions. Auto-creates today's plan if needed. Returns `{ "data": { "success": true } }`. | "reorder today", "sort plan", "drag to reorder", "set item order", "change order of today's items" | — |
 | POST | `/day-plans/today/items/{item_id}/set-quadrant-position` | Assign an Eisenhower quadrant to an item on today's plan, keyed by item_id (body: quadrant* — one of: urgent_important, not_urgent_important, urgent_not_important, not_urgent_not_important, unassigned). Returns `{ data: { action, quadrant_position } }` where quadrant_position is 1–4 (or 0 for unassigned). 404 if item not on today's plan. | "put in quadrant", "assign to Q1", "set quadrant", "prioritize to urgent", "Eisenhower quadrant", "move to do first", "unassign quadrant" | `/prioritizer/quadrants` |
-| GET | `/day-plans/{date}` | Plan by date (YYYY-MM-DD) | "show plan for Monday", "last Friday's plan" | `/day-plans/{date}` |
+| GET | `/day-plans/{date}` | Plan by date (YYYY-MM-DD). Priority-tag filter applied (same rule as `/day-plans/today`): non-active priority-tagged items are excluded. | "show plan for Monday", "last Friday's plan" | `/day-plans/{date}` |
 | GET | `/day-plans/{date}/items` | Items by date (params: page, per_page, q, include_archived) | "items for that day", "what was on Monday" | `/day-plans/{date}` |
 | POST | `/day-plans/{date}/items` | Create item in date's plan (plan must already exist) | "add to that day's plan" | `/items/{item_id}` |
 | PUT | `/day-plans/{date}/items/{item_id}` | Attach existing item to date (plan must already exist, body: position?) | "attach to that plan" | `/day-plans/{date}` |
@@ -756,7 +756,7 @@ Personal Planner custom column lanes. All endpoints require auth. Items embedded
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/day-plan-columns` | List all active (non-archived) columns owned by the caller, with embedded items scoped to today's plan. | "list my columns", "show custom columns", "what are my planner buckets", "show planner columns" | `/prioritizer/custom-columns` |
+| GET | `/day-plan-columns` | List all active (non-archived) columns owned by the caller, with embedded items scoped to today's plan. Priority-tag filter applied to embedded items (same rule as `/day-plans/today`): non-active priority-tagged items are excluded. | "list my columns", "show custom columns", "what are my planner buckets", "show planner columns" | `/prioritizer/custom-columns` |
 | POST | `/day-plan-columns` | Create a new column (body: name* — 1–255 chars). Position auto-assigned to end. Returns 201 with new column. | "add a column", "create a planner bucket", "new column called X" | `/prioritizer/custom-columns` |
 | PATCH | `/day-plan-columns/{id}` | Rename a column (body: name* — 1–255 chars). Returns 404 if not owned or archived. | "rename column", "change column name" | `/prioritizer/custom-columns` |
 | DELETE | `/day-plan-columns/{id}` | Soft-archive a column (sets is_archived=true, removes all action rows). Returns 200 with archived column. Items in the column are unlinked but not deleted. | "delete column", "archive column", "remove planner bucket" | `/prioritizer/custom-columns` |
@@ -1443,6 +1443,16 @@ Labels that can be attached to Items and Goals. Labels support three scopes: **p
 | POST | `/api/v2/projects/{id}/admins` | Grant project admin (body: user_id*) | "make project admin", "grant project admin" |
 | DELETE | `/api/v2/projects/{id}/admins/{user_id}` | Revoke project admin | "remove project admin", "revoke project admin" |
 
+### Project Permissions Endpoints
+
+Manage individual role grants on a project. Requires **edit permission** on the project. Valid roles: `viewer`, `editor`, `author`, `contributor`.
+
+| Method | Path | Description | User Phrases |
+|--------|------|-------------|--------------|
+| GET | `/api/v2/projects/{id}/permissions` | List all individual role grants on a project. Response: `{ data: [{ id, role, user_id, user: { id, login, first_name, last_name } }] }`. Errors: 400 (non-numeric id), 401, 403, 404. | "list project permissions", "who has access to project", "project roles", "project access" |
+| POST | `/api/v2/projects/{id}/permissions` | Grant a role to a user on a project (body: role*, user_id*). Returns 201 (empty body). Errors: 400 (missing field), 401, 403, 404, 422 (invalid role, duplicate grant, non-existent user_id). | "grant project access", "give user project role", "add project permission", "share project with user" |
+| DELETE | `/api/v2/projects/{id}/permissions` | Revoke a role from a user (body: role*, user_id*); omit `role` to revoke all roles for that user. Returns 204 (idempotent — no-op if grant absent). Errors: 400 (missing user_id), 401, 403, 404. | "revoke project access", "remove user from project", "remove project permission", "remove all project roles for user" |
+
 Custom Label object fields: `id`, `name`, `color` (hex string or null), `scope` (personal/team/project), `scope_id` (null for personal), `template_code` (null for user-created), `group_id`, `item_id`, `is_inverted`.
 
 Admin object fields: `user_id`, `login`, `email`, `role`, `is_owner`.
@@ -1763,6 +1773,9 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | project admin, who is project admin, list project admins | Project Admin | `GET /api/v2/projects/{id}/admins` |
 | make project admin, grant project admin, add project admin | Grant Project Admin | `POST /api/v2/projects/{id}/admins` |
 | remove project admin, revoke project admin | Revoke Project Admin | `DELETE /api/v2/projects/{id}/admins/{user_id}` |
+| project permissions, who has access to project, list project roles, project access | List Project Permissions | `GET /api/v2/projects/{id}/permissions` |
+| grant project access, give user project role, add project permission, share project with user | Grant Project Permission | `POST /api/v2/projects/{id}/permissions` |
+| revoke project access, remove user from project, remove project permission, remove all project roles | Revoke Project Permission | `DELETE /api/v2/projects/{id}/permissions` |
 | page, doc, wiki, team doc, team wiki, team note, team knowledge base | Page | `/teams/{team_id}/pages`, `/teams/{team_id}/pages/{page_id}` |
 | list pages, show team pages, team docs, team wiki | List Pages | `GET /teams/{team_id}/pages` |
 | create page, new page, new doc, new wiki page | Create Page | `POST /teams/{team_id}/pages` |
