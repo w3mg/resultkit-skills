@@ -1418,12 +1418,12 @@ Labels that can be attached to Items and Goals. Labels support three scopes: **p
 
 | Method | Path | Description | User Phrases |
 |--------|------|-------------|--------------|
-| GET | `/api/v2/custom-labels` | List accessible custom labels (params: page, per_page, scope, team_id, project_id — omit scope for union of all accessible) | "list my labels", "show custom labels", "my tags", "my labels", "team labels", "project labels" |
+| GET | `/api/v2/custom-labels` | List accessible custom labels including ancestor-team inherited labels (params: page, per_page, scope, team_id, project_id — omit scope for union of all accessible); each label includes `inherited` (bool) and `source_team_id` (int\|null) fields | "list my labels", "show custom labels", "my tags", "my labels", "team labels", "project labels" |
 | POST | `/api/v2/custom-labels` | Create a custom label (body: name*, color?, scope?, scope_id? — scope defaults to personal; team/project scope requires admin) | "create label", "add label", "new label", "create tag" |
-| PATCH | `/api/v2/custom-labels/{id}` | Update label name and/or color — scope-aware auth (admin required for team/project labels) (body: name?, color?) | "rename label", "update label", "change label color" |
-| DELETE | `/api/v2/custom-labels/{id}` | Delete label — scope-aware auth; returns 422 `reserved_label` for reserved labels | "delete label", "remove label", "delete tag" |
-| POST | `/api/v2/custom-labels/manage` | Bulk sync labels on an Item or Goal (body: labeled_type*, labeled_id*, custom_label_ids* — array of label IDs) | "set labels on item", "tag item", "apply labels", "sync labels", "label this item", "attach labels" |
-| GET | `/api/v2/custom-labels/content` | Get attached + creator labels for an Item or Goal — returns scope metadata (params: labeled_type*, labeled_id*) | "labels on this item", "show item labels", "label picker", "which labels are attached" |
+| PATCH | `/api/v2/custom-labels/{id}` | Update label name and/or color — scope-aware auth (admin required for team/project labels); returns 403 if caller is a descendant-team admin but not admin of the label's owning team (body: name?, color?) | "rename label", "update label", "change label color" |
+| DELETE | `/api/v2/custom-labels/{id}` | Delete label — scope-aware auth; returns 422 `reserved_label` for reserved labels; returns 403 if caller is a descendant-team admin but not admin of the label's owning team | "delete label", "remove label", "delete tag" |
+| POST | `/api/v2/custom-labels/manage` | Bulk sync labels on an Item or Goal — accepts label IDs from ancestor teams (body: labeled_type*, labeled_id*, custom_label_ids* — array of label IDs) | "set labels on item", "tag item", "apply labels", "sync labels", "label this item", "attach labels" |
+| GET | `/api/v2/custom-labels/content` | Get attached + creator labels for an Item or Goal — includes ancestor-team labels; each label has `inherited` and `source_team_id` fields (params: labeled_type*, labeled_id*) | "labels on this item", "show item labels", "label picker", "which labels are attached" |
 
 **BREAKING CHANGE**: `POST /api/v2/custom-labels/manage` body field changed from `custom_labels: string[]` (names) to `custom_label_ids: number[]` (IDs). Sending old `custom_labels` field returns 422 with migration guidance.
 
