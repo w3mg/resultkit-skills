@@ -1551,6 +1551,20 @@ Cycle detection prevents moving a page to one of its own descendants (returns `4
 
 Use `can_edit` / `can_delete` flags on each page object to gate write suggestions. The list endpoint returns a flat array — build the tree client-side from `parent_id`. Position is 0-based ordering among siblings, auto-maintained on create/move/delete.
 
+## Framework Articles
+
+Proxy endpoint that returns Cmd+K command palette help articles sourced from MasteryMaps, scoped to a management framework. The server fetches upstream, transforms, and caches for 1 hour — clients always receive a clean `{ "data": [] }` on any failure (never a 5xx). Authenticated users only.
+
+| Method | Path | Description | User Phrases |
+|--------|------|-------------|--------------|
+| GET | `/api/v2/framework-articles?framework=<value>` | Fetch Cmd+K help articles for a framework (`eos`, `okr`, `4dx`; case-insensitive). Unknown or missing framework → `200 { "data": [] }`. OKR and 4DX map to the same upstream chapter. Any upstream failure (timeout, non-200, bad JSON) also returns empty array with 200. | "framework articles", "help articles", "get help for framework", "Cmd+K articles", "framework shortcuts" |
+
+FrameworkArticle fields: `type` (always `"command"`), `title` (string), `description` (string), `key` (string | null), `isAlt` (boolean), `isShift` (boolean), `isCtrl` (boolean), `isMeta` (boolean), `onclick` (string | null).
+
+- **Auth**: `requireAuth` — unauthenticated requests return 401.
+- **Caching**: 1 hour per chapter via Next.js Data Cache. Cache hits complete in well under 300 ms.
+- **Scope**: UI-helper endpoint for the Cmd+K palette; content is the same for all users (no per-team filtering).
+
 ## Project Templates
 
 Reusable project blueprints created from existing items. Templates are backed by archived items and can be shared across teams, launched as new projects, or applied to existing items.
