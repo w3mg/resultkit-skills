@@ -1088,7 +1088,7 @@ MeasureHistory fields: `id` (integer | null — null if no value recorded), `dat
 
 TargetResponse: `{ "data": { "framework": string, "targets": TargetNode[], "unaligned": TargetNode[] } }`
 
-TargetNode fields: `id`, `name` (string | null), `description` (string | null), `status` (active | complete | archived | deferred | review | draft | cancelled | at_risk | off_track), `object_type` (yearly_goal | rock | focus_area | objective | key_result | milestone | action), `type` (integer for Goals: 0=objective/WIG, 1=rock, 2=yearly; string for Items: KeyResult, ResultArea), `color` (string | null), `assignees` (TargetAssignee[]), `creator` (TargetAssignee | null), `due` (YYYY-MM-DD | null), `children` (TargetNode[]), `inherited` (boolean), `inherited_from` ({ team_id, team_name } | null).
+TargetNode fields: `id`, `name` (string | null), `description` (string | null), `status` (active | complete | archived | deferred | review | draft | cancelled | at_risk | off_track), `object_type` (yearly_goal | rock | focus_area | objective | key_result | milestone | action), `type` (integer for Goals: 0=objective/WIG, 1=rock, 2=yearly; string for Items: KeyResult, ResultArea), `color` (string | null), `assignees` (TargetAssignee[]), `creator` (TargetAssignee | null), `due` (YYYY-MM-DD | null), `children` (TargetNode[]), `inherited` (boolean), `inherited_from` ({ team_id, team_name } | null), `can_edit` (boolean — server-computed edit permission for the current user; always present on every node at every depth; inherited nodes always `false`).
 
 TargetAssignee fields: `id`, `first_name` (string | null), `last_name` (string | null).
 

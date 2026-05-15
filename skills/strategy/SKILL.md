@@ -459,7 +459,8 @@ echo "$RESPONSE"
         "due": "2026-12-31",
         "children": [],
         "inherited": false,
-        "inherited_from": null
+        "inherited_from": null,
+        "can_edit": true
       }
     ],
     "unaligned": []
