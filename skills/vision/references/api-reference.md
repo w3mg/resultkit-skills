@@ -855,6 +855,8 @@ Behavioral notes:
 | DELETE | `/1-on-1/{id}/items/{item_id}` | Remove from meeting (keeps item) | "remove from meeting", "detach from 1:1" | — |
 | PUT | `/1-on-1/{id}/notes` | Save meeting notes (body: `{"notes":"text"}`). Overwrites existing notes. | "save notes", "add notes to 1:1", "write meeting notes" | `/1-on-1/{id}` |
 | PUT | `/1-on-1/{id}` | Schedule (or clear) next meeting. Body: `{"next_meeting_at":"<ISO 8601 datetime>"}` or `{"next_meeting_at":null}`. Returns updated MeetingSimple. | "schedule next meeting", "set next 1:1", "clear next meeting date" | `/1-on-1/{id}` |
+| GET | `/1-on-1/fetch` | Find-or-create a 1-on-1 session between two users (params: `person1_id`, `person2_id` — required). Returns existing session or creates one. | "find 1:1 with", "get meeting between", "open 1:1 between users" | — |
+| POST | `/1-on-1` | Create a new 1-on-1 session (body: `{ person1_id, person2_id }`). Returns new MeetingSimple with `can_edit`. | "create 1:1", "start new one-on-one", "new meeting between" | — |
 | POST | `/1-on-1/{id}/archive` | Archive a session (participants only — creator or other participant; 403 if not participant; 404 for project sessions). Idempotent. | "archive 1:1", "archive meeting", "hide one-on-one" | — |
 | POST | `/1-on-1/{id}/unarchive` | Restore an archived session. Idempotent. | "unarchive 1:1", "restore meeting", "unarchive one-on-one" | — |
 
@@ -864,7 +866,7 @@ OneOnOneSimple fields: `id`, `date` (YYYY-MM-DD | null), `human_name` (pre-forma
 `cadence_interval` (integer | null — multiplier, e.g. 1 = every period, 2 = every 2 periods; null if no cadence),
 `next_meeting_at` (string | null — UTC ISO 8601 datetime of next scheduled meeting; null if not scheduled),
 `archived` (boolean — `true` if archived by a participant; archived sessions excluded from default list),
-`can_edit` (boolean), `can_view` (boolean).
+`can_edit` (boolean — always present, never null; `true` if the current user is person1, person2, or a listed assistant; `false` for viewers and non-participants; fail-closed), `can_view` (boolean).
 
 OneOnOne (detail) fields: OneOnOneSimple + `items`: `{ next: Item[], done: Item[], issues: Item[] }`,
 `notes` (string | null), `can_edit_notes` (boolean), `measures`, `goals`, `attachments`, `assistants`.
