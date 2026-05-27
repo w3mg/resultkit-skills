@@ -32,7 +32,7 @@ Match the user's message against the **Triggers** column. Pick the first matchin
 
 | Triggers | Intent | Tool/Flow |
 |---|---|---|
-| "show my day", "what's on today", "daily plan", "day plan", "what do I have today", "show today", "my plan", "today's items", "what's planned", "show {date}", "prioritizer", "tasks for today" | View day plan items with completion status | `get_day_plan` |
+| "show my day", "what's on today", "daily plan", "day plan", "what do I have today", "show today", "my plan", "today's items", "what's planned", "show {date}", "prioritizer", "tasks for today", "show must items", "show priority only", "hide done", "hide completed", "hide deferred", "not deferred and completed", "must priority only" | View day plan items with completion status | `get_day_plan` |
 | "add to today", "create a task", "new item", "add to my plan", "add to plan", "plan this for", "add to tomorrow", "put on my day", "add a to-do", "create to-do" | Create a new item on a day plan | `create_new_item` |
 | "attach to today", "put {id} on today", "add item {id}", "attach {id}", "move {id} to today", "add existing", "put {id} on my plan" | Attach an existing item to a day plan by ID | `attach_existing_item` |
 | "mark done", "check off", "complete", "finish {id}", "done {id}", "mark done for today", "complete for today" | Mark a day plan item as complete | `mark_item_complete` |
@@ -49,15 +49,29 @@ Determine the date path segment:
 - No args → use `today`
 - Date argument → use the date string (e.g., `2026-02-13`)
 
+Detect optional `show` filter from user intent:
+- "must items", "priority only", "#must only" → `show=must`
+- "hide done", "hide completed", "hide deferred", "not deferred and completed" → `show=not%20deferred%20and%20completed`
+- Default (no filter) → omit `?show=`
+
 #### Step 1: Fetch plan items
 
+**Without filter** (default):
 ```bash
 API_SH="<api.sh path>"
 RESPONSE=$("$API_SH" GET "/day-plans/DATE_SEGMENT/items")
 echo "$RESPONSE"
 ```
 
-Replace `DATE_SEGMENT` with `today` or the `YYYY-MM-DD` date.
+**With `show` filter** (uses main plan endpoint, not `/items`):
+```bash
+API_SH="<api.sh path>"
+RESPONSE=$("$API_SH" GET "/day-plans/DATE_SEGMENT?show=SHOW_VALUE")
+echo "$RESPONSE"
+```
+Parse items from `body.data.items` (not `body.data` directly). No pagination meta.
+
+Replace `DATE_SEGMENT` with `today` or the `YYYY-MM-DD` date. Replace `SHOW_VALUE` with `must` or `not%20deferred%20and%20completed`.
 
 #### Step 2: Handle response
 
@@ -287,7 +301,8 @@ Use the current date from **Current State** to resolve relative dates.
   "created_at": "2026-02-19T08:00:00Z",
   "updated_at": "2026-02-19T08:00:00Z",
   "completed": false,
-  "position": 1
+  "position": 1,
+  "deferred_to_date": null
 }
 ```
 
