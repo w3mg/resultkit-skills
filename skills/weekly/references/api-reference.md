@@ -205,25 +205,29 @@ Response: `{ data: { logo_url: "https://cdn.filestackcontent.com/..." | null } }
 
 ### Team Settings
 
-Per-team boolean settings stored in `object_metas` table — no schema changes required.
+Per-team settings stored in `object_metas` table — no schema changes required.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/teams/{id}/settings` | Get all team settings (auth: any team member) | "team settings", "show settings", "is strict mode on", "check team settings" | `/teams/{id}` |
-| PATCH | `/teams/{id}/settings` | Update one or more settings (auth: team admin only). Unrecognized keys silently ignored. Returns full settings object after update. | "update settings", "change setting", "enable strict mode", "turn on bhag", "toggle setting" | `/teams/{id}` |
+| PATCH | `/teams/{id}/settings` | Update one or more settings (auth: team admin only). Unrecognized keys silently ignored. Returns full settings object after update. | "update settings", "change setting", "enable strict mode", "turn on bhag", "toggle setting", "set parent team", "set inheritance" | `/teams/{id}` |
 
-Settings response shape: `{ "data": { "is_cascading_goals": bool, "is_strict": bool, "bhag_enabled": bool, "assignments_require_review": bool, "skip_show_completion_message": bool, "scorecard_notes_visible": bool } }`.
+Settings response shape: `{ "data": { "is_cascading_goals": bool, "is_strict": bool, "bhag_enabled": bool, "assignments_require_review": bool, "skip_show_completion_message": bool, "scorecard_notes_visible": bool, "scorecard_date_order": string, "parent_vision_id": int|null, "parent_scoreboard_id": int|null, "use_parent_goals": bool|null } }`.
 
-| Setting Key | Description |
-|-------------|-------------|
-| `is_cascading_goals` | Whether goals cascade to sub-teams |
-| `is_strict` | EOS strict meeting accountability mode (EOS teams default `true` when no record exists) |
-| `bhag_enabled` | Whether the BHAG section is visible |
-| `assignments_require_review` | Whether action assignments require a review step |
-| `skip_show_completion_message` | Whether to suppress the item completion message |
-| `scorecard_notes_visible` | Whether the notes column is displayed on the team scorecard UI (default `false`; display hint only — the API always returns `notes` on measures regardless) |
+| Setting Key | Type | Description |
+|-------------|------|-------------|
+| `is_cascading_goals` | bool | Whether goals cascade to sub-teams |
+| `is_strict` | bool | EOS strict meeting accountability mode (EOS teams default `true` when no record exists) |
+| `bhag_enabled` | bool | Whether the BHAG section is visible |
+| `assignments_require_review` | bool | Whether action assignments require a review step |
+| `skip_show_completion_message` | bool | Whether to suppress the item completion message |
+| `scorecard_notes_visible` | bool | Whether the notes column is displayed on the team scorecard UI (default `false`; display hint only — the API always returns `notes` on measures regardless) |
+| `scorecard_date_order` | string | Order of scorecard date columns: `"newest_first"` or `"oldest_first"` |
+| `parent_vision_id` | int\|null | ID of the ancestor team this team inherits its vision/rocks from. `null` = no inheritance set. Three-state: `null` means no ObjectMeta record exists (distinguishable from `false` or `0`). |
+| `parent_scoreboard_id` | int\|null | ID of the ancestor team whose scorecard this team inherits. `null` = no inheritance set. Same three-state semantics as `parent_vision_id`. |
+| `use_parent_goals` | bool\|null | Whether this team uses its parent team's goals. `null` = not set (distinguishable from `false`). |
 
-PATCH body: any subset of the five recognized boolean keys (e.g. `{ "is_strict": false }`). Errors: 400 (invalid team id), 401 (no auth), 403 (GET: not a team member; PATCH: not a team admin), 404 (team not found), 422 (non-boolean value sent — `{ "error": { "code": "validation_error", "details": { "<key>": ["must be a boolean"] } } }`).
+PATCH body: any subset of the recognized keys. Boolean keys require boolean values; `parent_vision_id` / `parent_scoreboard_id` require integer or `null`; `use_parent_goals` requires boolean or `null`. Sending `null` for the inheritance fields deletes the underlying ObjectMeta record (clears inheritance). Omitting a key leaves its value unchanged. The API does **not** validate that `parent_vision_id` / `parent_scoreboard_id` values are actual ancestor team IDs — client must validate. Errors: 400 (invalid team id), 401 (no auth), 403 (GET: not a team member; PATCH: not a team admin), 404 (team not found), 422 (wrong value type — `{ "error": "Validation failed", "details": { "<key>": ["must be an integer or null"] } }`).
 
 ### Team Rhythm Settings
 
@@ -1483,7 +1487,7 @@ Admin object fields: `user_id`, `login`, `email`, `role`, `is_owner`.
 - **Scope-aware auth**: Personal labels — owner only. Team/project labels — team/project admin required for PATCH/DELETE.
 - **`/manage` semantics**: Diff-based sync by ID — adds missing associations, removes stale. Sending `[]` clears all. `labeled_type` must be `"Item"` or `"Goal"` (other values → `422`). User must have view access to the target.
 - **`/content` response**: `{ data: { attached_labels: [...], creator_labels: [...] } }`. Returns scope metadata (`scope`, `scope_id`) on each label. Multi-scope visibility.
-- **Item response**: `GET /api/v2/items/{id}` now includes `custom_labels` array with scope-aware visibility.
+- **Item response**: `GET /api/v2/items/{id}` now includes `custom_labels` array with scope-aware visibility. All item responses now emit **both** `tags` (deprecated) and `custom_labels` with identical content and order. Prefer `custom_labels` — `tags` will be removed in a future phase. `tags` removal will not happen until all consumers confirm migration.
 
 ## Pages
 
