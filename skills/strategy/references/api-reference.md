@@ -31,7 +31,7 @@ Endpoints that support `q` and `include_archived` are noted below.
 | GET | `/items` | List authenticated user's items (params: page, per_page, q, status, team_id, include_archived) | "show my tasks", "list items", "what's on my plate", "my to-dos" | — |
 | POST | `/items` | Create item (body: name*, type, description, due, status, on_weekly, team_id, parent_id, context) | "add task", "create item", "new to-do", "add action item" | `/items/{id}` |
 | GET | `/items/{id}` | Get item detail (includes first-level children) | "show item", "item details", "open task", "what's in item X" | `/items/{id}` |
-| PATCH | `/items/{id}` | Update item (body: name, description, due, status, on_weekly) | "update item", "change status", "rename task", "set due date" | `/items/{id}` |
+| PATCH | `/items/{id}` | Update item (body: name, description, due, status, on_weekly, third_party_tracker). `third_party_tracker`: object to set/replace, `null` to clear, omit to leave unchanged. | "update item", "change status", "rename task", "set due date", "link to HubSpot", "attach ticket" | `/items/{id}` |
 | DELETE | `/items/{id}` | Archive item (soft delete, sets status=archived) | "archive item", "delete task", "remove item", "soft delete" | — |
 | GET | `/items/{id}/children` | List child items as nested tree (params: page, per_page, q, depth). `depth` default 2, range 1-20. | "show sub-tasks", "list children", "nested items", "what's under this" | `/items/{id}` |
 | PUT | `/items/{id}/move` | Reposition item in tree (body: parent_id, left_id, right_id, position?). Optional `position` (0-based integer) places item at a specific slot within the new parent. | "move item", "reparent", "nest under", "reorder" | `/items/{id}` |
@@ -52,7 +52,8 @@ Item fields: `id`, `name`, `description`, `due`, `status`, `on_weekly`,
 `is_long_term` (boolean, defaults to `false`),
 `is_top` (boolean — must-do / prioritizer flag; included in all v2 item responses),
 `team` (TeamSimple | null), `creator` (UserSimple), `assignees` (UserSimple[]),
-`parent_id`, `created_at`, `updated_at`.
+`parent_id`, `created_at`, `updated_at`,
+`third_party_tracker` (`{ provider: string, external_id: string, name: string } | null` — always present; `null` when no tracker linked; provider is one of `clickup`, `monday`, `hubspot`, `salesforce`, `notion`).
 
 Item `type` values: `Task` (default), `TodoList`, `Outcome`, `KeyResult`.
 
@@ -709,6 +710,21 @@ MutedItem fields: `id`, `subscribeable_type`, `subscribeable_id`.
 PersonalProgress fields: `targets` ({ rocks_realized_all_time, milestones_realized_all_time, milestones_realized_this_quarter }), `practice_scorecard` ({ days: [{ date, day_name, completed }] }), `practice_totals` ({ all_time, current_streak, longest_streak }).
 
 UserIntegrations fields: `task_management` ({ selected, options }), `sales_revops` ({ selected, options }), `team_communication` ({ selected, options }).
+
+## Third-Party Integrations (Nango)
+
+User-scoped HubSpot / OAuth connection management. All routes require auth. Provider whitelist: `clickup`, `monday`, `hubspot`, `salesforce`, `notion`. Only HubSpot has a dedicated tickets reader; the other four providers use connect/status/disconnect only.
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| `POST` | `/api/v2/nango/connect` | Persist a Nango connection_id after OAuth popup. Body: `provider`*, `connection_id`*. Idempotent — re-connecting returns 201 + `connected: true`. | "connect HubSpot", "link HubSpot account", "save nango connection" | — |
+| `GET` | `/api/v2/nango/status?provider={provider}` | Check if user is connected. Always 200 for authed callers — read `data.connected` and `data.error`. Safe to poll. | "is HubSpot connected", "check integration status", "HubSpot connection status" | — |
+| `DELETE` | `/api/v2/nango/disconnect?provider={provider}` | Remove cached connection for the (user, provider) pair. Local cache only — does not revoke remote. Idempotent. | "disconnect HubSpot", "unlink integration", "remove HubSpot connection" | — |
+| `GET` | `/api/v2/nango/hubspot/tickets?limit&after` | Page the user's HubSpot CRM tickets. Returns `{ id, subject }` per ticket. Last page: `paging: null`. 401 = not connected; 502 = HubSpot unreachable. Lazy-evicts cached token on HubSpot 401/403. | "show HubSpot tickets", "list tickets", "HubSpot CRM tickets", "pick a ticket" | — |
+
+Connection envelope: `{ "data": { "provider": string, "connected": boolean, "error": string|null } }`. Tickets envelope: `{ "data": { "results": [{ "id": string, "subject": string }], "paging": { "next": { "after": string } } | null } }`. Status is always 200 — never 401/5xx for missing token; use `connected` + `error` fields. `POST /connect` validates `connection_id` contains the authenticated user's ID (mismatches → 400). No token ever appears in any response. `DELETE /disconnect` is local-cache only.
+
+**Linking an Item to a HubSpot ticket**: PATCH `/items/{id}` with `{ "third_party_tracker": { "provider": "hubspot", "external_id": "12345", "name": "Ticket subject" } }`. Clear with `{ "third_party_tracker": null }`. Read back from `GET /items/{id}` — field always present (object or `null`).
 
 ## Account Management
 
