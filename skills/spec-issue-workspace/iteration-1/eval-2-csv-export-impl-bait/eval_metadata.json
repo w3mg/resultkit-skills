@@ -1,0 +1,13 @@
+{
+  "eval_id": 2,
+  "eval_name": "csv-export-impl-bait",
+  "prompt": "we need a CSV export button on the measurables scorecard. probably just add a route in api2 that dumps the scorecard table to csv and copy the export button component we already use on the items list. log it to the right repo — draft only, do not file.",
+  "assertions": [
+    "Issue body does NOT carry the user's implementation suggestions: no 'add a route in api2', no 'copy the items-list export button component'",
+    "Export is specced as observable behavior: user triggers export from the measurables scorecard and receives a CSV of the scorecard data",
+    "Issue body contains at least one Given/When/Then scenario",
+    "Issue body has a Missing tests section listing at least one named test",
+    "Missing tests section explicitly instructs: add the test, watch it fail, then make it pass (red before green)",
+    "A Done-when / definition of done ties completion to the listed tests passing"
+  ]
+}

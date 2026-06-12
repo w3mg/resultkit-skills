@@ -1,0 +1,55 @@
+{
+  "expectations": [
+    {
+      "text": "Issue body does NOT carry the user's implementation suggestions: no 'add a route in api2', no 'copy the items-list export button component'",
+      "passed": true,
+      "evidence": "Both suggestions are quoted only to refute them ('Recorded so the next person doesn't chase it'): the api2 route is rejected as a new pattern with no need, the copy-component is shown not to exist in this repo. The suggestions are not carried as the plan."
+    },
+    {
+      "text": "Export is specced as observable behavior: user triggers export from the measurables scorecard and receives a CSV of the scorecard data",
+      "passed": false,
+      "evidence": "The body is a current-state implementation inventory plus a clarification request ('confirm which of 1–4 applies') — it documents buildCsv, blob download, and data sources rather than speccing any desired behavior. Only the one-line Request paraphrase is behavior-shaped."
+    },
+    {
+      "text": "Issue body contains at least one Given/When/Then scenario",
+      "passed": false,
+      "evidence": "No Given/When/Then structure anywhere in the draft."
+    },
+    {
+      "text": "Issue body has a Missing tests section listing at least one named test",
+      "passed": false,
+      "evidence": "No missing-tests section; no tests are proposed."
+    },
+    {
+      "text": "Missing tests section explicitly instructs: add the test, watch it fail, then make it pass (red before green)",
+      "passed": false,
+      "evidence": "No red-before-green instruction; tests are mentioned only as existing regression coverage."
+    },
+    {
+      "text": "A Done-when / definition of done ties completion to the listed tests passing",
+      "passed": false,
+      "evidence": "'Acceptance' is 'requester confirms which of 1–4 applies' then re-scope or close — completion is not tied to tests."
+    }
+  ],
+  "summary": { "passed": 1, "failed": 5, "total": 6, "pass_rate": 0.167 },
+  "timing": { "executor_duration_seconds": 570.3, "total_duration_seconds": 570.3 },
+  "claims": [
+    {
+      "claim": "Scorecard CSV export already shipped in commit da5076b0 (2026-03-07)",
+      "type": "factual",
+      "verified": true,
+      "evidence": "git log confirms da5076b0 'feat(scorecard): add CSV export matching old site'. Independently found by the with-skill run too."
+    },
+    {
+      "claim": "The 'items list export button' is a legacy Rails ERB link, not a component in resultmaps-web-ui-2",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Specific paths cited (app/views/items/_common_top_buttons.html.erb, items_controller.rb#download_csv) and consistent with the with-skill run's finding, but not separately verified in this grading pass."
+    }
+  ],
+  "user_notes_summary": { "uncertainties": [], "needs_review": [], "workarounds": [] },
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "Excellent research and honest premise-checking, delivered as an implementation-dense triage document (file paths, line numbers, commit refs throughout) — the exact style the skill exists to replace. Discriminates cleanly."
+  }
+}

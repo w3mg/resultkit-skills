@@ -1,0 +1,60 @@
+{
+  "expectations": [
+    {
+      "text": "Issue body contains at least one Given/When/Then scenario",
+      "passed": false,
+      "evidence": "No Given/When/Then structure anywhere. Desired behavior is expressed as an 'Expected behavior' bullet list."
+    },
+    {
+      "text": "Issue body has a Missing tests section listing at least one named test",
+      "passed": false,
+      "evidence": "No missing-tests section. The draft has an 'Acceptance criteria' checkbox list, but no enumeration of tests to add."
+    },
+    {
+      "text": "Missing tests section explicitly instructs: add the test, watch it fail, then make it pass (red before green)",
+      "passed": false,
+      "evidence": "No red-before-green instruction; tests are never mentioned as the vehicle for the fix."
+    },
+    {
+      "text": "Issue body contains no implementation prescriptions: no routes, components, files to change, code snippets, or solution sketches",
+      "passed": false,
+      "evidence": "'Investigation notes' names components/prioritizer/day-week/day-week-view.tsx handleDragEnd ~L269–317, setLocalOverrides, POST /api/v2/day-plan-actions/{dpaId}/move-to-day, time-column.tsx ~L89–97, custom-columns-view.tsx, column-header.tsx ~L118 — a detailed solution-space sketch of where the bug likely lives and what to check first."
+    },
+    {
+      "text": "A Done-when / definition of done ties completion to the listed tests passing",
+      "passed": false,
+      "evidence": "Acceptance criteria are behavior checkboxes; no tests are listed, so completion is not tied to tests existing and passing."
+    },
+    {
+      "text": "Targets the frontend repo (w3mg/resultmaps-web-ui-2) with a behavior-focused title (describes behavior, not a solution)",
+      "passed": true,
+      "evidence": "Target repo: w3mg/resultmaps-web-ui-2. Title: 'Prioritizer week view: day totals above columns don't update after dragging a to-do to another day (until hard refresh)' — behavior-focused."
+    },
+    {
+      "text": "A scenario captures that day totals update immediately after the drag without a refresh",
+      "passed": true,
+      "evidence": "Captured in prose rather than a scenario block: 'On drop, the totals above both affected columns repaint immediately along with the card move — source total decrements, target total increments. No refresh needed.' Content credit given; structural absence is already failed under the Given/When/Then assertion."
+    }
+  ],
+  "summary": { "passed": 2, "failed": 5, "total": 7, "pass_rate": 0.286 },
+  "timing": { "executor_duration_seconds": 572.1, "total_duration_seconds": 572.1 },
+  "claims": [
+    {
+      "claim": "Day/Week view columns are Today / This Week / Next Week / Later, so weekday-named columns suggest the custom-columns view",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Plausible and specific (cites both components), but not independently verified in this grading pass. Notable: this research caveat is genuinely useful triage info the with-skill draft lacks."
+    },
+    {
+      "claim": "Same stale-until-reload class as issue #1430",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Cross-reference not verified; no transcript available."
+    }
+  ],
+  "user_notes_summary": { "uncertainties": [], "needs_review": [], "workarounds": [] },
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "Baseline draft is a competent traditional bug report (good research, useful diagnosis pointers) — exactly the implementation-forward style the skill is designed to exclude. Assertions discriminated as intended."
+  }
+}

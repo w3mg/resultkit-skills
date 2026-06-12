@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "eval_name": "fuzzy-monday-scorecard",
+  "prompt": "ok so people on my team swear they updated their scorecard numbers friday but every monday the team scorecard still shows last week's values until someone pokes it. i'm not even sure what's wrong or where. can you track this somewhere? just draft it, don't file anything.",
+  "assertions": [
+    "Issue stays in problem-space: no root-cause diagnosis (no caching/cron/sync speculation stated as the cause) and no solution offered",
+    "Open or clarifying questions are captured in the draft",
+    "Uses the question label, reflecting that the problem is still exploratory",
+    "Issue body contains no implementation prescriptions: no routes, components, files to change, code snippets, or solution sketches",
+    "Title and Problem section describe observed behavior (stale Monday scorecard values), not a guessed mechanism"
+  ]
+}
