@@ -880,7 +880,7 @@ Behavioral notes:
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/1-on-1` | List one-on-ones (params: group_id, page, per_page, archived — `true`/`false`/`all`; default `false` = active only) | "show 1:1s", "my one-on-ones", "list 1:1s", "one-on-one meetings", "show archived 1:1s" | — |
+| GET | `/1-on-1` | List one-on-ones (params: group_id — team scope; account_id — organization scope *(new)*; page, per_page, archived — `true`/`false`/`all`; default `false` = active only). Scope tiers: `group_id` = this team; `account_id` = this org; neither = all orgs. `group_id` wins when both are sent. `account_id` must be a valid integer (400 otherwise). | "show 1:1s", "my one-on-ones", "list 1:1s", "one-on-one meetings", "show archived 1:1s", "1:1s in my org", "organization 1:1s" | — |
 | GET | `/1-on-1/{id}` | Meeting detail (response includes `items.next`, `items.done`, `items.issues` arrays). Non-participants receive 403 (not 500). | "show meeting", "meeting details", "open 1:1" | `/1-on-1/{id}` |
 | GET | `/1-on-1/{id}/items` | All meeting items (params: creator_id?, page, per_page, q, include_archived) | "meeting items", "what's on the agenda" | `/1-on-1/{id}` |
 | GET | `/1-on-1/{id}/items/{section}` | Items by section (params: creator_id?, page, per_page, q, include_archived). Section: `next`, `blocked`. | "meeting next items", "meeting blockers", "meeting issues" | `/1-on-1/{id}` |
