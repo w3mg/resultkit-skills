@@ -818,7 +818,7 @@ DayPlanColumnItem fields: `id`, `name`, `completed` (boolean), `due` (YYYY-MM-DD
 
 ## Result Feed
 
-The "90-second practice" — a daily check-in report where users record what they got done, what's next, and what's blocked.
+The "90-second practice" — a daily check-in report where users record what they got done, what's next, and what's blocked. **Auto-DONE**: when a user marks any item done through any V2 surface (`PATCH /items/:id`, day-plan completion, L10 section move, etc.), it is automatically recorded into the completing user's check-in `done` section for their local today — no manual add needed. Credited to the actor (completer), not the item owner. Does not fire for `recur_daily` items or on uncomplete. Best-effort; a check-in write failure never fails the completion.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
