@@ -929,6 +929,16 @@ POST /passwords/reset: Admin-only. Sends a password reset email to the specified
 
 PUT /passwords: Unauthenticated — the reset token serves as authentication. Body: `{ "token": string, "password": string }`. Response: `{ "data": { "message": "Password updated successfully" } }`. Returns 422 if token is invalid/expired or fields are missing. This endpoint is used by the browser-based reset flow, not by the CLI skill.
 
+## Invite Confirmation
+
+Endpoints for the teammate-invite accept flow (unauthenticated).
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| GET | `/api/v2/users/confirmation` | Validate an invite token (params: token*). Always 200. Returns `{ data: { status, valid, login? } }`. **Tri-state status**: `valid` — live, unconfirmed invite (show signup form, `login` is present); `used` — link already consumed, route to sign in; `invalid` — no pending invite, offer a fresh invite. `valid` boolean is retained for backward compatibility (`true` only when `status === 'valid'`). | "validate invite token", "check invite link" | — |
+| POST | `/api/v2/users/confirmation` | Activate account by accepting an invite (unauthenticated, body: token*, login*, password*). Password must be 6–20 characters. Returns 422 if token already used or password out of range. | "accept invite", "confirm account", "activate account" | — |
+| POST | `/api/v2/users/confirmation/resend` | Self-serve resend of invite email by invitee (unauthenticated, body: email*). Always 200. Status: `sent` — email sent; `throttled` — within rate-limit window (default 5 min), no email; `already_active` — account confirmed, sign in instead; `no_invite` — no pending invite, ask admin. No account is created on any path. | "resend invite email", "resend confirmation email", "send invite again" | — |
+
 ## Status Values
 
 `not_started`, `next`, `parked`, `blocked`, `done`, `archived`, `draft`
