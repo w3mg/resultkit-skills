@@ -881,7 +881,7 @@ Behavioral notes:
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/1-on-1` | List one-on-ones (params: group_id, page, per_page, archived — `true`/`false`/`all`; default `false` = active only) | "show 1:1s", "my one-on-ones", "list 1:1s", "one-on-one meetings", "show archived 1:1s" | — |
-| GET | `/1-on-1/{id}` | Meeting detail (response includes `items.next`, `items.done`, `items.issues` arrays) | "show meeting", "meeting details", "open 1:1" | `/1-on-1/{id}` |
+| GET | `/1-on-1/{id}` | Meeting detail (response includes `items.next`, `items.done`, `items.issues` arrays). Non-participants receive 403 (not 500). | "show meeting", "meeting details", "open 1:1" | `/1-on-1/{id}` |
 | GET | `/1-on-1/{id}/items` | All meeting items (params: creator_id?, page, per_page, q, include_archived) | "meeting items", "what's on the agenda" | `/1-on-1/{id}` |
 | GET | `/1-on-1/{id}/items/{section}` | Items by section (params: creator_id?, page, per_page, q, include_archived). Section: `next`, `blocked`. | "meeting next items", "meeting blockers", "meeting issues" | `/1-on-1/{id}` |
 | GET | `/1-on-1/{id}/done` | Done items (params: since? YYYY-MM-DD, page, per_page) | "meeting done items", "completed items", "done since date" | `/1-on-1/{id}` |
@@ -1472,7 +1472,7 @@ Labels that can be attached to Items and Goals. Labels support three scopes: **p
 
 | Method | Path | Description | User Phrases |
 |--------|------|-------------|--------------|
-| GET | `/api/v2/custom-labels` | List accessible custom labels including ancestor-team inherited labels (params: page, per_page, scope, team_id, project_id — omit scope for union of all accessible); each label includes `inherited` (bool) and `source_team_id` (int\|null) fields | "list my labels", "show custom labels", "my tags", "my labels", "team labels", "project labels" |
+| GET | `/api/v2/custom-labels` | List accessible custom labels including ancestor-team inherited labels (params: page, per_page, scope, team_id, project_id — omit scope for union of all accessible); each label includes `inherited` (bool) and `source_team_id` (int\|null) fields. **Access control**: `scope=team&team_id=N` returns 403 unless caller can view team N or an ancestor team; `scope=project&project_id=N` returns 404 if project doesn't exist or 403 if caller can't view it. | "list my labels", "show custom labels", "my tags", "my labels", "team labels", "project labels" |
 | POST | `/api/v2/custom-labels` | Create a custom label (body: name*, color?, scope?, scope_id? — scope defaults to personal; team/project scope requires admin) | "create label", "add label", "new label", "create tag" |
 | PATCH | `/api/v2/custom-labels/{id}` | Update label name and/or color — scope-aware auth (admin required for team/project labels); returns 403 if caller is a descendant-team admin but not admin of the label's owning team (body: name?, color?) | "rename label", "update label", "change label color" |
 | DELETE | `/api/v2/custom-labels/{id}` | Delete label — scope-aware auth; returns 422 `reserved_label` for reserved labels; returns 403 if caller is a descendant-team admin but not admin of the label's owning team | "delete label", "remove label", "delete tag" |
