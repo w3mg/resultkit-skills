@@ -82,7 +82,20 @@ Smart text: `POST /items` supports `@username` in name to auto-assign, and hasht
 | GET | `/items/{id}/comments` | List comments (chronological, paginated) | "show comments", "show notes", "what's been said" | `/items/{id}` |
 | POST | `/items/{id}/comments` | Create comment (body: body*) | "add comment", "leave a note", "comment on" | `/items/{id}` |
 
-Comment fields: `id`, `body`, `author` (UserSimple), `created_at`.
+Comment fields: `id`, `body`, `author` (UserSimple), `created_at`, `updated_at` (equal to `created_at` when unedited; later when edited — use to show "edited" badge).
+
+### Comment Edit / Delete (flat by id)
+
+Flat routes that work for comments on any surface (Items, Projects, Result Feed, etc.).
+
+| Method | Path | Description | User Phrases | Web URL |
+|--------|------|-------------|--------------|---------|
+| PATCH | `/comments/{commentId}` | Edit a comment body (body: body* HTML). Author-only. Empty body returns 422. | "edit comment", "update comment", "fix my comment" | — |
+| DELETE | `/comments/{commentId}` | Remove a comment (hard delete). Author or surface admin. Cleans up activity feed + decrements comment_count. | "delete comment", "remove comment", "remove my note" | — |
+
+- `PATCH` response: `{ data: { id, body, author, created_at, updated_at } }`
+- `DELETE` response: `{ data: { id, deleted: true } }`
+- 403 if non-author tries to edit, or non-author/non-admin tries to delete. 404 if comment not viewable (no existence leak). 422 on empty edit body.
 
 ### Item Attachments (V1)
 
@@ -1112,7 +1125,7 @@ MeasureHistory fields: `id` (integer | null — null if no value recorded), `dat
 
 TargetResponse: `{ "data": { "framework": string, "targets": TargetNode[], "unaligned": TargetNode[] } }`
 
-TargetNode fields: `id`, `name` (string | null), `description` (string | null), `status` (active | complete | archived | deferred | review | draft | cancelled | at_risk | off_track), `object_type` (yearly_goal | rock | focus_area | objective | key_result | milestone | action), `type` (integer for Goals: 0=objective/WIG, 1=rock, 2=yearly; string for Items: KeyResult, ResultArea), `color` (string | null), `assignees` (TargetAssignee[]), `creator` (TargetAssignee | null), `due` (YYYY-MM-DD | null), `children` (TargetNode[]), `inherited` (boolean), `inherited_from` ({ team_id, team_name } | null), `can_edit` (boolean — server-computed edit permission for the current user; always present on every node at every depth; inherited nodes always `false`).
+TargetNode fields: `id`, `name` (string | null), `description` (string | null), `status` (active | complete | archived | deferred | review | draft | cancelled | at_risk | off_track), `object_type` (yearly_goal | rock | focus_area | objective | key_result | milestone | action), `type` (integer for Goals: 0=objective/WIG, 1=rock, 2=yearly; string for Items: KeyResult, ResultArea), `color` (string | null), `assignees` (TargetAssignee[]), `creator` (TargetAssignee | null), `due` (YYYY-MM-DD | null), `children` (TargetNode[]), `inherited` (boolean), `inherited_from` ({ team_id, team_name } | null), `can_edit` (boolean — server-computed edit permission for the current user reflecting cascade rules: rocks include parent-goal cascade, milestones include parent-rock cascade; always present on every node at every depth; inherited nodes always `false`).
 
 TargetAssignee fields: `id`, `first_name` (string | null), `last_name` (string | null).
 
@@ -1166,10 +1179,10 @@ All rock endpoints return `422 Unprocessable Entity` for non-EOS teams.
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/teams/{id}/rocks` | List quarterly rocks (params: year?, quarter?, parent_id?). Each rock includes `aligned_measurables` array (may be empty). | "list rocks", "show rocks", "quarterly rocks", "90-day priorities" | `/teams/{id}` |
-| POST | `/teams/{id}/rocks` | Create a rock (body: name*, parent_id?, assignee_ids?) | "create rock", "add rock", "new quarterly rock" | `/teams/{id}` |
-| PUT | `/rocks/{id}` | Align rock to a yearly goal (body: parent_id*) | "align rock to goal", "link rock", "move rock under goal" | — |
-| PATCH | `/rocks/{id}` | Update a rock (body: name?, description?, status?, assignee_ids?) | "update rock", "rename rock", "mark rock complete", "change rock status" | — |
-| DELETE | `/rocks/{id}` | Archive a rock | "archive rock", "delete rock", "remove rock" | — |
+| POST | `/teams/{id}/rocks` | Create a rock (body: name*, parent_id?, assignee_ids?). **Permissions**: team admin, OR any member who can edit the parent 1-yr goal (when `parent_id` is set). No `parent_id` → admin-only. | "create rock", "add rock", "new quarterly rock" | `/teams/{id}` |
+| PUT | `/rocks/{id}` | Align rock to a yearly goal (body: parent_id*). **Permissions**: creator, assignee, team admin, or member who can edit the parent 1-yr goal. | "align rock to goal", "link rock", "move rock under goal" | — |
+| PATCH | `/rocks/{id}` | Update a rock (body: name?, description?, status?, assignee_ids?). **Permissions**: creator, assignee, team admin, or member who can edit the parent 1-yr goal. | "update rock", "rename rock", "mark rock complete", "change rock status" | — |
+| DELETE | `/rocks/{id}` | Archive a rock. **Permissions**: creator, assignee, team admin, or member who can edit the parent 1-yr goal. | "archive rock", "delete rock", "remove rock" | — |
 | GET | `/rocks/{id}/alignments` | List scorecard measurables aligned to a rock, ordered by position | "rock alignments", "rock measurables", "linked measurables for rock" | — |
 | POST | `/rocks/{id}/alignments` | Link a rock to a scorecard measurable (body: measurable_id*). Returns 409 if already linked, 422 if measurable archived | "link rock to measurable", "align rock to scorecard", "connect rock to measurable" | — |
 | DELETE | `/rocks/{id}/alignments/{alignment_id}` | Remove a rock–measurable alignment. Returns 204 No Content. Requires edit access to the rock. | "remove rock alignment", "unlink rock from measurable", "detach rock measurable" | — |
@@ -1249,10 +1262,11 @@ All milestone endpoints return `422 Unprocessable Entity` for non-EOS teams.
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/teams/{id}/milestones` | List milestones (params: parent_id? — **recommended**; year?, quarter? — **avoid, known bug**) | "list milestones", "show milestones", "deliverables" | `/teams/{id}` |
-| POST | `/teams/{id}/milestones` | Create a milestone (body: name*, parent_id?, due?) | "create milestone", "add milestone", "new deliverable" | `/teams/{id}` |
-| PUT | `/milestones/{id}` | Align milestone to a rock (body: parent_id*) | "align milestone to rock", "link milestone", "move milestone under rock" | — |
-| PATCH | `/milestones/{id}` | Update a milestone (body: name?, description?, status?, due?) | "update milestone", "rename milestone", "mark milestone complete" | — |
-| DELETE | `/milestones/{id}` | Archive a milestone | "archive milestone", "delete milestone", "remove milestone" | — |
+| POST | `/teams/{id}/milestones` | Create a milestone (body: name*, parent_id?, due?). **Permissions**: team admin, OR any member who can edit the parent rock (when `parent_id` is set). No `parent_id` → admin-only. | "create milestone", "add milestone", "new deliverable" | `/teams/{id}` |
+| PUT | `/milestones/{id}` | Align milestone to a rock (body: parent_id*). **Permissions**: creator, assignee, team admin, or member who can edit the parent rock. | "align milestone to rock", "link milestone", "move milestone under rock" | — |
+| PATCH | `/milestones/{id}` | Update a milestone (body: name?, description?, status?, due?). **Permissions**: creator, assignee, team admin, or member who can edit the parent rock. | "update milestone", "rename milestone", "mark milestone complete" | — |
+| DELETE | `/milestones/{id}` | Archive a milestone. **Permissions**: creator, assignee, team admin, or member who can edit the parent rock. | "archive milestone", "delete milestone", "remove milestone" | — |
+| POST | `/milestones/{id}/reorder` | Reorder a milestone within its parent rock (body: position*). **Permissions**: keyed off the **parent rock** — requires ability to edit the rock (not just the milestone). 403 if caller cannot edit the parent rock. | "reorder milestone", "move milestone", "change milestone order" | — |
 
 **Milestone response shape** (verified via curl 2026-03-18):
 ```json
