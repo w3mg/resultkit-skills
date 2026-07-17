@@ -886,9 +886,10 @@ Behavioral notes:
 | GET | `/1-on-1/{id}/items` | All meeting items (params: creator_id?, page, per_page, q, include_archived) | "meeting items", "what's on the agenda" | `/1-on-1/{id}` |
 | GET | `/1-on-1/{id}/items/{section}` | Items by section (params: creator_id?, page, per_page, q, include_archived). Section: `next`, `blocked`. | "meeting next items", "meeting blockers", "meeting issues" | `/1-on-1/{id}` |
 | GET | `/1-on-1/{id}/done` | Done items (params: since? YYYY-MM-DD, page, per_page) | "meeting done items", "completed items", "done since date" | `/1-on-1/{id}` |
-| POST | `/1-on-1/{id}/items` | Create item in meeting | "add to meeting", "new meeting item", "add to 1:1" | `/items/{item_id}` |
-| PUT | `/1-on-1/{id}/items/{item_id}` | Attach existing item | "attach to meeting", "link item to 1:1", "add existing item to meeting" | `/1-on-1/{id}` |
-| DELETE | `/1-on-1/{id}/items/{item_id}` | Remove from meeting (keeps item) | "remove from meeting", "detach from 1:1" | — |
+| POST | `/1-on-1/{id}/items` | Create item in meeting (body: name*, column? — `next`/`blocked`/`done`, default `next`; description? — HTML body) | "add to meeting", "new meeting item", "add to 1:1" | `/items/{item_id}` |
+| POST | `/1-on-1/{id}/align` | Align a measure, goal, or item to the session (body: alignable_type* — `Measure`, `Goal`, or `Item`; alignable_id*). Idempotent. Use `alignable_type: "Item"` to attach an existing item to the meeting — there is NO `PUT /1-on-1/{id}/items/{item_id}` endpoint. | "attach to meeting", "link item to 1:1", "add existing item to meeting", "align to 1:1", "track goal in 1:1", "add measure to meeting" | `/1-on-1/{id}` |
+| POST | `/1-on-1/{id}/unalign` | Remove an alignment from the session (body: alignable_type*, alignable_id*). For Goals, cascades to remove their KeyResults. | "unalign from 1:1", "stop tracking in meeting", "remove goal from 1:1" | `/1-on-1/{id}` |
+| DELETE | `/1-on-1/{id}/items/{item_id}` | Remove an item from the meeting by URL param (keeps the item). Equivalent to unalign with `alignable_type: "Item"`. Returns 204. | "remove from meeting", "detach from 1:1" | — |
 | PUT | `/1-on-1/{id}/notes` | Save meeting notes (body: `{"notes":"text"}`). Overwrites existing notes. | "save notes", "add notes to 1:1", "write meeting notes" | `/1-on-1/{id}` |
 | PUT | `/1-on-1/{id}` | Schedule (or clear) next meeting. Body: `{"next_meeting_at":"<ISO 8601 datetime>"}` or `{"next_meeting_at":null}`. Returns updated MeetingSimple. | "schedule next meeting", "set next 1:1", "clear next meeting date" | `/1-on-1/{id}` |
 | GET | `/1-on-1/fetch` | Find-or-create a 1-on-1 session between two users (params: `person1_id`, `person2_id` — required). Returns existing session or creates one. | "find 1:1 with", "get meeting between", "open 1:1 between users" | — |
@@ -1750,7 +1751,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 | convert to project, promote to project | Convert Item to Project | `PUT /teams/{id}/projects/{item_id}` |
 | put on weekly, add to board, show on weekly | Set on_weekly=true | `PUT /teams/{id}/items/{item_id}` |
 | remove from weekly, take off board | Set on_weekly=false | `DELETE /teams/{id}/items/{item_id}` |
-| attach, link to meeting, link item to 1:1 | Attach Item to One-on-One | `PUT /1-on-1/{id}/items/{item_id}` |
+| attach, link to meeting, link item to 1:1 | Attach Item to One-on-One | `POST /1-on-1/{id}/align` (body: `{"alignable_type":"Item","alignable_id":<id>}`) |
 | add to plan, add to today, put on my plan | Attach to Day Plan | `PUT /day-plans/today/items/{item_id}` |
 | check off, mark done for today, complete for today | Day Plan Completion | `PATCH /day-plans/today/items/{item_id}` |
 | reorder today, sort my plan, change order of today, drag to reorder, set item order | Reorder Day Plan | `POST /day-plans/today/set-positions` |

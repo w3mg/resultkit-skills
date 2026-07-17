@@ -308,6 +308,8 @@ RESPONSE=$("$API_SH" POST "/1-on-1/MEETING_ID/items" '{"name":"TEXT"}')
 echo "$RESPONSE"
 ```
 
+Optional body fields: `column` (`next`/`blocked`/`done`, default `next`) and `description` (HTML body) — include them in the JSON when the user provides them.
+
 - **Status 201**: "Added **{item_name}** (ID: {item_id}) to one-on-one {meeting_id}."
 - **Error** → use Error Handling above
 
@@ -330,7 +332,7 @@ Wait for confirmation. Then:
 
 ```bash
 API_SH="<api.sh path from Current State>"
-RESPONSE=$("$API_SH" PUT "/1-on-1/MEETING_ID/items/ITEM_ID")
+RESPONSE=$("$API_SH" POST "/1-on-1/MEETING_ID/align" '{"alignable_type":"Item","alignable_id":ITEM_ID}')
 echo "$RESPONSE"
 ```
 
