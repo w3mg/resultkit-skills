@@ -3,8 +3,9 @@
 **Source**: https://api.resultmaps.com/api-docs/v2 — refresh from here when endpoints change or docs seem stale.
 
 Base URL: `https://api.resultmaps.com/api/v2`
-Web App: `https://app.resultmaps.com` — Web URL column values are paths relative to this base.
-Auth: Bearer token in `Authorization` header or `token` query param. Find your token in your profile settings at https://app.resultmaps.com/customize.
+Web App: `https://resultkit.ai` — Web URL column values are paths relative to this base. NEVER link users to the legacy `app.resultmaps.com` UI.
+Deep links: `?item={id}` opens the item detail sidebar appended to ANY authenticated path (canonical cold link: `https://resultkit.ai/?item={id}`); `?target={id}` does the same for rocks/yearly-goals/milestones. Team-scoped pages use the current team; `/level-10-meeting` and `/plugins/projects` accept `?team={id}` to switch it. `/teams/{id}` is the team home page.
+Auth: Bearer token in `Authorization` header or `token` query param. Find your token in your profile settings at https://resultkit.ai/customize.
 Interactive docs: <https://api.resultmaps.com/api-docs/v2>
 
 > **V1 endpoints**: Some newer endpoints use `/api/v1/` paths. When calling via `api.sh`, pass the full versioned path (e.g., `/api/v1/items/{id}/attachments`). The script detects paths starting with `/api/` and automatically strips the `/v2` suffix from the base URL.
@@ -29,18 +30,18 @@ Endpoints that support `q` and `include_archived` are noted below.
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | GET | `/items` | List authenticated user's items (params: page, per_page, q, status, team_id, include_archived) | "show my tasks", "list items", "what's on my plate", "my to-dos" | — |
-| POST | `/items` | Create item (body: name*, type, description, due, status, on_weekly, team_id, parent_id, context) | "add task", "create item", "new to-do", "add action item" | `/items/{id}` |
-| GET | `/items/{id}` | Get item detail (includes first-level children) | "show item", "item details", "open task", "what's in item X" | `/items/{id}` |
-| PATCH | `/items/{id}` | Update item (body: name, description, due, status, on_weekly, third_party_tracker). `third_party_tracker`: object to set/replace, `null` to clear, omit to leave unchanged. | "update item", "change status", "rename task", "set due date", "link to HubSpot", "attach ticket" | `/items/{id}` |
+| POST | `/items` | Create item (body: name*, type, description, due, status, on_weekly, team_id, parent_id, context) | "add task", "create item", "new to-do", "add action item" | `/?item={id}` |
+| GET | `/items/{id}` | Get item detail (includes first-level children) | "show item", "item details", "open task", "what's in item X" | `/?item={id}` |
+| PATCH | `/items/{id}` | Update item (body: name, description, due, status, on_weekly, third_party_tracker). `third_party_tracker`: object to set/replace, `null` to clear, omit to leave unchanged. | "update item", "change status", "rename task", "set due date", "link to HubSpot", "attach ticket" | `/?item={id}` |
 | DELETE | `/items/{id}` | Archive item (soft delete, sets status=archived) | "archive item", "delete task", "remove item", "soft delete" | — |
-| GET | `/items/{id}/children` | List child items as nested tree (params: page, per_page, q, depth). `depth` default 2, range 1-20. | "show sub-tasks", "list children", "nested items", "what's under this" | `/items/{id}` |
-| PUT | `/items/{id}/move` | Reposition item in tree (body: parent_id, left_id, right_id, position?, group_by?). Optional `position` (0-based integer) places item at a specific slot within the new parent. Optional `group_by: "status"` scopes `position` to the item's status group (use on status-grouped boards); omit for global ordering. Invalid `group_by` value → 400. | "move item", "reparent", "nest under", "reorder" | `/items/{id}` |
+| GET | `/items/{id}/children` | List child items as nested tree (params: page, per_page, q, depth). `depth` default 2, range 1-20. | "show sub-tasks", "list children", "nested items", "what's under this" | `/?item={id}` |
+| PUT | `/items/{id}/move` | Reposition item in tree (body: parent_id, left_id, right_id, position?, group_by?). Optional `position` (0-based integer) places item at a specific slot within the new parent. Optional `group_by: "status"` scopes `position` to the item's status group (use on status-grouped boards); omit for global ordering. Invalid `group_by` value → 400. | "move item", "reparent", "nest under", "reorder" | `/?item={id}` |
 | PATCH | `/items/bulk-move` | Move up to 1000 items under a target parent (body: item_ids, parent_id). Items removed from all weekly boards. | "bulk move", "move items", "move these under", "reparent multiple" | — |
 | POST | `/items/{id}/reposition` | Move item to a new 0-based position among its siblings (body: position*, group_by?). Optional `group_by: "status"` scopes position to the item's status group (use on status-grouped boards); omit for global ordering. Invalid `group_by` value → 400. Returns updated item. | "reorder item", "move to position", "drag item", "reposition" | — |
 | POST | `/items/{id}/indent` | Make item a child of its nearest left sibling (outliner indent). No body. Returns 400 if no left sibling exists. | "indent item", "make subtask", "nest under previous", "demote item" | — |
 | POST | `/items/{id}/outdent` | Promote item to sibling of its parent (outliner outdent). No body. Returns 400 if item is already at top level. | "outdent item", "promote task", "move to parent level", "unindent" | — |
 | POST | `/items/{id}/duplicate` | Duplicate an item (body: include_children? boolean). Due dates, start dates, and completion status are cleared; assignments are copied. Returns 201 with `{ data: { item, children: [] } }`. | "duplicate item", "copy task", "clone item" | — |
-| POST | `/items/{id}/toggle_is_top` | Toggle item must-do (is_top) flag. No body. Each call flips the current value. Turning OFF strips `#must` hashtag from item name. Returns updated item. Errors: 400 (invalid ID), 401, 403, 404. | "mark must-do", "tag as must do", "remove must tag", "toggle priority flag" | `/items/{id}` |
+| POST | `/items/{id}/toggle_is_top` | Toggle item must-do (is_top) flag. No body. Each call flips the current value. Turning OFF strips `#must` hashtag from item name. Returns updated item. Errors: 400 (invalid ID), 401, 403, 404. | "mark must-do", "tag as must do", "remove must tag", "toggle priority flag" | `/?item={id}` |
 | POST | `/items/context` | Batch context lookup for up to 500 item IDs (body: `{ "item_ids": integer[] }`). Returns 24-field context projection per item (6 chip kinds). Unviewable/non-existent IDs silently dropped. | "get item context", "batch context", "breadcrumbs for items", "item badges", "item chips", "item context chips" | — |
 | POST | `/items/{id}/align` | Polymorphic alignment — align an item to a goal, outcome, key result, item, or work session (body: align_to_id*, align_to_type* — one of `Goal`, `Outcome`, `KeyResult`, `Item`, `WorkSession`). Idempotent. Returns `{ data: { aligning_id, aligning_type, align_to_id, align_to_type } }`. | "align item", "link to goal", "connect to outcome", "align to key result", "align to work session" | — |
 | PATCH | `/items/remove-next-tag` | Bulk strip `#next` hashtag from item names for the authenticated user (no body required). Returns `{ data: { updated: N } }`. | "remove #next tags", "clear next tags", "strip priority hashtags", "clean up #next" | — |
@@ -71,16 +72,16 @@ Smart text: `POST /items` supports `@username` in name to auto-assign, and hasht
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/items/{id}/assignees` | List assignees (paginated) | "who's assigned", "show assignees", "assigned to" | `/items/{id}` |
-| PUT | `/items/{id}/assignees` | Add assignee (body: user_id*) | "assign to", "add assignee", "give to" | `/items/{id}` |
-| DELETE | `/items/{id}/assignees/{user_id}` | Remove assignee | "unassign", "remove assignee", "take off" | `/items/{id}` |
+| GET | `/items/{id}/assignees` | List assignees (paginated) | "who's assigned", "show assignees", "assigned to" | `/?item={id}` |
+| PUT | `/items/{id}/assignees` | Add assignee (body: user_id*) | "assign to", "add assignee", "give to" | `/?item={id}` |
+| DELETE | `/items/{id}/assignees/{user_id}` | Remove assignee | "unassign", "remove assignee", "take off" | `/?item={id}` |
 
 ### Item Comments
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/items/{id}/comments` | List comments (chronological, paginated) | "show comments", "show notes", "what's been said" | `/items/{id}` |
-| POST | `/items/{id}/comments` | Create comment (body: body*) | "add comment", "leave a note", "comment on" | `/items/{id}` |
+| GET | `/items/{id}/comments` | List comments (chronological, paginated) | "show comments", "show notes", "what's been said" | `/?item={id}` |
+| POST | `/items/{id}/comments` | Create comment (body: body*) | "add comment", "leave a note", "comment on" | `/?item={id}` |
 
 Comment fields: `id`, `body`, `author` (UserSimple), `created_at`, `updated_at` (equal to `created_at` when unedited; later when edited — use to show "edited" badge).
 
@@ -103,9 +104,9 @@ Flat routes that work for comments on any surface (Items, Projects, Result Feed,
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/api/v1/items/{id}/attachments` | List all attachments (files + links) on an item | "show attachments", "list files", "what's attached", "item files", "show linked URLs" | `/items/{id}` |
-| POST | `/api/v1/items/{id}/attachments` | Upload file attachment (multipart/form-data: file*, name?, description?). Max 4.5 MB. | "upload file", "attach file", "add attachment", "upload to item" | `/items/{id}` |
-| POST | `/api/v1/items/{id}/links` | Add URL link (body: url* HTTPS required, title?, description?, media_type_code?) | "add link", "attach URL", "add resource link", "link to item" | `/items/{id}` |
+| GET | `/api/v1/items/{id}/attachments` | List all attachments (files + links) on an item | "show attachments", "list files", "what's attached", "item files", "show linked URLs" | `/?item={id}` |
+| POST | `/api/v1/items/{id}/attachments` | Upload file attachment (multipart/form-data: file*, name?, description?). Max 4.5 MB. | "upload file", "attach file", "add attachment", "upload to item" | `/?item={id}` |
+| POST | `/api/v1/items/{id}/links` | Add URL link (body: url* HTTPS required, title?, description?, media_type_code?) | "add link", "attach URL", "add resource link", "link to item" | `/?item={id}` |
 | DELETE | `/api/v1/attachments/{material_id}` | Delete file attachment. Use `material_id` from list response. | "delete attachment", "remove file", "delete file from item" | — |
 | GET | `/api/v1/attachments/{material_id}/download` | Download file — 302 redirect to pre-signed S3 URL (5-min expiry). Use `material_id`. | "download file", "get file", "download attachment" | — |
 | DELETE | `/api/v1/links/{material_id}` | Delete URL link. Use `material_id` from list response. | "delete link", "remove link", "remove URL from item" | — |
@@ -124,8 +125,8 @@ Auth: `canEdit` on Item for upload, add-link, and delete. `canView` on Item for 
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/items/{id}/recurrence` | Read current recurrence state | "show recurrence", "item schedule", "how often does this repeat", "recurrence settings" | `/items/{id}` |
-| PUT | `/items/{id}/recurrence` | Set or clear recurrence (body: type*, day_within_interval?) | "set recurrence", "make daily", "repeat weekly", "set schedule", "clear recurrence", "remove recurrence" | `/items/{id}` |
+| GET | `/items/{id}/recurrence` | Read current recurrence state | "show recurrence", "item schedule", "how often does this repeat", "recurrence settings" | `/?item={id}` |
+| PUT | `/items/{id}/recurrence` | Set or clear recurrence (body: type*, day_within_interval?) | "set recurrence", "make daily", "repeat weekly", "set schedule", "clear recurrence", "remove recurrence" | `/?item={id}` |
 
 Recurrence response: `{ "data": { "type": string|null, "day_within_interval": integer|null, "ends_after": null } }`
 
@@ -282,12 +283,12 @@ Errors: 400 (invalid team ID or malformed JSON), 401 (unauthenticated), 403 (GET
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/items` | All team items (params: page, per_page, q, all, include_archived) | "show weekly", "team board", "weekly board", "L10 board" | `/teams/{id}` |
-| POST | `/teams/{id}/items` | Create team item (on_weekly=true) | "add to weekly", "new team task", "create on board" | `/items/{item_id}` |
-| PUT | `/teams/{id}/items/{item_id}` | Add item to board (sets on_weekly=true) | "put on weekly", "add to board", "show on weekly" | `/items/{item_id}` |
+| GET | `/teams/{id}/items` | All team items (params: page, per_page, q, all, include_archived) | "show weekly", "team board", "weekly board", "L10 board" | `/level-10-meeting?team={id}` |
+| POST | `/teams/{id}/items` | Create team item (on_weekly=true) | "add to weekly", "new team task", "create on board" | `/?item={item_id}` |
+| PUT | `/teams/{id}/items/{item_id}` | Add item to board (sets on_weekly=true) | "put on weekly", "add to board", "show on weekly" | `/?item={item_id}` |
 | DELETE | `/teams/{id}/items/{item_id}` | Remove from weekly (sets on_weekly=false, keeps item) | "remove from weekly", "take off board", "hide from weekly" | — |
-| GET | `/teams/{id}/items/{section}` | Items by section (params: page, per_page, q, all, include_archived). Section: `done`, `next`, `blocked`, `parked`. | "show next", "show done", "show issues", "show parked", "priorities", "blockers", "parking lot" | `/teams/{id}` |
-| PUT | `/teams/{id}/items/{section}/{item_id}` | Move item to section on board. Section: `done`, `next`, `blocked`, `parked`. | "move to next", "mark done", "flag as blocked", "park item", "prioritize" | `/items/{item_id}` |
+| GET | `/teams/{id}/items/{section}` | Items by section (params: page, per_page, q, all, include_archived). Section: `done`, `next`, `blocked`, `parked`. | "show next", "show done", "show issues", "show parked", "priorities", "blockers", "parking lot" | `/level-10-meeting?team={id}` |
+| PUT | `/teams/{id}/items/{section}/{item_id}` | Move item to section on board. Section: `done`, `next`, `blocked`, `parked`. | "move to next", "mark done", "flag as blocked", "park item", "prioritize" | `/?item={item_id}` |
 
 Section values for `{section}`: `done`, `next`, `blocked`, `parked`.
 
@@ -304,7 +305,7 @@ The `all` param (boolean, default false) on team item endpoints shows all team m
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/issues` | List team issues (items with status=blocked, is_wow=true). Supports rich filtering. No pagination — returns all matches. | "show team issues", "list all issues", "filter issues by label", "long-term issues", "IDS items" | `/teams/{id}` |
+| GET | `/teams/{id}/issues` | List team issues (items with status=blocked, is_wow=true). Supports rich filtering. No pagination — returns all matches. | "show team issues", "list all issues", "filter issues by label", "long-term issues", "IDS items" | `/components?tab=issues` |
 
 Query params: `is_long_term` (boolean — filter long-term vs short-term issues; null treated as false), `search` (string, min 2 chars — case-insensitive name search), `custom_label_ids[]` (integer[] — AND logic, item must have all specified labels), `created_at_from` (YYYY-MM-DD), `created_at_to` (YYYY-MM-DD), `completed_from` (YYYY-MM-DD), `completed_to` (YYYY-MM-DD).
 
@@ -317,11 +318,11 @@ Due date auto-set: creating an item with `status: "next"` in a team context (or 
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/projects` | List team projects (params: page, per_page, q, status, include_muted, followed_only). Default: active, non-parkinglot, non-muted. Each project includes `default_view` (string\|null) and completion stats: `percent_complete` (number, 0–100), `total_children`, `realized_count`, `blocked_count`, `overdue_count`, `active_count` (all integers). | "show projects", "team projects", "rocks (EOS)", "execution plan", "project completion", "how complete is this project" | `/teams/{id}` |
-| POST | `/teams/{id}/projects` | Create project in team (body: name*, description, due, status, on_weekly, team_id, parent_id, context). Note: stat fields are NOT included in create responses. | "create project", "new project on team", "add rock" | `/items/{project_id}` |
-| GET | `/projects/{id}` | Get single project detail. Includes `default_view` (string\|null) and completion stats: `percent_complete`, `total_children`, `realized_count`, `blocked_count`, `overdue_count`, `active_count`. Also includes `children` array. | "show project", "project detail", "open project" | `/items/{project_id}` |
-| PUT | `/teams/{id}/projects/{project_id}` | Convert item to team project (sets type=TodoList, assigns to team). Idempotent. | "convert to project", "promote to project", "make it a project" | `/items/{project_id}` |
-| PATCH | `/teams/{id}/projects/{project_id}` | Update project (body: name, description, due, status, on_weekly) | "update project", "rename project", "change project status" | `/items/{project_id}` |
+| GET | `/teams/{id}/projects` | List team projects (params: page, per_page, q, status, include_muted, followed_only). Default: active, non-parkinglot, non-muted. Each project includes `default_view` (string\|null) and completion stats: `percent_complete` (number, 0–100), `total_children`, `realized_count`, `blocked_count`, `overdue_count`, `active_count` (all integers). | "show projects", "team projects", "rocks (EOS)", "execution plan", "project completion", "how complete is this project" | `/plugins/projects` |
+| POST | `/teams/{id}/projects` | Create project in team (body: name*, description, due, status, on_weekly, team_id, parent_id, context). Note: stat fields are NOT included in create responses. | "create project", "new project on team", "add rock" | `/plugins/projects/{project_id}/overview` |
+| GET | `/projects/{id}` | Get single project detail. Includes `default_view` (string\|null) and completion stats: `percent_complete`, `total_children`, `realized_count`, `blocked_count`, `overdue_count`, `active_count`. Also includes `children` array. | "show project", "project detail", "open project" | `/plugins/projects/{project_id}/overview` |
+| PUT | `/teams/{id}/projects/{project_id}` | Convert item to team project (sets type=TodoList, assigns to team). Idempotent. | "convert to project", "promote to project", "make it a project" | `/plugins/projects/{project_id}/overview` |
+| PATCH | `/teams/{id}/projects/{project_id}` | Update project (body: name, description, due, status, on_weekly) | "update project", "rename project", "change project status" | `/plugins/projects/{project_id}/overview` |
 | PATCH | `/projects/{id}/default-view` | Set default view for a project (body: default_view*). Any team member with view access. Shared across all members. | "set default view", "change default view", "default to board view", "set project view" | — |
 | DELETE | `/teams/{id}/projects/{project_id}` | Remove project from team (clears group_id, keeps project) | "remove project from team", "unlink project", "take off team board" | — |
 
@@ -422,9 +423,9 @@ Only available for teams using the EOS framework.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/headlines` | List active headlines (params: page, per_page). Active = no expiration AND created within 7 days, OR expires_at > today. When expires_at is set, only expiration matters. | "show headlines", "team headlines", "what's new", "announcements" | `/teams/{id}` |
-| POST | `/teams/{id}/headlines` | Create headline (body: text*, expires_at?) | "add headline", "new headline", "share update", "post announcement" | `/teams/{id}` |
-| PATCH | `/teams/{id}/headlines/{headline_id}` | Update headline (body: text?, expires_at?). Creator or team admin only. | "update headline", "edit headline", "change headline" | `/teams/{id}` |
+| GET | `/teams/{id}/headlines` | List active headlines (params: page, per_page). Active = no expiration AND created within 7 days, OR expires_at > today. When expires_at is set, only expiration matters. | "show headlines", "team headlines", "what's new", "announcements" | `/level-10-meeting?team={id}` |
+| POST | `/teams/{id}/headlines` | Create headline (body: text*, expires_at?) | "add headline", "new headline", "share update", "post announcement" | `/level-10-meeting?team={id}` |
+| PATCH | `/teams/{id}/headlines/{headline_id}` | Update headline (body: text?, expires_at?). Creator or team admin only. | "update headline", "edit headline", "change headline" | `/level-10-meeting?team={id}` |
 | DELETE | `/teams/{id}/headlines/{headline_id}` | Archive headline (soft delete — sets expires_at to today, immediately hidden). Creator or team admin only. | "delete headline", "remove headline", "archive headline" | — |
 
 Headline fields: `id`, `text`, `creator` (UserSimple), `expires_at` (YYYY-MM-DD | null), `created_at`, `updated_at`.
@@ -439,18 +440,18 @@ EOS-friendly URL aliases for the team weekly board. These endpoints return the s
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/l10/todos` | List L10 to-dos (alias for `GET /teams/{id}/items/next`; params: page, per_page, q, all) | "show L10 to-dos", "L10 todos", "weekly to-dos" | `/teams/{id}` |
-| GET | `/teams/{id}/l10/done` | List completed L10 to-dos (alias for `GET /teams/{id}/items/done`; params: page, per_page, q, all). Default: completed within 7 days. `all=true` for older. | "show L10 done", "completed to-dos", "L10 completed" | `/teams/{id}` |
-| GET | `/teams/{id}/l10/issues` | List L10 issues (alias for `GET /teams/{id}/items/blocked`; params: page, per_page, q) | "show L10 issues", "IDS list", "L10 blockers" | `/teams/{id}` |
-| GET | `/teams/{id}/l10/parked` | List L10 parking lot (alias for `GET /teams/{id}/items/parked`; params: page, per_page, q) | "show L10 parking lot", "L10 parked", "parked items" | `/teams/{id}` |
-| GET | `/teams/{id}/l10/headlines` | List L10 headlines (alias for `GET /teams/{id}/headlines`; params: page, per_page) | "show L10 headlines", "L10 announcements" | `/teams/{id}` |
-| POST | `/teams/{id}/l10/todos` | Create L10 to-do (body: name*, description?, due?). Status=next, due defaults to 7 days. | "add L10 to-do", "new to-do", "create L10 todo" | `/items/{item_id}` |
-| POST | `/teams/{id}/l10/issues` | Create L10 issue (body: name*, description?, due?). Status=blocked. | "add L10 issue", "raise issue", "new IDS item" | `/items/{item_id}` |
-| POST | `/teams/{id}/l10/headlines` | Create L10 headline (alias for `POST /teams/{id}/headlines`; body: text*, expires_at?) | "add L10 headline", "new L10 headline" | `/teams/{id}` |
-| PUT | `/teams/{id}/l10/todos/{item_id}` | Move item to L10 to-dos. Sets status=next, auto-sets due to 7 days if null. Alias for `PUT /teams/{id}/items/next/{item_id}`. | "move to L10 to-dos", "make it a to-do", "prioritize in L10" | `/items/{item_id}` |
-| PUT | `/teams/{id}/l10/done/{item_id}` | Mark L10 item as done. Sets status=done, records completion. Alias for `PUT /teams/{id}/items/done/{item_id}`. | "mark L10 done", "complete L10 to-do", "L10 done" | `/items/{item_id}` |
-| PUT | `/teams/{id}/l10/issues/{item_id}` | Move item to L10 issues. Sets status=blocked. Alias for `PUT /teams/{id}/items/blocked/{item_id}`. | "move to L10 issues", "flag as issue", "IDS this" | `/items/{item_id}` |
-| PUT | `/teams/{id}/l10/parked/{item_id}` | Park L10 item. Sets status=parked. Alias for `PUT /teams/{id}/items/parked/{item_id}`. | "park L10 item", "move to parking lot", "shelve in L10" | `/items/{item_id}` |
+| GET | `/teams/{id}/l10/todos` | List L10 to-dos (alias for `GET /teams/{id}/items/next`; params: page, per_page, q, all) | "show L10 to-dos", "L10 todos", "weekly to-dos" | `/level-10-meeting?team={id}` |
+| GET | `/teams/{id}/l10/done` | List completed L10 to-dos (alias for `GET /teams/{id}/items/done`; params: page, per_page, q, all). Default: completed within 7 days. `all=true` for older. | "show L10 done", "completed to-dos", "L10 completed" | `/level-10-meeting?team={id}` |
+| GET | `/teams/{id}/l10/issues` | List L10 issues (alias for `GET /teams/{id}/items/blocked`; params: page, per_page, q) | "show L10 issues", "IDS list", "L10 blockers" | `/level-10-meeting?team={id}` |
+| GET | `/teams/{id}/l10/parked` | List L10 parking lot (alias for `GET /teams/{id}/items/parked`; params: page, per_page, q) | "show L10 parking lot", "L10 parked", "parked items" | `/level-10-meeting?team={id}` |
+| GET | `/teams/{id}/l10/headlines` | List L10 headlines (alias for `GET /teams/{id}/headlines`; params: page, per_page) | "show L10 headlines", "L10 announcements" | `/level-10-meeting?team={id}` |
+| POST | `/teams/{id}/l10/todos` | Create L10 to-do (body: name*, description?, due?). Status=next, due defaults to 7 days. | "add L10 to-do", "new to-do", "create L10 todo" | `/?item={item_id}` |
+| POST | `/teams/{id}/l10/issues` | Create L10 issue (body: name*, description?, due?). Status=blocked. | "add L10 issue", "raise issue", "new IDS item" | `/?item={item_id}` |
+| POST | `/teams/{id}/l10/headlines` | Create L10 headline (alias for `POST /teams/{id}/headlines`; body: text*, expires_at?) | "add L10 headline", "new L10 headline" | `/level-10-meeting?team={id}` |
+| PUT | `/teams/{id}/l10/todos/{item_id}` | Move item to L10 to-dos. Sets status=next, auto-sets due to 7 days if null. Alias for `PUT /teams/{id}/items/next/{item_id}`. | "move to L10 to-dos", "make it a to-do", "prioritize in L10" | `/?item={item_id}` |
+| PUT | `/teams/{id}/l10/done/{item_id}` | Mark L10 item as done. Sets status=done, records completion. Alias for `PUT /teams/{id}/items/done/{item_id}`. | "mark L10 done", "complete L10 to-do", "L10 done" | `/?item={item_id}` |
+| PUT | `/teams/{id}/l10/issues/{item_id}` | Move item to L10 issues. Sets status=blocked. Alias for `PUT /teams/{id}/items/blocked/{item_id}`. | "move to L10 issues", "flag as issue", "IDS this" | `/?item={item_id}` |
+| PUT | `/teams/{id}/l10/parked/{item_id}` | Park L10 item. Sets status=parked. Alias for `PUT /teams/{id}/items/parked/{item_id}`. | "park L10 item", "move to parking lot", "shelve in L10" | `/?item={item_id}` |
 | DELETE | `/teams/{id}/l10/items/{item_id}` | Remove item from L10 board (sets on_weekly=false, keeps item). Alias for `DELETE /teams/{id}/items/{item_id}`. | "remove from L10", "take off L10 board", "drop from L10" | — |
 | GET | `/teams/{id}/l10/quick-wins` | Fetch contextual coaching articles from MasteryMaps based on subscriber persona and team framework. Always returns 200 — empty array if no articles available (persona=1, non-EOS/OKR framework, or external API failure). | "quick wins", "coaching articles", "L10 tips", "team coaching" | — |
 
@@ -509,8 +510,8 @@ Endpoints supporting the L10 Meeting Organizer page (Team Weekly). All under `/t
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/l10/weekly-focus` | Get current + previous weekly focus entries (params: date — YYYY-MM-DD) | "show rally cry", "weekly focus", "what's the focus", "team rally cry" | `/teams/{id}` |
-| POST | `/teams/{id}/l10/weekly-focus` | Set weekly focus for a date (body: focus_name*, date*). Admin only. | "set rally cry", "set weekly focus", "new rally cry" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/weekly-focus` | Get current + previous weekly focus entries (params: date — YYYY-MM-DD) | "show rally cry", "weekly focus", "what's the focus", "team rally cry" | `/level-10-meeting?team={id}` |
+| POST | `/teams/{id}/l10/weekly-focus` | Set weekly focus for a date (body: focus_name*, date*). Admin only. | "set rally cry", "set weekly focus", "new rally cry" | `/level-10-meeting?team={id}` |
 
 GET response: `{ data: { id, weekly_focus, created_for, previous_weekly_focus: [{ id, created_for, focus_name, average_rating }] } }`.
 POST response (201): `{ data: { id, focus_name, created_for } }`.
@@ -519,10 +520,10 @@ POST response (201): `{ data: { id, focus_name, created_for } }`.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/l10/weekly-notes` | Get current + previous meeting notes | "show meeting notes", "weekly notes", "L10 notes" | `/teams/{id}` |
-| POST | `/teams/{id}/l10/weekly-notes` | Create a meeting note (body: title*, body*, json_content*). Admin only. HTML body sanitized server-side. | "add meeting note", "new weekly note", "create L10 note" | `/teams/{id}` |
-| PATCH | `/teams/{id}/l10/weekly-notes/{note_id}` | Update a meeting note (body: title?, body?). Admin only. | "update meeting note", "edit weekly note" | `/teams/{id}` |
-| DELETE | `/teams/{id}/l10/weekly-notes/{note_id}` | Delete a meeting note. Admin only. | "delete meeting note", "remove weekly note" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/weekly-notes` | Get current + previous meeting notes | "show meeting notes", "weekly notes", "L10 notes" | `/level-10-meeting?team={id}` |
+| POST | `/teams/{id}/l10/weekly-notes` | Create a meeting note (body: title*, body*, json_content*). Admin only. HTML body sanitized server-side. | "add meeting note", "new weekly note", "create L10 note" | `/level-10-meeting?team={id}` |
+| PATCH | `/teams/{id}/l10/weekly-notes/{note_id}` | Update a meeting note (body: title?, body?). Admin only. | "update meeting note", "edit weekly note" | `/level-10-meeting?team={id}` |
+| DELETE | `/teams/{id}/l10/weekly-notes/{note_id}` | Delete a meeting note. Admin only. | "delete meeting note", "remove weekly note" | `/level-10-meeting?team={id}` |
 
 GET response: `{ data: { current: { id, title, body, json_content, creator_id, created_at, updated_at }, previous: [same shape] } }`.
 POST response (201): Created note in `data` envelope. DELETE: 204 No Content.
@@ -531,10 +532,10 @@ POST response (201): Created note in `data` envelope. DELETE: 204 No Content.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/l10/wins` | Get team wins for a date range (params: date — YYYY-MM-DD). | "show wins", "team wins", "what did we win", "victories" | `/teams/{id}` |
-| POST | `/teams/{id}/l10/wins` | Create a win (body: name*, win_type* ["personal"\|"professional"], win_date* [YYYY-MM-DD], description?). Member auth. user_id set from auth token. | "add win", "create win", "log a win", "new win" | `/teams/{id}` |
-| PATCH | `/teams/{id}/l10/wins/{win_id}` | Update a win (body: name?, win_type?, win_date?, description?). Owner or admin only. | "update win", "edit win", "change win" | `/teams/{id}` |
-| DELETE | `/teams/{id}/l10/wins/{win_id}` | Delete a win. Owner or admin only. Returns 204. | "delete win", "remove win" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/wins` | Get team wins for a date range (params: date — YYYY-MM-DD). | "show wins", "team wins", "what did we win", "victories" | `/level-10-meeting?team={id}` |
+| POST | `/teams/{id}/l10/wins` | Create a win (body: name*, win_type* ["personal"\|"professional"], win_date* [YYYY-MM-DD], description?). Member auth. user_id set from auth token. | "add win", "create win", "log a win", "new win" | `/level-10-meeting?team={id}` |
+| PATCH | `/teams/{id}/l10/wins/{win_id}` | Update a win (body: name?, win_type?, win_date?, description?). Owner or admin only. | "update win", "edit win", "change win" | `/level-10-meeting?team={id}` |
+| DELETE | `/teams/{id}/l10/wins/{win_id}` | Delete a win. Owner or admin only. Returns 204. | "delete win", "remove win" | `/level-10-meeting?team={id}` |
 
 Response (GET): `{ data: { wins: [{ id, name, description, win_type, win_date, user: { id, full_name }, created_at }] } }`. `win_type`: "professional" or "personal".
 
@@ -546,10 +547,10 @@ Response (DELETE): 204 No Content. Errors: 403 if not owner and not admin.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/l10/documents` | List team documents (paginated). Returns `material_category_id` per document. | "show documents", "team docs", "team files", "list documents" | `/teams/{id}` |
-| POST | `/teams/{id}/l10/documents` | Upload a document (multipart form data: file*, name*, material_category_id?, description?). Member auth. | "upload document", "add team file", "new document" | `/teams/{id}` |
-| PATCH | `/teams/{id}/l10/documents/{doc_id}` | Update document metadata (body: name?, material_category_id?, description?). Admin/owner only. | "update document", "rename document" | `/teams/{id}` |
-| DELETE | `/teams/{id}/l10/documents/{doc_id}` | Delete a document. Admin/owner only. | "delete document", "remove file" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/documents` | List team documents (paginated). Returns `material_category_id` per document. | "show documents", "team docs", "team files", "list documents" | `/level-10-meeting?team={id}` |
+| POST | `/teams/{id}/l10/documents` | Upload a document (multipart form data: file*, name*, material_category_id?, description?). Member auth. | "upload document", "add team file", "new document" | `/level-10-meeting?team={id}` |
+| PATCH | `/teams/{id}/l10/documents/{doc_id}` | Update document metadata (body: name?, material_category_id?, description?). Admin/owner only. | "update document", "rename document" | `/level-10-meeting?team={id}` |
+| DELETE | `/teams/{id}/l10/documents/{doc_id}` | Delete a document. Admin/owner only. | "delete document", "remove file" | `/level-10-meeting?team={id}` |
 
 Document fields: `id`, `name`, `filename`, `content_type`, `size`, `description`, `material_category_id`, `user_id`, `created_at`. Paginated with `meta`. POST uses multipart form data (not JSON). DELETE: 204.
 
@@ -557,10 +558,10 @@ Document fields: `id`, `name`, `filename`, `content_type`, `size`, `description`
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/l10/linked-urls` | List linked URLs (paginated) | "show linked urls", "team links", "list urls" | `/teams/{id}` |
-| POST | `/teams/{id}/l10/linked-urls` | Create a linked URL (body: title*, full_path*, description?, media_type_code?, material_category_id?). Member auth. | "add linked url", "new team link", "link a url" | `/teams/{id}` |
-| PATCH | `/teams/{id}/l10/linked-urls/{url_id}` | Update a linked URL (body: title?, full_path?, description?, media_type_code?, material_category_id?). Member auth. | "update linked url", "edit team link" | `/teams/{id}` |
-| DELETE | `/teams/{id}/l10/linked-urls/{url_id}` | Delete a linked URL. Member auth. | "delete linked url", "remove team link" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/linked-urls` | List linked URLs (paginated) | "show linked urls", "team links", "list urls" | `/level-10-meeting?team={id}` |
+| POST | `/teams/{id}/l10/linked-urls` | Create a linked URL (body: title*, full_path*, description?, media_type_code?, material_category_id?). Member auth. | "add linked url", "new team link", "link a url" | `/level-10-meeting?team={id}` |
+| PATCH | `/teams/{id}/l10/linked-urls/{url_id}` | Update a linked URL (body: title?, full_path?, description?, media_type_code?, material_category_id?). Member auth. | "update linked url", "edit team link" | `/level-10-meeting?team={id}` |
+| DELETE | `/teams/{id}/l10/linked-urls/{url_id}` | Delete a linked URL. Member auth. | "delete linked url", "remove team link" | `/level-10-meeting?team={id}` |
 
 LinkedURL fields: `id`, `title`, `full_path`, `description`, `media_type_code`, `material_category_id`, `user_id`, `created_at`. Paginated with `meta`. DELETE: 204.
 
@@ -568,10 +569,10 @@ LinkedURL fields: `id`, `title`, `full_path`, `description`, `media_type_code`, 
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/l10/shared-links` | List shared links | "show shared links", "team shared links" | `/teams/{id}` |
-| POST | `/teams/{id}/l10/shared-links` | Create a shared link (body: title*, link_string*). **Admin role required** (403 for non-admin). | "add shared link", "share a link", "new shared link" | `/teams/{id}` |
-| PATCH | `/teams/{id}/l10/shared-links/{link_id}` | Update shared link title (body: title*). Member auth (non-viewer). | "update shared link", "rename shared link", "edit link title" | `/teams/{id}` |
-| DELETE | `/teams/{id}/l10/shared-links/{link_id}` | Delete a shared link. Member auth. | "delete shared link", "remove shared link" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/shared-links` | List shared links | "show shared links", "team shared links" | `/level-10-meeting?team={id}` |
+| POST | `/teams/{id}/l10/shared-links` | Create a shared link (body: title*, link_string*). **Admin role required** (403 for non-admin). | "add shared link", "share a link", "new shared link" | `/level-10-meeting?team={id}` |
+| PATCH | `/teams/{id}/l10/shared-links/{link_id}` | Update shared link title (body: title*). Member auth (non-viewer). | "update shared link", "rename shared link", "edit link title" | `/level-10-meeting?team={id}` |
+| DELETE | `/teams/{id}/l10/shared-links/{link_id}` | Delete a shared link. Member auth. | "delete shared link", "remove shared link" | `/level-10-meeting?team={id}` |
 
 SharedLink fields: `id`, `title`, `full_path`, `link_string`, `user_id`, `created_at`. Response in `data` envelope. DELETE: 204.
 
@@ -579,10 +580,10 @@ SharedLink fields: `id`, `title`, `full_path`, `link_string`, `user_id`, `create
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/l10/material-categories` | List material categories. Any team member. | "show material categories", "document categories", "list categories" | `/teams/{id}` |
-| POST | `/teams/{id}/l10/material-categories` | Create material category (body: name*). Member auth (non-viewer). 409 if name already exists. | "create category", "new document category", "add category" | `/teams/{id}` |
-| PATCH | `/teams/{id}/l10/material-categories/{cat_id}` | Rename material category (body: name*). Member auth (non-viewer). | "rename category", "update category name" | `/teams/{id}` |
-| DELETE | `/teams/{id}/l10/material-categories/{cat_id}` | Delete material category. Creator only (403 for others). Sets material_category_id=null on associated documents and linked URLs. | "delete category", "remove category" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/material-categories` | List material categories. Any team member. | "show material categories", "document categories", "list categories" | `/level-10-meeting?team={id}` |
+| POST | `/teams/{id}/l10/material-categories` | Create material category (body: name*). Member auth (non-viewer). 409 if name already exists. | "create category", "new document category", "add category" | `/level-10-meeting?team={id}` |
+| PATCH | `/teams/{id}/l10/material-categories/{cat_id}` | Rename material category (body: name*). Member auth (non-viewer). | "rename category", "update category name" | `/level-10-meeting?team={id}` |
+| DELETE | `/teams/{id}/l10/material-categories/{cat_id}` | Delete material category. Creator only (403 for others). Sets material_category_id=null on associated documents and linked URLs. | "delete category", "remove category" | `/level-10-meeting?team={id}` |
 
 MaterialCategory fields: `id`, `name`, `user_id`, `created_at`, `updated_at`. Response in `data` envelope.
 
@@ -590,8 +591,8 @@ MaterialCategory fields: `id`, `name`, `user_id`, `created_at`, `updated_at`. Re
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/l10/weekly-ratings` | Get all-time average rating, total count, and per-week history (param: weeks — int 1–52, default 12) | "show weekly rating", "team rating", "meeting rating", "how are meetings rated", "rating trend", "meeting rating history" | `/teams/{id}` |
-| POST | `/teams/{id}/l10/weekly-ratings` | Submit or update weekly rating (body: rating*, date*). One rating per user per week — upserts. Member auth. | "rate meeting", "submit rating", "rate the week", "rate weekly" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/weekly-ratings` | Get all-time average rating, total count, and per-week history (param: weeks — int 1–52, default 12) | "show weekly rating", "team rating", "meeting rating", "how are meetings rated", "rating trend", "meeting rating history" | `/level-10-meeting?team={id}` |
+| POST | `/teams/{id}/l10/weekly-ratings` | Submit or update weekly rating (body: rating*, date*). One rating per user per week — upserts. Member auth. | "rate meeting", "submit rating", "rate the week", "rate weekly" | `/level-10-meeting?team={id}` |
 
 GET response: `{ data: { average_rating, total_ratings, weekly_history: [{ week_of, average_rating, count }] } }`. `weekly_history` is ordered most-recent-first; weeks with no ratings appear with `average_rating: null` and `count: 0`. `week_of` is the Monday of the week (YYYY-MM-DD). Use `?weeks=N` to control the number of slots (default 12, max 52).
 POST response (201 new, 200 updated): `{ data: { id, stars, created_at } }`.
@@ -600,7 +601,7 @@ POST response (201 new, 200 updated): `{ data: { id, stars, created_at } }`.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| POST | `/teams/{id}/l10/braindump` | Bulk create items on the board (body: items* — string[], section*). Admin only. Max 50 items per request. | "braindump", "bulk add items", "dump items to board", "brain dump" | `/teams/{id}` |
+| POST | `/teams/{id}/l10/braindump` | Bulk create items on the board (body: items* — string[], section*). Admin only. Max 50 items per request. | "braindump", "bulk add items", "dump items to board", "brain dump" | `/level-10-meeting?team={id}` |
 
 `section` values: `next`, `blocked`, `parked`.
 Response (201): `{ data: { items: [{ id, name }], count } }`.
@@ -609,7 +610,7 @@ Response (201): `{ data: { items: [{ id, name }], count } }`.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| PATCH | `/teams/{id}/l10/reorder` | Reorder organizer items (body: item_ids* — integer[]). Admin only. All IDs must belong to the team and be on the organizer board (is_wow=true). | "reorder items", "rearrange board", "sort items" | `/teams/{id}` |
+| PATCH | `/teams/{id}/l10/reorder` | Reorder organizer items (body: item_ids* — integer[]). Admin only. All IDs must belong to the team and be on the organizer board (is_wow=true). | "reorder items", "rearrange board", "sort items" | `/level-10-meeting?team={id}` |
 
 Response (200): `{ data: { success: true, count } }`.
 
@@ -617,8 +618,8 @@ Response (200): `{ data: { success: true, count } }`.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/l10/meeting-settings` | Get meeting day, start time, and section durations | "show meeting settings", "meeting schedule", "L10 settings", "meeting time" | `/teams/{id}` |
-| PATCH | `/teams/{id}/l10/meeting-settings` | Update meeting settings (body: meeting_day?, start_time?, section_durations?). Admin only. | "update meeting settings", "change meeting day", "set meeting time", "adjust section times" | `/teams/{id}` |
+| GET | `/teams/{id}/l10/meeting-settings` | Get meeting day, start time, and section durations | "show meeting settings", "meeting schedule", "L10 settings", "meeting time" | `/level-10-meeting?team={id}` |
+| PATCH | `/teams/{id}/l10/meeting-settings` | Update meeting settings (body: meeting_day?, start_time?, section_durations?). Admin only. | "update meeting settings", "change meeting day", "set meeting time", "adjust section times" | `/level-10-meeting?team={id}` |
 
 Response: `{ data: { meeting_day, start_time, section_durations: { transition, scorecard, goals, headlines, done, next, blocked } } }`.
 `meeting_day`: 0-6 (Sunday=0). `start_time`: formatted string e.g. `"01:30 PM"`. `section_durations`: values are integers (minutes).
@@ -627,7 +628,7 @@ Response: `{ data: { meeting_day, start_time, section_durations: { transition, s
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| POST | `/teams/{id}/l10/meeting-summary` | Send summary email to all team members. Admin only. Fire-and-forget. | "send meeting summary", "email meeting notes", "send L10 summary" | `/teams/{id}` |
+| POST | `/teams/{id}/l10/meeting-summary` | Send summary email to all team members. Admin only. Fire-and-forget. | "send meeting summary", "email meeting notes", "send L10 summary" | `/level-10-meeting?team={id}` |
 
 Response (200): `{ data: { sent_to, message } }`. Example: `{ "sent_to": 8, "message": "Meeting summary sent to 8 team members" }`.
 
@@ -671,7 +672,7 @@ All L10 Meeting Organizer endpoints share these error shapes:
 | GET | `/users/me/muted-items` | Paginated list of muted items (items with suppressed notifications) for the authenticated user. | "muted items", "what I've muted", "notification mutes" | — |
 | POST | `/users/me/muted-items` | Mute an item (suppress notifications for it). Body: `{ "subscribeable_type": string, "subscribeable_id": number }`. | "mute item", "silence notifications for item", "stop notifications" | — |
 | DELETE | `/users/me/muted-items/:id` | Unmute an item. `:id` is the `subscribeable_id` (the item ID), not a row ID. Muted items stored as JSON blob in `object_metas`. | "unmute item", "restore notifications for item" | — |
-| GET | `/api/v2/users/me/upcoming-tasks` | Upcoming tasks for the current user across three sources: items assigned to caller (not authored), items authored by caller, and today's day-plan items. Params: `start_date` (YYYY-MM-DD, default today), `end_date` (YYYY-MM-DD, default start_date+30d), `include_done` (string, optional — pass literal `"true"` to include past-realized items from sources 1 and 2; any other value or absent = exclude). Returns `{ items: [...] }`. Sort: day-plan items first, then due ASC (nulls last), then created_at ASC. Excludes #parkinglot items and deferred day-plan actions. `day_plan_date` is non-null only for day-plan source items. Priority-tag filter applied to day-plan-sourced items (source 3): non-active priority-tagged items are excluded. Due-date sources (1 and 2) are unaffected. | "upcoming tasks", "my tasks", "tasks this week", "timeline tasks", "what's due soon", "my upcoming items", "tasks due next week", "show done tasks", "include completed tasks" | `/timeline` |
+| GET | `/api/v2/users/me/upcoming-tasks` | Upcoming tasks for the current user across three sources: items assigned to caller (not authored), items authored by caller, and today's day-plan items. Params: `start_date` (YYYY-MM-DD, default today), `end_date` (YYYY-MM-DD, default start_date+30d), `include_done` (string, optional — pass literal `"true"` to include past-realized items from sources 1 and 2; any other value or absent = exclude). Returns `{ items: [...] }`. Sort: day-plan items first, then due ASC (nulls last), then created_at ASC. Excludes #parkinglot items and deferred day-plan actions. `day_plan_date` is non-null only for day-plan source items. Priority-tag filter applied to day-plan-sourced items (source 3): non-active priority-tagged items are excluded. Due-date sources (1 and 2) are unaffected. | "upcoming tasks", "my tasks", "tasks this week", "timeline tasks", "what's due soon", "my upcoming items", "tasks due next week", "show done tasks", "include completed tasks" | `/prioritizer/timeline` |
 | POST | `/api/v2/users/me/history` | Record a visited entity. Body: `{ "entity_type": string, "entity_id": integer }`. Upserts `visited_at` if same tuple exists; prunes oldest entries beyond 100. Returns `{ ok: true }`. Valid entity_type values: `Item`, `Rock`, `Measure`, `Project`, `Person`, `Meeting`, `Page`, `Review`. Returns 422 for invalid entity_type. | "record visit", "track visit", "add to history", "mark visited" | — |
 | GET | `/api/v2/users/me/history` | Retrieve recent visit history for the authenticated user. Returns up to 50 entries ordered newest-first. Names resolved at read time from entity tables; deleted entities are omitted. Returns `{ history: [{ id, entity_type, entity_id, name, team_name, visited_at }] }`. | "my history", "recently visited", "visit history", "recent items", "what I visited" | — |
 | GET | `/api/v2/users/me/onboarding-state` | Returns the authenticated user's onboarding state. Fields: `onboarding_role` ("visionary"\|"integrator"\|"manager"\|null), `total_steps` (int), `completed_steps` (int), `completed_step_names` (string[]), `is_complete` (boolean), `should_show_onboarding` (boolean — true only when flag is set, valid account+team context exists, onboarding not complete, and user qualifies). Wrapped in `{ data: { ... } }`. | "onboarding status", "onboarding progress", "should I show onboarding", "is onboarding complete", "my onboarding role" | — |
@@ -680,7 +681,7 @@ All L10 Meeting Organizer endpoints share these error shapes:
 | GET | `/api/v2/users/me/outbox` | Items the authenticated user has delegated to others (`assignment.creator_id = me AND assignment.user_id != me, active=true`). Params: `status` (comma-separated V2 statuses, default `active,archived,blocked,realized,review`), `group_id` (comma-separated team IDs), `show_all` (boolean — include realized items beyond 30-day window), `start_date`/`end_date` (ISO date range for realized items), `order` (`most_recently_assigned` sorts by assignment `created_at` DESC; `most_recently_updated` sorts by item `feed_updated_at` DESC; default sorts by hashtag priority tier then `assignment.position` ASC), `page`, `per_page` (default 100). Response envelope: `{ data: { ids_of_assignments_without_group_ids: integer[], items: [...OutboxItems] } }`. Each OutboxItem includes `id`, `name`, `status`, `type`, `group_id`, `is_wow`, `stored_ancestor_path`, `feed_updated_at`, `parent`, `assignments[]` (each with `id`, `user_id`, `creator_id`, `position`, `workflow_status_id`, `created_at`, `user`), `last_3_feeds[]`. `ids_of_assignments_without_group_ids` holds assignment IDs where `item.group_id IS NULL` (powers "Track All Under A Team" popup). Priority sort tier: #next → #toppriority/#priority → #1–#4 → #must → unlabeled → realized. | "my outbox", "items I delegated", "items assigned by me to others", "what I asked teammates to do", "delegated tasks", "outbox", "delegated to others" | — |
 | POST | `/api/v2/users/me/outbox/reorder` | Reorder outbox items by setting assignment positions. Body: `{ "item_ids": integer[] }` (full ordered list). Returns `{ data: { ok: true } }`. | "reorder outbox", "drag outbox item", "reposition delegated item", "sort outbox" | — |
 | POST | `/api/v2/users/me/outbox/filter-by-person` | Outbox narrowed to items delegated to a specific assignee. Body: `{ "user_id": integer }`. Returns same envelope as `GET /api/v2/users/me/outbox`. | "filter outbox by person", "show items assigned to person", "outbox for user", "delegated to person", "outbox filtered by assignee" | — |
-| POST | `/api/v2/items` | **Extended** create item with optional outbox-friendly fields. All existing `/items` create params supported. New optional params: `assignees` (integer[] — user IDs to assign on create), `with_assignments` (boolean — include created assignments in response), `with_last_3_updates` (boolean — include last 3 activity feeds in response). When neither flag is set, returns legacy bare-item `{ data: <Item> }`. When flags are set, returns `{ data: { item, assignments[], assignees[], last_3_updates[] } }`. Fully backward compatible — callers omitting the new fields see unchanged behavior. | "create item with assignees", "create delegated item", "add task with assignment", "create outbox item" | `/items/{id}` |
+| POST | `/api/v2/items` | **Extended** create item with optional outbox-friendly fields. All existing `/items` create params supported. New optional params: `assignees` (integer[] — user IDs to assign on create), `with_assignments` (boolean — include created assignments in response), `with_last_3_updates` (boolean — include last 3 activity feeds in response). When neither flag is set, returns legacy bare-item `{ data: <Item> }`. When flags are set, returns `{ data: { item, assignments[], assignees[], last_3_updates[] } }`. Fully backward compatible — callers omitting the new fields see unchanged behavior. | "create item with assignees", "create delegated item", "add task with assignment", "create outbox item" | `/?item={id}` |
 | GET | `/items/:id/activity-feed` | Item-scoped activity feed events. Paginated; params: `page`, `per_page`, `since`. Returns 403 (not 404) when user lacks read access. | "item activity", "what happened on this item", "item history", "item feed" | — |
 | GET | `/subscriptions` | Lists authenticated user's subscriptions. Query param: `subscribeable_type` (filter). | "my subscriptions", "what I'm subscribed to", "subscriptions" | — |
 | POST | `/subscriptions` | Subscribe to an object. Body: `{ "subscribeable_type": string, "subscribeable_id": number }`. Idempotent: returns 200 with existing record if already subscribed, 201 if newly created. | "subscribe", "follow item", "watch item", "get notifications for" | — |
@@ -767,11 +768,11 @@ Signup response (201): `{ data: { user: { id, login, email, api_token }, account
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/day-plans/today` | Today's plan (auto-creates if none exists). Priority-tag filter applied: items whose name contains a priority hashtag (`#next`, `#priority`, `#toppriority`, `#must`, `#1`–`#4`) are excluded when their status is not `active`. Item responses include `day_plan_action_id` (required when calling DPA-centric endpoints). Optional `?show=` query param for server-side filtering: `everything` (default — returns all items), `must` (only items where `is_top=true` OR name contains `#must`), `not deferred and completed` (excludes completed, deferred, or realized/done items). Invalid value → 400. | "show today", "my plan", "daily plan", "prioritizer" | `/day-plans/today` |
-| GET | `/day-plans/today/items` | Today's items (params: page, per_page, q, include_archived). Item responses include `day_plan_action_id` (required when calling DPA-centric endpoints such as defer, move-to-week, move-to-day). | "today's tasks", "what's on today", "my plan items" | `/day-plans/today` |
-| POST | `/day-plans/today/items` | Create item in today's plan (auto-creates plan). Hashtag side-effects processed on create: `#must` → `is_top=true`, `#daily` → `recur_daily=true`, `#next` or `#1` → `quadrant_position=1`, `#2`/`#3`/`#4` → respective quadrant. Hashtags remain in stored name. | "add to today", "new task for today", "put on my plan" | `/items/{item_id}` |
-| PUT | `/day-plans/today/items/{item_id}` | Attach existing item to today (auto-creates plan, body: position?) | "attach to today", "add to plan", "link to today" | `/day-plans/today` |
-| PATCH | `/day-plans/today/items/{item_id}` | Toggle completion (body: completed*) | "check off", "mark done for today", "complete for today", "undo" | `/day-plans/today` |
+| GET | `/day-plans/today` | Today's plan (auto-creates if none exists). Priority-tag filter applied: items whose name contains a priority hashtag (`#next`, `#priority`, `#toppriority`, `#must`, `#1`–`#4`) are excluded when their status is not `active`. Item responses include `day_plan_action_id` (required when calling DPA-centric endpoints). Optional `?show=` query param for server-side filtering: `everything` (default — returns all items), `must` (only items where `is_top=true` OR name contains `#must`), `not deferred and completed` (excludes completed, deferred, or realized/done items). Invalid value → 400. | "show today", "my plan", "daily plan", "prioritizer" | `/prioritizer` |
+| GET | `/day-plans/today/items` | Today's items (params: page, per_page, q, include_archived). Item responses include `day_plan_action_id` (required when calling DPA-centric endpoints such as defer, move-to-week, move-to-day). | "today's tasks", "what's on today", "my plan items" | `/prioritizer` |
+| POST | `/day-plans/today/items` | Create item in today's plan (auto-creates plan). Hashtag side-effects processed on create: `#must` → `is_top=true`, `#daily` → `recur_daily=true`, `#next` or `#1` → `quadrant_position=1`, `#2`/`#3`/`#4` → respective quadrant. Hashtags remain in stored name. | "add to today", "new task for today", "put on my plan" | `/?item={item_id}` |
+| PUT | `/day-plans/today/items/{item_id}` | Attach existing item to today (auto-creates plan, body: position?) | "attach to today", "add to plan", "link to today" | `/prioritizer` |
+| PATCH | `/day-plans/today/items/{item_id}` | Toggle completion (body: completed*) | "check off", "mark done for today", "complete for today", "undo" | `/prioritizer` |
 | DELETE | `/day-plans/today/items/{item_id}` | Remove from plan (keeps item) | "remove from today", "take off plan", "drop from today" | — |
 | POST | `/day-plans/today/items/{item_id}/defer` | Defer an item to a future date (body: defer_to* — YYYY-MM-DD). Sets `deferred_to_date` on the day-plan action. Returns `{ data: { item_id, day_plan_action_id, deferred_to_date } }`. | "defer item", "snooze task", "push to later", "postpone item", "defer to date" | — |
 | DELETE | `/day-plans/today/items/{item_id}/defer` | Clear deferral — remove the deferred_to_date from a day-plan action. Returns the updated day-plan action. | "clear deferral", "undefer item", "bring back to today", "stop deferring" | — |
@@ -782,11 +783,11 @@ Signup response (201): `{ data: { user: { id, login, email, api_token }, account
 | POST | `/day-plans/today/set-positions` | Reorder today's plan items (body: item_ids* — complete ordered array of item IDs; assigns position=1-based index to each). Empty array is valid. Subset allowed — only provided items get updated positions. Auto-creates today's plan if needed. Returns `{ "data": { "success": true } }`. | "reorder today", "sort plan", "drag to reorder", "set item order", "change order of today's items" | — |
 | POST | `/day-plans/today/items/{item_id}/set-quadrant-position` | Assign an Eisenhower quadrant to an item on today's plan, keyed by item_id (body: quadrant* — one of: urgent_important, not_urgent_important, urgent_not_important, not_urgent_not_important, unassigned). Returns `{ data: { action, quadrant_position } }` where quadrant_position is 1–4 (or 0 for unassigned). 404 if item not on today's plan. | "put in quadrant", "assign to Q1", "set quadrant", "prioritize to urgent", "Eisenhower quadrant", "move to do first", "unassign quadrant" | `/prioritizer/quadrants` |
 | GET | `/day-plans/upcoming-actions` | Flat list of every action on the caller's day plans dated today or later (no upper bound). Runs the idempotent prep gate first (auto-creates today's plan, inserts daily-recurring items, rolls over prior-day actions — at most once per day). Returns non-deferred actions (`deferred_to_date IS NULL`) whose item status is active/blocked/realized/review. Excludes #parkinglot items and non-active priority-tagged items. Each row includes `day_plan_date` (YYYY-MM-DD) for client-side bucketing — Today / This Week / Next Week / Later. No query parameters. Response: `{ data: [...] }` with the same V2_ITEM_SELECT item projection as `/day-plans/today`. Use for the day/week column view; use `upcoming-tasks` for the Timeline view. | "upcoming day plan actions", "what's on my schedule next few weeks", "day/week column view", "my future plans", "upcoming planned tasks", "what have I planned" | — |
-| GET | `/day-plans/{date}` | Plan by date (YYYY-MM-DD). Priority-tag filter applied (same rule as `/day-plans/today`): non-active priority-tagged items are excluded. Supports the same `?show=` query param as `/day-plans/today` (`everything`, `must`, `not deferred and completed`). | "show plan for Monday", "last Friday's plan" | `/day-plans/{date}` |
-| GET | `/day-plans/{date}/items` | Items by date (params: page, per_page, q, include_archived) | "items for that day", "what was on Monday" | `/day-plans/{date}` |
-| POST | `/day-plans/{date}/items` | Create item in date's plan (plan must already exist) | "add to that day's plan" | `/items/{item_id}` |
-| PUT | `/day-plans/{date}/items/{item_id}` | Attach existing item to date (plan must already exist, body: position?) | "attach to that plan" | `/day-plans/{date}` |
-| PATCH | `/day-plans/{date}/items/{item_id}` | Toggle completion (body: completed*) | "check off for that day" | `/day-plans/{date}` |
+| GET | `/day-plans/{date}` | Plan by date (YYYY-MM-DD). Priority-tag filter applied (same rule as `/day-plans/today`): non-active priority-tagged items are excluded. Supports the same `?show=` query param as `/day-plans/today` (`everything`, `must`, `not deferred and completed`). | "show plan for Monday", "last Friday's plan" | `/prioritizer` |
+| GET | `/day-plans/{date}/items` | Items by date (params: page, per_page, q, include_archived) | "items for that day", "what was on Monday" | `/prioritizer` |
+| POST | `/day-plans/{date}/items` | Create item in date's plan (plan must already exist) | "add to that day's plan" | `/?item={item_id}` |
+| PUT | `/day-plans/{date}/items/{item_id}` | Attach existing item to date (plan must already exist, body: position?) | "attach to that plan" | `/prioritizer` |
+| PATCH | `/day-plans/{date}/items/{item_id}` | Toggle completion (body: completed*) | "check off for that day" | `/prioritizer` |
 | DELETE | `/day-plans/{date}/items/{item_id}` | Remove from plan (keeps item) | "remove from that day" | — |
 | POST | `/day-plans/{date}/items/{item_id}/set-quadrant-position` | Assign an Eisenhower quadrant to an item on a specific date's plan, keyed by item_id (body: quadrant* — one of: urgent_important, not_urgent_important, urgent_not_important, not_urgent_not_important, unassigned). Returns `{ data: { action, quadrant_position } }`. 400 if date invalid. 404 if no plan for date or item not on that plan. | "set quadrant for past day", "assign quadrant for date" | — |
 | POST | `/day-plan-actions/{id}/set-quadrant-position` | Assign an Eisenhower quadrant to a day-plan action, keyed by action id (body: quadrant* — same enum as above). Returns `{ data: { action, quadrant_position } }`. Legacy endpoint — prefer item-keyed variants when you have item_id. | "set action quadrant" | — |
@@ -886,7 +887,7 @@ Behavioral notes:
 | GET | `/1-on-1/{id}/items` | All meeting items (params: creator_id?, page, per_page, q, include_archived) | "meeting items", "what's on the agenda" | `/1-on-1/{id}` |
 | GET | `/1-on-1/{id}/items/{section}` | Items by section (params: creator_id?, page, per_page, q, include_archived). Section: `next`, `blocked`. | "meeting next items", "meeting blockers", "meeting issues" | `/1-on-1/{id}` |
 | GET | `/1-on-1/{id}/done` | Done items (params: since? YYYY-MM-DD, page, per_page) | "meeting done items", "completed items", "done since date" | `/1-on-1/{id}` |
-| POST | `/1-on-1/{id}/items` | Create item in meeting (body: name*, column? — `next`/`blocked`/`done`, default `next`; description? — HTML body) | "add to meeting", "new meeting item", "add to 1:1" | `/items/{item_id}` |
+| POST | `/1-on-1/{id}/items` | Create item in meeting (body: name*, column? — `next`/`blocked`/`done`, default `next`; description? — HTML body) | "add to meeting", "new meeting item", "add to 1:1" | `/?item={item_id}` |
 | POST | `/1-on-1/{id}/align` | Align a measure, goal, or item to the session (body: alignable_type* — `Measure`, `Goal`, or `Item`; alignable_id*). Idempotent. Use `alignable_type: "Item"` to attach an existing item to the meeting — there is NO `PUT /1-on-1/{id}/items/{item_id}` endpoint. | "attach to meeting", "link item to 1:1", "add existing item to meeting", "align to 1:1", "track goal in 1:1", "add measure to meeting" | `/1-on-1/{id}` |
 | POST | `/1-on-1/{id}/unalign` | Remove an alignment from the session (body: alignable_type*, alignable_id*). For Goals, cascades to remove their KeyResults. | "unalign from 1:1", "stop tracking in meeting", "remove goal from 1:1" | `/1-on-1/{id}` |
 | DELETE | `/1-on-1/{id}/items/{item_id}` | Remove an item from the meeting by URL param (keeps the item). Equivalent to unalign with `alignable_type: "Item"`. Returns 204. | "remove from meeting", "detach from 1:1" | — |
@@ -1034,7 +1035,7 @@ Seats represent positions on a team's accountability chart. Each seat can have a
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/seats` | Get team accountability chart — full hierarchical tree (params: `include_archived`, `context`). Pass `?context=organization` to resolve the org root from the team ID and return the full org-level seat tree (for accountability charts visible to subteam members); omit for team-scoped results (default). Each node includes `roles` (string[] | null) and `seat_level` ("leadership_team"\|"department"\|"individual_contributor"\|null). | "show org chart", "accountability chart", "team seats", "who does what", "org-level seat tree", "full organization chart" | `/teams/{id}` |
+| GET | `/teams/{id}/seats` | Get team accountability chart — full hierarchical tree (params: `include_archived`, `context`). Pass `?context=organization` to resolve the org root from the team ID and return the full org-level seat tree (for accountability charts visible to subteam members); omit for team-scoped results (default). Each node includes `roles` (string[] | null) and `seat_level` ("leadership_team"\|"department"\|"individual_contributor"\|null). | "show org chart", "accountability chart", "team seats", "who does what", "org-level seat tree", "full organization chart" | `/plugins/accountability-chart` |
 | GET | `/users/{id}/seats` | Flat list of seats owned by user `id`, scoped to teams the requester can access (teams where requester is a member or admin; others are silently excluded). Returns same `SeatTreeNode` shape as `/teams/{id}/seats` but `children` is always `[]`. Param: `include_archived` (boolean, default false — when true each node has `archived: true`). Errors: 400 (invalid id), 401 (no auth), 404 (user not found). | "seats for user", "what seats does this person own", "user's positions on org chart" | — |
 | POST | `/seats` | Create seat (body: name*, team_id or parent_id, accountabilities?, notes?, seat_owner_id?, associated_team_id?). Root requires team_id; child requires parent_id. One root per team. | "create seat", "add position", "new role on chart" | — |
 | GET | `/seats/{id}` | Get seat detail (children as SeatSimple, one level deep). Includes `roles`, `seat_level`, and `has_direct_reports` (boolean, computed). | "show seat", "seat details", "position details" | — |
@@ -1102,7 +1103,7 @@ Team scorecard measures are KPIs tracked weekly on a team's scorecard. Each meas
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/measures` | List all measures for a team with weekly history (params: year?, include_archived?, owner_id?). Results sorted ascending by `position`. | "show scorecard", "list measures", "team KPIs", "team measurables", "scorecard measures", "weekly metrics", "what are our KPIs" | `/teams/{id}` |
+| GET | `/teams/{id}/measures` | List all measures for a team with weekly history (params: year?, include_archived?, owner_id?). Results sorted ascending by `position`. | "show scorecard", "list measures", "team KPIs", "team measurables", "scorecard measures", "weekly metrics", "what are our KPIs" | `/components?tab=data` |
 | POST | `/teams/{id}/measures` | Create a new measure (body: measure wrapper with name*, unit?, direction?, target_value?, target_period? ("week"\|"month"\|"quarter"\|"year"; default "week"), aggregation_type? ("sum"\|"last"\|"average"; default "sum"), owner_id?, data_source_type? (default 0), roll_up_type? ("sum"\|"average"), roll_up_measure_ids? (integer[]), chart_type? (string — one of: `pie`, `progress_circle`, `progress_bar`, `trend`, `bar_chart`; omit or null for no preference)). Server auto-assigns `position = max(existing) + 1` (or 1 if first). | "add measure", "create KPI", "new measurable", "add scorecard item", "create metric", "set monthly target", "quarterly measure" | — |
 | PATCH | `/teams/{id}/measures/reorder` | Persist a new ordering for the team's active scorecard measures. Admin-only. Body: `{ "measure_ids": [int, ...] }` — must be the **complete** ordered list of every active (non-archived) measure ID for the team. Returns `{ "data": { "success": true, "count": N } }`. Statuses: 200 success, 403 non-admin, 422 incomplete/invalid list (missing IDs, duplicates, archived IDs, cross-team IDs, empty array). | "reorder measures", "reorder scorecard", "drag and drop measures", "change measure order", "rearrange KPIs", "sort scorecard measures" | — |
 | PATCH | `/measures/{id}` | Update measure fields (body: measure wrapper with name?, unit?, direction?, target_value?, target_period? ("week"\|"month"\|"quarter"\|"year"; omit to preserve, null rejected), aggregation_type? ("sum"\|"last"\|"average"; omit to preserve, null rejected), archived?, notes? (string\|null — sanitized HTML; omit to preserve, send null to clear), data_source_type?, roll_up_type? ("sum"\|"average"), roll_up_measure_ids? (integer[]), chart_type? (string — one of: `pie`, `progress_circle`, `progress_bar`, `trend`, `bar_chart`; omit key to preserve, send null to clear)). Use `archived: true` to soft-archive, `archived: false` to restore. | "update measure", "rename KPI", "change target", "edit measurable", "restore measure", "add measure notes", "set measure description notes", "clear measure notes", "set monthly target", "change measure period", "set aggregation", "make this a last-value measure" | — |
@@ -1133,7 +1134,7 @@ MeasureHistory fields: `id` (integer | null — null if no value recorded), `dat
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/targets` | Get team strategy tree (params: year?, quarter? — default current; use `"All"` or `0` for all) | "show strategy", "strategy tree", "goals and rocks", "team objectives", "OKRs", "V2MOM", "show rocks", "annual goals", "quarterly priorities", "show targets" | `/teams/{id}` |
+| GET | `/teams/{id}/targets` | Get team strategy tree (params: year?, quarter? — default current; use `"All"` or `0` for all) | "show strategy", "strategy tree", "goals and rocks", "team objectives", "OKRs", "V2MOM", "show rocks", "annual goals", "quarterly priorities", "show targets" | `/components?tab=traction` |
 
 TargetResponse: `{ "data": { "framework": string, "targets": TargetNode[], "unaligned": TargetNode[] } }`
 
@@ -1153,8 +1154,8 @@ TargetAssignee fields: `id`, `first_name` (string | null), `last_name` (string |
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/goals` | List yearly goals (params: year?) — available for all team types | "list goals", "show yearly goals", "annual goals", "1-year goals" | `/teams/{id}` |
-| POST | `/teams/{id}/goals` | Create a yearly goal (body: name*, achieve_by?, assignee_ids?) — EOS teams only | "create goal", "add yearly goal", "new annual goal" | `/teams/{id}` |
+| GET | `/teams/{id}/goals` | List yearly goals (params: year?) — available for all team types | "list goals", "show yearly goals", "annual goals", "1-year goals" | `/components?tab=traction` |
+| POST | `/teams/{id}/goals` | Create a yearly goal (body: name*, achieve_by?, assignee_ids?) — EOS teams only | "create goal", "add yearly goal", "new annual goal" | `/components?tab=traction` |
 | PATCH | `/goals/{id}` | Update a yearly goal (body: name?, description?, status?, achieve_by?, assignee_ids?) | "update goal", "rename goal", "mark goal complete", "change goal status" | — |
 | DELETE | `/goals/{id}` | Archive a yearly goal | "archive goal", "delete goal", "remove goal" | — |
 
@@ -1190,8 +1191,8 @@ All rock endpoints return `422 Unprocessable Entity` for non-EOS teams.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/rocks` | List quarterly rocks (params: year?, quarter?, parent_id?). Each rock includes `aligned_measurables` array (may be empty). | "list rocks", "show rocks", "quarterly rocks", "90-day priorities" | `/teams/{id}` |
-| POST | `/teams/{id}/rocks` | Create a rock (body: name*, parent_id?, assignee_ids?). **Permissions**: team admin, OR any member who can edit the parent 1-yr goal (when `parent_id` is set). No `parent_id` → admin-only. | "create rock", "add rock", "new quarterly rock" | `/teams/{id}` |
+| GET | `/teams/{id}/rocks` | List quarterly rocks (params: year?, quarter?, parent_id?). Each rock includes `aligned_measurables` array (may be empty). | "list rocks", "show rocks", "quarterly rocks", "90-day priorities" | `/components?tab=traction` |
+| POST | `/teams/{id}/rocks` | Create a rock (body: name*, parent_id?, assignee_ids?). **Permissions**: team admin, OR any member who can edit the parent 1-yr goal (when `parent_id` is set). No `parent_id` → admin-only. | "create rock", "add rock", "new quarterly rock" | `/components?tab=traction` |
 | PUT | `/rocks/{id}` | Align rock to a yearly goal (body: parent_id*). **Permissions**: creator, assignee, team admin, or member who can edit the parent 1-yr goal. | "align rock to goal", "link rock", "move rock under goal" | — |
 | PATCH | `/rocks/{id}` | Update a rock (body: name?, description?, status?, assignee_ids?). **Permissions**: creator, assignee, team admin, or member who can edit the parent 1-yr goal. | "update rock", "rename rock", "mark rock complete", "change rock status" | — |
 | DELETE | `/rocks/{id}` | Archive a rock. **Permissions**: creator, assignee, team admin, or member who can edit the parent 1-yr goal. | "archive rock", "delete rock", "remove rock" | — |
@@ -1273,8 +1274,8 @@ All milestone endpoints return `422 Unprocessable Entity` for non-EOS teams.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/milestones` | List milestones (params: parent_id? — **recommended**; year?, quarter? — **avoid, known bug**) | "list milestones", "show milestones", "deliverables" | `/teams/{id}` |
-| POST | `/teams/{id}/milestones` | Create a milestone (body: name*, parent_id?, due?). **Permissions**: team admin, OR any member who can edit the parent rock (when `parent_id` is set). No `parent_id` → admin-only. | "create milestone", "add milestone", "new deliverable" | `/teams/{id}` |
+| GET | `/teams/{id}/milestones` | List milestones (params: parent_id? — **recommended**; year?, quarter? — **avoid, known bug**) | "list milestones", "show milestones", "deliverables" | `/components?tab=traction` |
+| POST | `/teams/{id}/milestones` | Create a milestone (body: name*, parent_id?, due?). **Permissions**: team admin, OR any member who can edit the parent rock (when `parent_id` is set). No `parent_id` → admin-only. | "create milestone", "add milestone", "new deliverable" | `/components?tab=traction` |
 | PUT | `/milestones/{id}` | Align milestone to a rock (body: parent_id*). **Permissions**: creator, assignee, team admin, or member who can edit the parent rock. | "align milestone to rock", "link milestone", "move milestone under rock" | — |
 | PATCH | `/milestones/{id}` | Update a milestone (body: name?, description?, status?, due?). **Permissions**: creator, assignee, team admin, or member who can edit the parent rock. | "update milestone", "rename milestone", "mark milestone complete" | — |
 | DELETE | `/milestones/{id}` | Archive a milestone. **Permissions**: creator, assignee, team admin, or member who can edit the parent rock. | "archive milestone", "delete milestone", "remove milestone" | — |
@@ -1342,23 +1343,23 @@ The Vision/Traction Organizer (V/TO) covers six EOS components: core values, cor
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/eos-vision` | Get complete V/TO (all 6 sections in one call) | "show vision", "show V/TO", "vision traction organizer", "EOS vision", "show the VTO" | `/teams/{id}` |
-| GET | `/teams/{id}/core-values` | List core values | "show core values", "list core values", "our values" | `/teams/{id}` |
-| POST | `/teams/{id}/core-values` | Create core value (body: name*, description?) | "add core value", "create core value", "new value" | `/teams/{id}` |
+| GET | `/teams/{id}/eos-vision` | Get complete V/TO (all 6 sections in one call) | "show vision", "show V/TO", "vision traction organizer", "EOS vision", "show the VTO" | `/vision` |
+| GET | `/teams/{id}/core-values` | List core values | "show core values", "list core values", "our values" | `/vision` |
+| POST | `/teams/{id}/core-values` | Create core value (body: name*, description?) | "add core value", "create core value", "new value" | `/vision` |
 | PATCH | `/core-values/{valueId}` | Update core value (body: name?, description?) — standalone, no team prefix | "update core value", "edit value", "rename value" | — |
 | DELETE | `/core-values/{valueId}` | Delete core value — standalone, no team prefix | "delete core value", "remove value" | — |
-| GET | `/teams/{id}/eos-core-focus` | Get core focus (purpose + niche) | "show core focus", "what's our purpose", "our niche" | `/teams/{id}` |
-| PATCH | `/teams/{id}/eos-core-focus` | Update core focus (body: purpose?, niche?) | "update core focus", "set purpose", "change niche" | `/teams/{id}` |
-| GET | `/teams/{id}/eos-bhag` | Get BHAG (10-year target) | "show BHAG", "10-year target", "big hairy audacious goal" | `/teams/{id}` |
-| PATCH | `/teams/{id}/eos-bhag` | Update BHAG (body: text*) | "update BHAG", "set 10-year target", "change BHAG" | `/teams/{id}` |
-| GET | `/teams/{id}/eos-marketing-strategy` | Get marketing strategy | "show marketing strategy", "target market", "our uniques", "proven process", "guarantee" | `/teams/{id}` |
-| PATCH | `/teams/{id}/eos-marketing-strategy` | Update marketing strategy (body: targetMarket?, uniques?, provenProcess?, guarantee?) | "update marketing strategy", "set target market", "change uniques" | `/teams/{id}` |
-| GET | `/teams/{id}/eos-three-year-picture` | Get three-year picture | "show three-year picture", "3-year picture", "where we'll be in 3 years" | `/teams/{id}` |
-| PATCH | `/teams/{id}/eos-three-year-picture` | Update three-year picture (body: description?, futureDate?, revenue?, profit?, measurables?) | "update three-year picture", "set 3-year picture" | `/teams/{id}` |
-| GET | `/teams/{id}/eos-plans` | Get all year/quarter plans | "show plans", "annual plan", "quarterly plan", "year plans" | `/teams/{id}` |
-| GET | `/teams/{id}/eos-plans/{year}` | Get plans for a specific year | "show 2026 plans", "plans for this year" | `/teams/{id}` |
-| GET | `/teams/{id}/eos-plans/{year}/{quarter}` | Get specific quarter plan (quarter: 0=annual, 1-4=Q1-Q4) | "show Q1 plan", "annual plan for 2026" | `/teams/{id}` |
-| PATCH | `/teams/{id}/eos-plans/{year}/{quarter}` | Update year/quarter plan (body: text, date, revenue, profit, measures — all string or null) | "update Q1 plan", "set annual plan", "change quarterly plan" | `/teams/{id}` |
+| GET | `/teams/{id}/eos-core-focus` | Get core focus (purpose + niche) | "show core focus", "what's our purpose", "our niche" | `/vision` |
+| PATCH | `/teams/{id}/eos-core-focus` | Update core focus (body: purpose?, niche?) | "update core focus", "set purpose", "change niche" | `/vision` |
+| GET | `/teams/{id}/eos-bhag` | Get BHAG (10-year target) | "show BHAG", "10-year target", "big hairy audacious goal" | `/vision` |
+| PATCH | `/teams/{id}/eos-bhag` | Update BHAG (body: text*) | "update BHAG", "set 10-year target", "change BHAG" | `/vision` |
+| GET | `/teams/{id}/eos-marketing-strategy` | Get marketing strategy | "show marketing strategy", "target market", "our uniques", "proven process", "guarantee" | `/vision` |
+| PATCH | `/teams/{id}/eos-marketing-strategy` | Update marketing strategy (body: targetMarket?, uniques?, provenProcess?, guarantee?) | "update marketing strategy", "set target market", "change uniques" | `/vision` |
+| GET | `/teams/{id}/eos-three-year-picture` | Get three-year picture | "show three-year picture", "3-year picture", "where we'll be in 3 years" | `/vision` |
+| PATCH | `/teams/{id}/eos-three-year-picture` | Update three-year picture (body: description?, futureDate?, revenue?, profit?, measurables?) | "update three-year picture", "set 3-year picture" | `/vision` |
+| GET | `/teams/{id}/eos-plans` | Get all year/quarter plans | "show plans", "annual plan", "quarterly plan", "year plans" | `/team-rhythm-quarterly` |
+| GET | `/teams/{id}/eos-plans/{year}` | Get plans for a specific year | "show 2026 plans", "plans for this year" | `/team-rhythm-quarterly` |
+| GET | `/teams/{id}/eos-plans/{year}/{quarter}` | Get specific quarter plan (quarter: 0=annual, 1-4=Q1-Q4) | "show Q1 plan", "annual plan for 2026" | `/team-rhythm-quarterly` |
+| PATCH | `/teams/{id}/eos-plans/{year}/{quarter}` | Update year/quarter plan (body: text, date, revenue, profit, measures — all string or null) | "update Q1 plan", "set annual plan", "change quarterly plan" | `/team-rhythm-quarterly` |
 
 **Composite GET `/eos-vision` response shape**:
 ```json
