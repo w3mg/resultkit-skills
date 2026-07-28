@@ -8,8 +8,6 @@ Deep links: `?item={id}` opens the item detail sidebar appended to ANY authentic
 Auth: Bearer token in `Authorization` header or `token` query param. Find your token in your profile settings at https://resultkit.ai/customize.
 Interactive docs: <https://api.resultmaps.com/api-docs/v2>
 
-> **V1 endpoints**: Some newer endpoints use `/api/v1/` paths. When calling via `api.sh`, pass the full versioned path (e.g., `/api/v1/items/{id}/attachments`). The script detects paths starting with `/api/` and automatically strips the `/v2` suffix from the base URL.
-
 ## Common Query Parameters
 
 Many list endpoints accept these shared params:
@@ -98,18 +96,16 @@ Flat routes that work for comments on any surface (Items, Projects, Result Feed,
 - `DELETE` response: `{ data: { id, deleted: true } }`
 - 403 if non-author tries to edit, or non-author/non-admin tries to delete. 404 if comment not viewable (no existence leak). 422 on empty edit body.
 
-### Item Attachments (V1)
-
-> **Note**: These endpoints use the V1 API base. Pass the full versioned path to `api.sh` (e.g., `/api/v1/items/{id}/attachments`).
+### Item Attachments
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/api/v1/items/{id}/attachments` | List all attachments (files + links) on an item | "show attachments", "list files", "what's attached", "item files", "show linked URLs" | `/?item={id}` |
-| POST | `/api/v1/items/{id}/attachments` | Upload file attachment (multipart/form-data: file*, name?, description?). Max 4.5 MB. | "upload file", "attach file", "add attachment", "upload to item" | `/?item={id}` |
-| POST | `/api/v1/items/{id}/links` | Add URL link (body: url* HTTPS required, title?, description?, media_type_code?) | "add link", "attach URL", "add resource link", "link to item" | `/?item={id}` |
-| DELETE | `/api/v1/attachments/{material_id}` | Delete file attachment. Use `material_id` from list response. | "delete attachment", "remove file", "delete file from item" | — |
-| GET | `/api/v1/attachments/{material_id}/download` | Download file — 302 redirect to pre-signed S3 URL (5-min expiry). Use `material_id`. | "download file", "get file", "download attachment" | — |
-| DELETE | `/api/v1/links/{material_id}` | Delete URL link. Use `material_id` from list response. | "delete link", "remove link", "remove URL from item" | — |
+| GET | `/items/{id}/attachments` | List all attachments (files + links) on an item | "show attachments", "list files", "what's attached", "item files", "show linked URLs" | `/?item={id}` |
+| POST | `/items/{id}/attachments` | Upload file attachment (multipart/form-data: file*, name?, description?). Max 4.5 MB. | "upload file", "attach file", "add attachment", "upload to item" | `/?item={id}` |
+| POST | `/items/{id}/links` | Add URL link (body: url* HTTPS required, title?, description?, media_type_code?) | "add link", "attach URL", "add resource link", "link to item" | `/?item={id}` |
+| DELETE | `/attachments/{material_id}` | Delete file attachment. Use `material_id` from list response. | "delete attachment", "remove file", "delete file from item" | — |
+| GET | `/attachments/{material_id}/download` | Download file — 302 redirect to pre-signed S3 URL (5-min expiry). Use `material_id`. | "download file", "get file", "download attachment" | — |
+| DELETE | `/links/{material_id}` | Delete URL link. Use `material_id` from list response. | "delete link", "remove link", "remove URL from item" | — |
 
 Attachment list response: `{ "attachments": [AttachmentEntry] }`. Empty list: `{ "attachments": [] }`.
 
