@@ -8,3 +8,4 @@ Thumbs.db
 .env*
 
 .claude/worktrees/
+.claude/skills/BDD-spec-skill/
