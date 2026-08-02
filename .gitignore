@@ -1,11 +1,6 @@
 .DS_Store
 Thumbs.db
+*.log
 *.tmp
 *.swp
-*.log
-.vscode/
-.idea/
 .env*
-
-.claude/worktrees/
-.claude/skills/BDD-spec-skill/
