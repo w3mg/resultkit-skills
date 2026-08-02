@@ -11,6 +11,8 @@ description: >
 allowed-tools: Read, Glob, Grep
 ---
 
+**Last updated:** 2026-05-09.
+
 # ResultMaps Concepts
 
 ResultMaps is a business operating system for team alignment. It helps organizations set direction, track execution, and run meetings — all adapted to whichever management framework the team uses.
