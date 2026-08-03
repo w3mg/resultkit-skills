@@ -3,7 +3,13 @@ name: rkit:columns
 description: Day Plan Columns — read the custom columns on the Custom tab of your personal Prioritizer — which columns you have, what's open in each, and what you've completed in them. Use this skill whenever someone asks about their day plan columns, custom columns, planner columns, or planner buckets — "show me my columns", "show me my columns and what's in each", "what's in my columns", "what's in each column", "list my columns", "show custom columns", "show planner columns", "what are my planner buckets", "my day plan columns", "what's done in my columns", "what have I completed in my columns". Follow-ups inside an already-open columns conversation ("the 3 from each", "the complete list", "the rest of {column}", "3 months", "6 months") are routed by this skill's Tool Routing Table once it is loaded — they are deliberately not listed here, because on their own they say nothing about columns. Read-only — it never adds, completes, moves, renames, or deletes anything.
 # NOTE: `disable-model-invocation` is deliberately absent here, unlike the other 20 rkit skills — the locked BDD (https://resultkit.ai/pages/55) has the user invoke this skill by typing a plain sentence, so it must stay model-invocable. Do not "fix" this to match the siblings.
 user-invocable: true
-allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep
+allowed-tools: Bash(*/skills/columns/scripts/api.sh GET *), Bash(jq *), Read, Glob, Grep
+# NOTE: the api.sh pattern is deliberately unlike the siblings' `Bash(scripts/api.sh *)`. That
+# relative pattern does not match this skill's invocations, which use the resolved absolute path;
+# verified 2026-08-03 that it is denied. `*/skills/columns/scripts/api.sh GET *` matches every
+# install location (plugin cache, $CLAUDE_PLUGIN_ROOT, ./skills/..., ./.claude/skills/...), matches
+# both the bare and the relative form, and denies both another script's path and any verb other than
+# GET — so the read-only invariant is enforced at the permission layer, not just by prose.
 ---
 
 # rkit:columns
@@ -13,16 +19,16 @@ Reads the personal planner's day-plan custom columns. **Read-only.**
 ## Current State
 
 - Config: !`if [ -f "$HOME/.config/resultkit/config.json" ] && jq empty "$HOME/.config/resultkit/config.json" 2>/dev/null; then echo "EXISTS"; jq '{token_masked: (.api_token[:3] + "..." + .api_token[-4:]), default_team_id, api_base}' "$HOME/.config/resultkit/config.json"; else echo "MISSING — run /rkit:setup"; fi`
-- api.sh: !`echo "${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/columns/scripts/api.sh}" | xargs -I{} sh -c '[ -f "{}" ] && echo "{}" && exit 0; for p in "$HOME/.claude/plugins/cache/"*/rkit/*/skills/columns/scripts/api.sh "$HOME/.claude/skills/rkit:columns/scripts/api.sh" "$HOME/.agents/skills/columns/scripts/api.sh" "$HOME/.gemini/skills/columns/scripts/api.sh" "scripts/api.sh"; do [ -f "$p" ] && echo "$p" && exit 0; done; echo "NOT_FOUND"'`
+- api.sh: !`CACHE=$(ls -1d "$HOME"/.claude/plugins/cache/*/rkit/*/skills/columns/scripts/api.sh 2>/dev/null | sort -rV | head -1); for p in "${CLAUDE_PLUGIN_ROOT}/skills/columns/scripts/api.sh" "$CACHE" "./skills/columns/scripts/api.sh" "./.claude/skills/columns/scripts/api.sh" "$HOME/.claude/skills/rkit:columns/scripts/api.sh" "$HOME/.agents/skills/columns/scripts/api.sh" "$HOME/.gemini/skills/columns/scripts/api.sh"; do [ -f "$p" ] && { echo "$p"; exit 0; }; done; echo "NOT_FOUND"`
 
 ## Rules
 
 - **The templates are law.** Every reply below is locked wording — https://resultkit.ai/pages/55, 8 scenarios locked 2026-08-02. Reproduce the wording, punctuation, blank lines, and ordering exactly. Substitute counts and names; change nothing else. No preamble, no sign-off, no extra commentary, no headings, no bold, no item IDs, no dates, no emoji.
 - **Emit as plain lines**, not inside a code fence and not as a table. The fences below mark where each template starts and stops.
-- **Read-only skill.** GETs only. Never POST, PATCH, PUT, or DELETE. The closing offers ("check anything off", "add anything new", "create") are conversational — if the user takes one up, hand off to the skill that owns that action (`rkit:today` for day-plan writes). No rkit skill owns column creation (`POST /day-plan-columns`), so the "create" offer has no handoff target — that is an uncovered case, listed in `references/day-plan-columns-api.md`. This skill never writes.
+- **Read-only skill.** GETs only. Never POST, PATCH, PUT, or DELETE. (`GET /day-plans/today` materializes today's plan server-side as part of serving it — idempotent, and exactly what the Custom tab triggers. That is the server populating a plan, not this skill writing.) The closing offers ("check anything off", "add anything new", "create") are conversational — if the user takes one up, hand off to the skill that owns that action (`rkit:today` for day-plan writes). No rkit skill owns column creation (`POST /day-plan-columns`), so the "create" offer has no handoff target — that is an uncovered case, listed in `references/day-plan-columns-api.md`. This skill never writes.
 - **Never ask before reading.** GETs execute immediately. Never use AskUserQuestion — the offers are literal reply lines, not prompts.
-- **No fan-out.** One `GET /day-plan-columns` and, for done flows, one `GET /day-plan-completions`. Never one call per date, per column, or per month.
-- **Board order everywhere.** `/day-plan-columns` returns columns already sorted by `position` — that is the Custom-tab order the user sees. Render columns in the order returned, in every reply. Within a column, render items in the order returned.
+- **No fan-out.** Two GETs in a fixed order — `GET /day-plans/today`, then `GET /day-plan-columns` — and, for done flows, one more `GET /day-plan-completions`. Never one call per date, per column, or per month.
+- **Board order everywhere.** `/day-plan-columns` returns columns already sorted by `position` — that is the Custom-tab order the user sees. Render columns in the order returned, in every reply. Within a column, render items in the order returned. The **Not categorized** group always renders *before* the first column, because that is where the Custom tab puts it.
 
 ---
 
@@ -63,34 +69,63 @@ The done flows are a **separate branch**. They are entered by an explicit done a
 
 ## Flows
 
-### Shared step — fetch the columns
+### Shared step — fetch today's plan, then the columns
 
-Every flow starts here.
+Every flow starts here. **Two GETs, in this exact order.** This is the order the Custom tab itself issues, and the order is load-bearing.
+
+**1. Today's plan — always first.**
 
 ```bash
-API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" GET "/day-plan-columns")
-echo "$RESPONSE"
+"<api.sh path>" GET "/day-plans/today"
 ```
 
-Read columns from `body.data`. Then:
+**2. The columns — second.**
 
-- `body.data` is **empty** → run `no_columns`. Stop.
-- Otherwise, for each column, **open items = `items` where `completed == false`**. Completed items are dropped here, once, and are invisible to every open-item flow below.
+```bash
+"<api.sh path>" GET "/day-plan-columns"
+```
+
+**Why the order matters.** `/day-plans/today` auto-creates and populates today's plan when it does not exist yet (idempotent `populateDayPlan` server-side). The items embedded in `/day-plan-columns` are scoped to today's plan, so on a fresh day — before anything has materialized that plan — calling `/day-plan-columns` first returns **every column with `items: []`**, and the skill reports an empty board that is not empty. Fetching today first is what prevents that. Never reverse them, and never skip step 1.
+
+**Issue them as two separate Bash calls, each a bare invocation** — exactly as written above. Do not chain them with `&&`, `;`, or a pipe; do not assign the path to a shell variable; do not wrap the call in `$( )`; do not append `echo`. The skill's `allowed-tools` permits only the bare `GET` form, and anything else is denied.
+
+Read today's items from `body.data.items` (step 1) and the columns from `body.data` (step 2). Then compute, once:
+
+- **Open items in a column** = that column's `items` where `completed == false`. Completed items are dropped here, once, and are invisible to every open-item flow below.
+- **Not categorized** = today's items where `completed == false` **and** whose `id` does not appear in any column's `items[]`. It is a **set difference the caller computes** — no endpoint returns this bucket, and the Custom tab builds it the same way.
+- `TOTAL` = the Not categorized open count **plus** the open counts of all columns.
+
+Then:
+
+- `body.data` from `/day-plan-columns` is **empty** → run `no_columns`. Stop. Nothing else renders — not the columns, not the Not categorized group, not a single day-plan item.
+
+---
+
+### The "Not categorized" group
+
+**Ruled by Scott 2026-08-03 (UI parity) — not page-55-locked.** The eight locked templates below are unchanged and stay byte-frozen. Their fixtures hold zero uncategorized items, so a Not categorized group never appears in any of them; nothing here contradicts them.
+
+- **Position: first.** It renders above every column in `summary`, `three_from_each`, and `complete_list` — the leftmost lane on the Custom tab.
+- **Label:** exactly `Not categorized`. In `summary` the line reads `- Not categorized — N open`. In the drill-in flows the header reads `Not categorized — N open`, or `Not categorized — N open (showing 3)` when truncated.
+- **Open-only counting, like every column.** The Custom tab's own badge counts completed items too — **do not copy that.** The locked invariants exclude completed items from every count in every reply.
+- **It participates in `TOTAL`.**
+- **Zero open uncategorized items → it does not render at all.** No `— 0 open` line, and it is never named under "These columns have no open items:" — it is not a column. With nothing uncategorized, every reply is byte-identical to the locked templates.
+- **Truncation and the closing offer treat it exactly like a column.** 4+ open in `three_from_each` → first 3 only, header `Not categorized — N open (showing 3)`. If it is the only truncated group, the locked Scenario 2b closing line substitutes its name: `Want the rest of Not categorized, or the complete list from every column?` — substitution into locked wording, nothing new.
 
 ---
 
 ### summary
 
-Fetch the columns. Let `TOTAL` = the sum of open items across all columns.
+Run the shared step. `TOTAL` = Not categorized open + the sum of open items across all columns.
 
 Split the columns, keeping board order in both groups:
-- **With open items** — one line each in the top list.
+- **With open items** — one line each in the top list, under the Not categorized line.
 - **With no open items** — named in the "no open items" chunk. This covers a column holding nothing *and* a column holding only completed items. They read identically.
 
 ```
 Your day plan columns — TOTAL open items total
 
+- Not categorized — N open
 - COLUMN — N open
 - COLUMN — N open
 
@@ -101,7 +136,7 @@ These columns have no open items:
 Want the 3 from each column (names/descriptions), or the complete list from each?
 ```
 
-Omit the "These columns have no open items:" chunk and its preceding blank line when every column has at least one open item. **Inferred, not locked** — every locked scenario has at least one column with no open items, so no scenario shows what the reply looks like without that chunk. Keep this behavior until a scenario locks it.
+The `- Not categorized — N open` line is present only when there is at least one uncategorized open item, and is always the **first** line of the top list. Omit the "These columns have no open items:" chunk and its preceding blank line when every column has at least one open item. **Inferred, not locked** — every locked scenario has at least one column with no open items, so no scenario shows what the reply looks like without that chunk. Keep this behavior until a scenario locks it.
 
 **Locked example** (Scenario 1 — Deep Work 3 open + 1 completed, Code Review 2, Quick Hits 1, Waiting On 1 completed only, Someday empty):
 
@@ -119,21 +154,25 @@ These columns have no open items:
 Want the 3 from each column (names/descriptions), or the complete list from each?
 ```
 
-The total reads 6, not 7 — the completed "Review Alya's ops intake spec" is neither shown nor counted.
+The total reads 6, not 7 — the completed "Review Alya's ops intake spec" is neither shown nor counted. Evan has nothing uncategorized in this fixture, so no Not categorized line renders and the reply is exactly the locked one.
 
 ---
 
 ### three_from_each
 
-Fetch the columns. Same `TOTAL` and same split as `summary`.
+Run the shared step. Same `TOTAL` and same split as `summary`.
 
-For each column with open items, in board order: a header line, then **at most the first 3** open items in the order returned.
+For the Not categorized group first (when it has open items), then each column with open items in board order: a header line, then **at most the first 3** open items in the order returned.
 
 - 3 or fewer open → header `COLUMN — N open`, list all of them.
 - More than 3 open → header `COLUMN — N open (showing 3)`, list the first 3 only. `N` is the full open count, not 3.
 
 ```
 Your day plan columns — TOTAL open items total
+
+Not categorized — N open
+- ITEM
+- ITEM
 
 COLUMN — N open
 - ITEM
@@ -151,7 +190,7 @@ These columns have no open items:
 Want the rest of COLUMN, or the complete list from every column?
 ```
 
-The closing offer appears **only when at least one column was truncated**. With nothing truncated the reply ends after the "no open items" chunk — no closing line at all.
+The closing offer appears **only when at least one group was truncated** — the Not categorized group counts as a group for this purpose. With nothing truncated the reply ends after the "no open items" chunk — no closing line at all.
 
 Scenario 2b locks that closing line for **exactly one** truncated column ("Want the rest of Deep Work, or the complete list from every column?"). With two or more truncated columns in the same reply, the wording is **not locked** — that is an open spec question, not a rendering decision. See "Cases the locked spec does not cover" in `references/day-plan-columns-api.md`.
 
@@ -207,12 +246,16 @@ Deep Work's other four open items are not listed, though the count reads "7 open
 
 ### complete_list
 
-Fetch the columns. Same `TOTAL` and same split as `summary`.
+Run the shared step. Same `TOTAL` and same split as `summary`.
 
-For each column with open items, in board order: header `COLUMN — N open`, then **every** open item in the order returned. Nothing is truncated and nothing ever reads "(showing 3)".
+For the Not categorized group first (when it has open items), then each column with open items in board order: header `COLUMN — N open`, then **every** open item in the order returned. Nothing is truncated and nothing ever reads "(showing 3)".
 
 ```
 Your day plan columns — TOTAL open items total
+
+Not categorized — N open
+- ITEM
+- ITEM
 
 COLUMN — N open
 - ITEM
@@ -286,22 +329,24 @@ The closing line offers **actions**, never more listing. A complete-list reply n
 
 ### whats_done
 
-Fetch the columns (for board order and for the empty-columns check), then fetch the completions for the default window — **no `months` param**:
+Run the shared step (the columns response supplies board order and the empty-columns check), then fetch the completions for the default window — **no `months` param**. A third bare Bash call:
 
 ```bash
-API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" GET "/day-plan-completions")
-echo "$RESPONSE"
+"<api.sh path>" GET "/day-plan-completions"
 ```
 
 Read completions from `body.data`. Then:
 
-- **Drop every completion whose `column` is `null`** *(interim — spec question pending)* — it sits in no day plan column, so it belongs to no group and is not counted. No locked scenario presents one; this is the interim rule, recorded as an open spec question in "Cases the locked spec does not cover" in `references/day-plan-columns-api.md`.
-- Group the rest by `column.name`. Order the groups by **board order** from `/day-plan-columns`. Within a group keep the order returned (most recent first).
-- `TOTAL` = the number of completions left after the drop.
+- **A completion whose `column` is `null` goes into the `Not categorized` group** — *ruled by Scott 2026-08-03 (UI parity), not page-55-locked. This replaces the old interim "drop it" rule.* It renders as the **first** group, above every column, headed `Not categorized — N completed`, and it **is counted in `TOTAL`**. Nothing is dropped.
+- Group the rest by `column.name`. Order the groups by **board order** from `/day-plan-columns`, after the Not categorized group. Within a group keep the order returned (most recent first).
+- `TOTAL` = every completion returned in the window, Not categorized included.
+- With no `column: null` completions in the window the Not categorized group does not render at all — no `— 0 completed` header — and the reply is byte-identical to the locked template.
 
 ```
 Done in your day plan columns — TOTAL completed items in the last 30 days
+
+Not categorized — N completed
+- ITEM
 
 COLUMN — N completed
 - ITEM
@@ -326,7 +371,7 @@ Waiting On — 1 completed
 Would you like me to extend my search to the last 3 or 6 months?
 ```
 
-Only columns with completions appear. There is **no** "These columns have no completed items" chunk. No open item is named or counted. No "Want to check anything off or add anything new?" offer.
+Only groups with completions appear. There is **no** "These columns have no completed items" chunk. No open item is named or counted. No "Want to check anything off or add anything new?" offer. Fixture C carries no `column: null` completion, so no Not categorized group renders and the reply is exactly the locked one.
 
 ---
 
@@ -341,7 +386,7 @@ Only from a done offer. Re-fetch with the window the user named:
 
 † The 6-month row is a **number-substitution inference, not locked**. Scenario 4b locks `months=3` only — the header "in the last 3 months" and the closing "…the past 6 months?". The 6-month reply substitutes `6` into that same locked header phrase and closes with nothing, since no further extension is offered. Substitution only, never new wording.
 
-Same grouping, same drop of `column: null`, same board order as `whats_done`.
+Same grouping, same `Not categorized` handling for `column: null`, same board order as `whats_done`.
 
 ```
 Done in your day plan columns — TOTAL completed items in the last 3 months
@@ -401,10 +446,10 @@ Offered by a truncated `three_from_each`, but **no scenario locks a reply for it
 
 These hold in every reply. A reply that breaks one is wrong even if it looks right.
 
-1. **Open counts exclude completed items.** Filter `completed == false` once at fetch, then count and list from that. A column's count and the running total are both open-only.
-2. **No column ever renders "— 0 open".** A column with no open items is named only under "These columns have no open items:" — never as a zero-count line, never with an empty item list.
+1. **Open counts exclude completed items.** Filter `completed == false` once at fetch, then count and list from that. A column's count, the Not categorized count, and the running total are all open-only. The Custom tab's badge counts completed items as well — that is the one place this skill deliberately does **not** match the UI.
+2. **No group ever renders "— 0 open".** A column with no open items is named only under "These columns have no open items:" — never as a zero-count line, never with an empty item list. The Not categorized group with no open items renders **nowhere at all**: not as a zero line and not in that chunk, because it is not a column.
 3. **Completed items are invisible to the open-item flows.** `summary`, `three_from_each`, and `complete_list` never name a completed item, never count one, and never mark one as done.
-4. **Truncation is exactly 3.** More than 3 open in `three_from_each` → first 3 only, header `— N open (showing 3)` with the full `N`. Exactly 3 or fewer → no "(showing 3)" on that column. The closing line is a property of the whole reply, not of one column: `Want the rest of COLUMN, or the complete list from every column?` appears when **at least one** column in the reply was truncated, and when **no** column was truncated the reply carries no closing line at all.
+4. **Truncation is exactly 3.** More than 3 open in `three_from_each` → first 3 only, header `— N open (showing 3)` with the full `N`. Exactly 3 or fewer → no "(showing 3)" on that group. The closing line is a property of the whole reply, not of one group: `Want the rest of COLUMN, or the complete list from every column?` appears when **at least one** group in the reply was truncated — Not categorized counts as a group — and when **nothing** was truncated the reply carries no closing line at all.
 5. **`complete_list` never truncates and never offers more listing.** It closes `Want to check anything off or add anything new?` — an action offer, never a drill-in.
 6. **The summary always closes** `Want the 3 from each column (names/descriptions), or the complete list from each?`
 7. **Done replies show only completed items.** No open item is named or counted. No "no completed items" chunk exists. No check-off/add offer.
@@ -412,7 +457,10 @@ These hold in every reply. A reply that breaks one is wrong even if it looks rig
 9. **Months language is exact.** Default window: "in the last 30 days", closing "Would you like me to extend my search to the last 3 or 6 months?". After extending: "in the last 3 months", closing "Would you like me to extend my search to the past 6 months?".
 10. **The no-columns fallback lists nothing.** One sentence, verbatim, and no day-plan items.
 11. **Names render verbatim.** Column names and item names exactly as the API returns them — no trimming, re-casing, re-wrapping, truncating, or tidying.
-12. **Nothing is written.** No endpoint outside the two GETs is ever called by this skill.
+12. **Nothing is written.** The only calls this skill ever makes are `GET /day-plans/today`, `GET /day-plan-columns`, and `GET /day-plan-completions`. No other endpoint and no other verb, ever.
+13. **`/day-plans/today` is fetched first, always.** Open-item flows read it for the Not categorized set difference; every flow relies on it having materialized today's plan before `/day-plan-columns` is read. Reversing the order, or skipping it, produces empty columns on a fresh day — the exact defect this ordering exists to prevent.
+14. **Every open item on today's plan is accounted for.** `TOTAL` equals the count of open items on today's plan. An item that is in no column appears under Not categorized; nothing is silently dropped.
+15. **Not categorized renders first.** Above every column, in the open-item flows and in the done flows alike. *(Invariants 14 and 15, and the Not categorized half of 1, 2 and 12–13: ruled by Scott 2026-08-03 for UI parity — not page-55-locked.)*
 
 ---
 
@@ -441,6 +489,6 @@ These hold in every reply. A reply that breaks one is wrong even if it looks rig
 
 ## References
 
-- [Day Plan Columns — Endpoint Reference](references/day-plan-columns-api.md) — both GETs, live-verified field names, the window→param mapping, and the cases the locked spec does not cover.
+- [Day Plan Columns — Endpoint Reference](references/day-plan-columns-api.md) — all three reads, the fixed call order, the Not categorized set-difference rule, live-verified field names, the window→param mapping, and the cases the locked spec does not cover.
 - [ResultMaps V2 API Reference](references/api-reference.md) — the whole V2 surface, including the write verbs on `/day-plan-columns` that this skill never calls. `/day-plan-completions` is **not** in the master yet; it is documented only in `references/day-plan-columns-api.md`.
 - Binding BDD: https://resultkit.ai/pages/55 — 8 scenarios, locked 2026-08-02. Never edit it.
