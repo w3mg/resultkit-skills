@@ -192,7 +192,7 @@ Want the rest of COLUMN, or the complete list from every column?
 
 The closing offer appears **only when at least one group was truncated** — the Not categorized group counts as a group for this purpose. With nothing truncated the reply ends after the "no open items" chunk — no closing line at all.
 
-Scenario 2b locks that closing line for **exactly one** truncated column ("Want the rest of Deep Work, or the complete list from every column?"). With two or more truncated columns in the same reply, the wording is **not locked** — that is an open spec question, not a rendering decision. See "Cases the locked spec does not cover" in `references/day-plan-columns-api.md`.
+Scenario 2b locks that closing line for **exactly one** truncated group ("Want the rest of Deep Work, or the complete list from every column?") — that single-truncated form is unchanged. **Ruled by Scott 2026-08-03, not page-55-locked:** when two or more groups are truncated in the same reply — Not categorized counts as a group here too — the closing line names every truncated group in display (board) order, joined with "and": exactly two groups reads `Want the rest of {A} and {B}, or the complete list from every column?`; three or more reads `Want the rest of {A}, {B}, and {C}, or the complete list from every column?`. Substitution into the same locked frame — nothing invented beyond the join. See "Cases the locked spec does not cover" in `references/day-plan-columns-api.md` — that entry is now marked RULED.
 
 **Locked example, nothing truncated** (Scenario 2):
 
