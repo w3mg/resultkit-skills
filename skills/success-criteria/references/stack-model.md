@@ -10,7 +10,7 @@ A *stack-model* doc describes one process, owned by one seat, from trigger to ha
 |---|---------|----------|
 | 1 | **Title** | The process, named as a process — *Lot Receiving and Teardown*, not *Receiving* |
 | 2 | **Success: Results Look Like…** | 3–6 checkbox criteria describing the world after the work |
-| 3 | **Team Context** | Owner (individual *and* seat), Background, and a Prior or Related Documents table |
+| 3 | **Team Context** | Owner (individual *and* seat), Background, and a Related Documents table |
 | 4 | **THE CHECKLIST** | Checkbox items — the steps someone performs, in order |
 | 5 | **Questions and Issues** | Table of open items: what's unresolved, who owns it, what it blocks |
 | 6 | **Related Information** *(optional)* | Links, screenshots, exceptions, edge cases that don't fit the checklist |
@@ -19,7 +19,7 @@ A *stack-model* doc describes one process, owned by one seat, from trigger to ha
 
 - **Owner** — the individual *and* the seat. The seat is what survives turnover; the individual is who to ask today.
 - **Background** — why this process exists and what breaks without it. Short.
-- **Prior or related Documents** — a table with columns `Title | Importance | What it is / notes`. Importance is the reader's routing hint: read-first, reference-only, superseded.
+- **Related Documents** — a table with columns `Title | Importance | What it is / notes`. Importance is the reader's routing hint: read-first, reference-only, superseded.
 
 ## Where Success Criteria sits, and why
 
