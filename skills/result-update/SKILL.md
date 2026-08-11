@@ -1,7 +1,6 @@
 ---
 name: rkit:result-update
 description: Compose and submit your daily check-in — the 90-second update practice. Add and remove items in done/next/blocked sections, then submit to share with your team. Use this skill when users want to write their daily update, compose a check-in, add items to their update, submit their daily report, or share progress with the team.
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Bash(date *), Read, Glob, Grep, AskUserQuestion
 ---

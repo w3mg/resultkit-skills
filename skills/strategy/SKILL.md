@@ -1,7 +1,6 @@
 ---
 name: rkit:strategy
 description: View and manage your team's strategy tree (goals, rocks, objectives, key results, milestones, focus areas). Shows the hierarchical strategy for any management framework (EOS, OKR, 4DX). Supports creating, updating, aligning, and detaching strategy objects. Use when users mention strategy, goals, rocks, objectives, key results, OKRs, annual goals, quarterly priorities, focus areas, milestones, or strategy alignment.
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---

@@ -1,7 +1,6 @@
 ---
 name: rkit:seats
 description: View and manage your team's accountability chart (seats). Shows the org hierarchy, seat details, owners, measures, goals, and links. Supports creating, updating, deleting, moving, and restoring seats, plus aligning measures/goals and managing links. Use when users mention seats, accountability chart, org chart, who owns what role, vacant positions, or seat management.
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---

@@ -1,7 +1,6 @@
 ---
 name: rkit:profile
 description: View your profile stats, measurables (scorecard), rocks (quarterly goals), feedback (High5s), personal progress dashboard, and third-party integrations. Manage preferences, change your password, and manage account members. Use this skill when users ask about their personal stats, wins, goals realized, actions done, measurables, scorecard, rocks, quarterly goals, feedback, High5s, progress, integrations, want to view or update their preferences (timezone, notifications, startup view), change their account password, or manage account members (list, remove).
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), AskUserQuestion
 ---

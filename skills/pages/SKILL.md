@@ -1,7 +1,6 @@
 ---
 name: rkit:pages
 description: List, read, create, update, move, and delete team Pages (the team wiki/docs tree) via the ResultMaps API. Use this skill when users ask about pages, team docs, team wiki, team notes, want to list pages, open or read a page, create a new page or doc, write content to a page, rename a page, move or nest a page under another, reorder pages, or delete a page.
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Bash(pandoc *), Bash(npx *), Read, Glob, Grep, AskUserQuestion
 ---

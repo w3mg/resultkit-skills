@@ -185,7 +185,6 @@ done
    ---
    name: rkit:<name>
    description: What it does.
-   disable-model-invocation: true
    user-invocable: true
    allowed-tools: Bash, Read, AskUserQuestion
    ---

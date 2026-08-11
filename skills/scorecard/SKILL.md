@@ -1,7 +1,6 @@
 ---
 name: rkit:scorecard
 description: View and manage your team's KPI scorecard (measures/measurables). Shows current-year measures with recent weekly history values, and supports recording weekly and monthly values, creating, updating, and archiving measures. Use when users mention scorecard, KPIs, measurables, weekly metrics, monthly metrics, measures, recording values, monthly scorecard entry, or team scorecard management.
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Bash(date *), Read, Glob, Grep, AskUserQuestion
 ---

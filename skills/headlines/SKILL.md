@@ -1,7 +1,6 @@
 ---
 name: rkit:headlines
 description: View and manage EOS headlines (People & Customer Headlines) for a team. List active headlines, add new ones, archive (soft-delete), and update text or expiration. Uses L10-specific API routes for EOS teams. Use this skill when users mention headlines, people headlines, customer headlines, team announcements, or want to add, remove, or update headlines for their team.
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---

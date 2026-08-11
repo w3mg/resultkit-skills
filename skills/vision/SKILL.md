@@ -1,7 +1,6 @@
 ---
 name: rkit:vision
 description: View a team's vision and mission data (framework-aware). Shows vision, mission, core values, and for EOS teams the full V/TO composite. Works for any management framework (EOS, OKR, 4DX, V2MOM, SRT). Use when users ask about team vision, mission, core values, strategic direction, what's our vision, team mission, or the V/TO overview.
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep
 ---

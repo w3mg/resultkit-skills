@@ -1,7 +1,6 @@
 ---
 name: rkit:weekly
 description: View and manage the team weekly board (Level 10 for EOS teams). Shows items grouped by status column using framework-specific terminology. Uses L10-specific API routes for EOS teams. Use this skill when users mention their weekly board, team board, Level 10 board, L10, weekly items, team priorities, team issues, or want to manage items on the team's weekly meeting board.
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---

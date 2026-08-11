@@ -1,7 +1,6 @@
 ---
 name: rkit:board
 description: View any item's children as a kanban-style board. Children become columns, grandchildren become items. Supports viewing, filtering by column, moving items between columns, adding items, and removing items. Use this skill when users want to see a board view, manage columns, move items between columns, or work with a hierarchical item structure.
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---

@@ -1,7 +1,6 @@
 ---
 name: rkit:result-feed
 description: View and interact with team daily check-ins (result feeds). Shows what teammates got done, what's next, and what's blocking them. Supports reactions (high-five), comments, section notes, push to Slack/Discord, and team member detail views. Use this skill when users want to see team updates, daily check-ins, team progress, react to check-ins, comment, share to Slack/Discord, or manage section notes.
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Bash(date *), Read, Glob, Grep, AskUserQuestion
 ---

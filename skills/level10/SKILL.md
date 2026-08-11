@@ -1,7 +1,6 @@
 ---
 name: rkit:level10
 description: View and manage EOS Level 10 meeting artifacts — to-dos, done, issues, parked, and headlines. Full L10 workflow with native EOS terminology. Use this skill when users mention "level 10", "L10", "EOS meeting", "EOS to-dos", "EOS issues", "parked items", "done items", or want to work with a team's Level 10 board.
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---

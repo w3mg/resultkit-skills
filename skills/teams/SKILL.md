@@ -1,7 +1,6 @@
 ---
 name: rkit:teams
 description: List your teams, view team members, change member roles, manage team logos, view team activity logs, and switch your active team. Use this skill when users ask about their teams, want to see who's on a team, list team members, check team frameworks, search for a team by name, change a member's role (admin/member), set or remove a team logo, view membership history, view their organization structure, switch teams, use a team, set active team, or change team context.
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(scripts/api.sh PATCH *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---

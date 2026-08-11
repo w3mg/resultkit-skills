@@ -1,7 +1,6 @@
 ---
 name: rkit:reviews
 description: View and manage performance reviews, submit assessments, sign off, and rate core values. Use this skill when users mention reviews, performance reviews, assessments, self-assessments, reviewer assessments, sign-off, core values, or core value ratings.
-disable-model-invocation: true
 user-invocable: true
 allowed-tools: Bash(scripts/api.sh *), Bash(jq *), Read, Glob, Grep, AskUserQuestion
 ---
