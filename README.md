@@ -1,6 +1,6 @@
 # ResultKit Skills
 
-AI coding agent skills for the [ResultMaps](https://resultmaps.com) V2 API. Manage your day plans, team boards, weekly meetings, and items directly from the command line.
+AI coding agent skills for the [ResultMaps](https://resultmaps.com) V2 API. Manage your day plans, team boards, weekly meetings, and action items directly from the command line.
 
 Works with **Claude Code**, **OpenAI Codex CLI**, and **Google Gemini CLI**.
 
@@ -9,7 +9,7 @@ Works with **Claude Code**, **OpenAI Codex CLI**, and **Google Gemini CLI**.
 | Skill | Description |
 |-------|-------------|
 | `rkit:setup` | First-run configuration. Sets up API token, default team, and base URL. |
-| `rkit:today` | View and manage your daily plan. Add, complete, and remove items. |
+| `rkit:today` | View and manage your day plan. Add, complete, and remove action items. |
 | `rkit:board` | View any item as a board. Columns are children, items are grandchildren. |
 | `rkit:weekly` | Team weekly board with framework-aware terminology (EOS, OKR, 4DX, etc.). |
 | `rkit:braindump` | Parse unstructured text (meeting notes, emails, dictation) into organized action items. |

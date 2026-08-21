@@ -88,7 +88,7 @@ Parse the JSON response from api.sh:
 Extract `body.data` array (the items) and `body.meta` (pagination info).
 
 - **Empty array**: Display:
-  > No items on today's plan. Use `add "task name"` to add one.
+  > Nothing on today's plan yet. Use `add "action item name"` to add one.
 
 - **Items present**: Display as a table:
 

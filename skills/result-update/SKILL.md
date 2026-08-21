@@ -74,7 +74,7 @@ Extract `body.data` object: `id`, `date`, `is_completed`, `done[]`, `next[]`, `b
   >
   > Status: Not submitted
   >
-  > No items yet. Use `add done "task name"` to add items.
+  > Nothing yet. Use `add done "action item name"` to add one.
 
 - **Items present**: Display as:
 

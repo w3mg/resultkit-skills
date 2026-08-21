@@ -1,7 +1,7 @@
 {
   "name": "rkit",
   "version": "1.3.54",
-  "description": "ResultMaps V2 API skills for daily planning, team boards, and item management",
+  "description": "ResultMaps V2 API skills for day plans, team boards, and action items",
   "author": {
     "name": "ResultMaps"
   },

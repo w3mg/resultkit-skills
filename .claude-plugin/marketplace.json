@@ -14,7 +14,7 @@
         "source": "url",
         "url": "https://github.com/w3mg/resultkit-skills.git"
       },
-      "description": "Daily planning, team boards, and item management via ResultMaps API"
+      "description": "Day plans, team boards, and action items via ResultMaps API"
     }
   ]
 }
