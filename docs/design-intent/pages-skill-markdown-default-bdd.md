@@ -3,7 +3,7 @@
 ## Update log
 | Date | Update description | Issue that led to update |
 |---|---|---|
-| 2026-08-27 | BDD for markdown-first page writes in the pages and success-criteria skills | (issue to follow) |
+| 2026-08-27 | BDD for markdown-first page writes in the pages and success-criteria skills | w3mg/resultkit-skills#220 |
 
 ## Problem
 
