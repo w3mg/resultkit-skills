@@ -3,7 +3,7 @@
 ## Update log
 | Date | Update description | Issue that led to update |
 |---|---|---|
-| 2026-08-27 | Initial spec: scorecard views include measurables added from other teams; affordance to include a measurable defined at a higher level | (issue to follow) |
+| 2026-08-27 | Initial spec: scorecard views include measurables added from other teams; affordance to include a measurable defined at a higher level | w3mg/resultkit-skills#217 |
 
 ## Problem
 
