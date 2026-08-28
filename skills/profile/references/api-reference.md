@@ -30,7 +30,7 @@ Endpoints that support `q` and `include_archived` are noted below.
 | GET | `/items` | List authenticated user's items (params: page, per_page, q, status, team_id, include_archived) | "show my tasks", "list items", "what's on my plate", "my to-dos" | — |
 | POST | `/items` | Create item (body: name*, type, description, due, status, on_weekly, team_id, parent_id, context) | "add task", "create item", "new to-do", "add action item" | `/?item={id}` |
 | GET | `/items/{id}` | Get item detail (includes first-level children) | "show item", "item details", "open task", "what's in item X" | `/?item={id}` |
-| PATCH | `/items/{id}` | Update item (body: name, description, due, status, on_weekly, third_party_tracker). `third_party_tracker`: object to set/replace, `null` to clear, omit to leave unchanged. | "update item", "change status", "rename task", "set due date", "link to HubSpot", "attach ticket" | `/?item={id}` |
+| PATCH | `/items/{id}` | Update item (body: name, description, due, status, on_weekly, third_party_tracker). `third_party_tracker`: object to set/replace, `null` to clear, omit to leave unchanged. Setting `status: done` also records the completion timestamp and checks the item off on today's day plan — no follow-up `PATCH /day-plans/today/items/{item_id}` needed. Any other status clears both. | "update item", "change status", "rename task", "set due date", "link to HubSpot", "attach ticket" | `/?item={id}` |
 | DELETE | `/items/{id}` | Archive item (soft delete, sets status=archived) | "archive item", "delete task", "remove item", "soft delete" | — |
 | GET | `/items/{id}/children` | List child items as nested tree (params: page, per_page, q, depth). `depth` default 2, range 1-20. | "show sub-tasks", "list children", "nested items", "what's under this" | `/?item={id}` |
 | PUT | `/items/{id}/move` | Reposition item in tree (body: parent_id, left_id, right_id, position?, group_by?). Optional `position` (0-based integer) places item at a specific slot within the new parent. Optional `group_by: "status"` scopes `position` to the item's status group (use on status-grouped boards); omit for global ordering. Invalid `group_by` value → 400. | "move item", "reparent", "nest under", "reorder" | `/?item={id}` |
@@ -224,7 +224,7 @@ Per-team settings stored in `object_metas` table — no schema changes required.
 | GET | `/teams/{id}/settings` | Get all team settings (auth: any team member) | "team settings", "show settings", "is strict mode on", "check team settings" | `/teams/{id}` |
 | PATCH | `/teams/{id}/settings` | Update one or more settings (auth: team admin only). Unrecognized keys silently ignored. Returns full settings object after update. | "update settings", "change setting", "enable strict mode", "turn on bhag", "toggle setting", "set parent team", "set inheritance" | `/teams/{id}` |
 
-Settings response shape: `{ "data": { "is_cascading_goals": bool, "is_strict": bool, "bhag_enabled": bool, "assignments_require_review": bool, "skip_show_completion_message": bool, "scorecard_notes_visible": bool, "scorecard_date_order": string, "parent_vision_id": int|null, "parent_scoreboard_id": int|null, "use_parent_goals": bool|null } }`.
+Settings response shape: `{ "data": { "is_cascading_goals": bool, "is_strict": bool, "bhag_enabled": bool, "assignments_require_review": bool, "skip_show_completion_message": bool, "scorecard_notes_visible": bool, "scorecard_date_order": string, "parent_vision_id": int|null, "parent_scoreboard_id": int|null, "use_parent_goals": bool|null, "pages_creatable_by": string, "can_create_pages": bool } }`.
 
 | Setting Key | Type | Description |
 |-------------|------|-------------|
@@ -238,6 +238,8 @@ Settings response shape: `{ "data": { "is_cascading_goals": bool, "is_strict": b
 | `parent_vision_id` | int\|null | ID of the ancestor team this team inherits its vision/rocks from. `null` = no inheritance set. Three-state: `null` means no ObjectMeta record exists (distinguishable from `false` or `0`). |
 | `parent_scoreboard_id` | int\|null | ID of the ancestor team whose scorecard this team inherits. `null` = no inheritance set. Same three-state semantics as `parent_vision_id`. |
 | `use_parent_goals` | bool\|null | Whether this team uses its parent team's goals. `null` = not set (distinguishable from `false`). |
+| `pages_creatable_by` | string | Who may create Pages on this team: `"all_members"` (default on read) or `"admins_only"`. Writable via PATCH; a value outside the enum returns 422. |
+| `can_create_pages` | bool | **Read-only, computed per caller** — whether *this* caller may create a page on this team. Render the "+ Page" / "New sub-page" affordance from it rather than re-deriving team-admin status. |
 
 PATCH body: any subset of the recognized keys. Boolean keys require boolean values; `parent_vision_id` / `parent_scoreboard_id` require integer or `null`; `use_parent_goals` requires boolean or `null`. Sending `null` for the inheritance fields deletes the underlying ObjectMeta record (clears inheritance). Omitting a key leaves its value unchanged. The API does **not** validate that `parent_vision_id` / `parent_scoreboard_id` values are actual ancestor team IDs — client must validate. Errors: 400 (invalid team id), 401 (no auth), 403 (GET: not a team member; PATCH: not a team admin), 404 (team not found), 422 (wrong value type — `{ "error": "Validation failed", "details": { "<key>": ["must be an integer or null"] } }`).
 
@@ -465,16 +467,19 @@ ActivityLog fields: `id`, `action` ("member_added" | "member_removed" | "role_ch
 
 ### Team Labels
 
-Team-scoped colored labels. Any member can view; admin-only for create/update/delete.
+Team-scoped colored labels. Any member can view; admin-only for create/update/delete. A team label is **local to its own team by default** — descendant teams see it only when the owning team turns on `shared_with_descendants`.
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/labels` | List team labels (paginated) | "show labels", "team labels", "list tags" | — |
-| POST | `/teams/{id}/labels` | Create label (body: name*, color?). Admin-only. Name max 50 chars, unique per team. Color hex `#xxxxxx`. | "create label", "add label", "new tag" | — |
-| PATCH | `/teams/{id}/labels/{label_id}` | Update label (body: name?, color?). Admin-only. | "update label", "rename label", "change label color" | — |
-| DELETE | `/teams/{id}/labels/{label_id}` | Delete label (permanent). Admin-only. | "delete label", "remove label", "remove tag" | — |
+| GET | `/teams/{id}/labels` | List team labels (paginated). Includes labels shared down from ancestor teams — each row carries `inherited`, `source_team_id`, and `shared_with_descendants`. | "show labels", "team labels", "list tags" | — |
+| POST | `/teams/{id}/labels` | Create label (body: name*, color?). Admin-only. Name max 50 chars; duplicate names are allowed — posting a name the team already uses returns 201 with a new id, not 422. Derive any "you already have a label named X" warning from the existing list, and still allow the create. Color hex `#xxxxxx`. | "create label", "add label", "new tag" | — |
+| PATCH | `/teams/{id}/labels/{label_id}` | Update label (body: name?, color?, shared_with_descendants?). Owner-team admin only — an admin of a descendant team gets 403. `shared_with_descendants` applies to team labels only. Setting it to `false` immediately strips the label from every descendant-team item; the owner team's items keep it. | "update label", "rename label", "change label color", "share label with sub-teams", "stop sharing label" | — |
+| DELETE | `/teams/{id}/labels/{label_id}` | Delete label (permanent). Admin-only. Removes the label from the owner team's items **and** every descendant team's items, whatever the current sharing state. | "delete label", "remove label", "remove tag" | — |
+| GET | `/teams/{id}/labels/{label_id}/usage` | What the label is currently attached to, for an impact warning before un-sharing or deleting. Owner-team admin only. Returns `{ "items": [{ "id", "title", "team_id" }], "roadmap_lanes": [{ "roadmap_id", "team_id", "name" }] }`. | "what uses this label", "label usage", "what will I lose if I delete this label" | — |
 
-Label fields: `id`, `name`, `color` (hex string), `created_at`.
+Label fields: `id`, `name`, `color` (hex string), `shared_with_descendants` (boolean — default `false`; `true` makes the label available to descendant teams), `inherited` (boolean — `true` when the row belongs to an ancestor team rather than this one), `source_team_id` (integer | null — the team that owns the label; `null` when local), `created_at`.
+
+**Sharing model**: descendants only — children, grandchildren, and so on. Sharing never reaches siblings, ancestors, or a team in another organization. Roadmap swimlanes name their labels in `lane_label_ids` inside the `json_content` of a type-17 `custom_contents` record; that is the key the usage endpoint reads.
 
 ### Team Integrations
 
@@ -652,7 +657,7 @@ All L10 Meeting Organizer endpoints share these error shapes:
 | GET | `/users/{user_id}/feedback` | User feedback/High5s (params: direction* — "given" or "received", page, per_page; requires shared team membership) | "show feedback", "High5s", "kudos", "recognition" | `/users/{user_id}` |
 | GET | `/users/check-login` | Check if login/handle is available (params: login* — 3-40 chars) | "check login", "is handle available", "username taken" | — |
 | GET | `/users/me/preferences` | Get full preferences (profile, notifications, timezone, startup view, API token, subscriber_persona, day-plan sorting/view preferences) | "my preferences", "settings", "notification settings" | `/customize` |
-| PATCH | `/users/me/preferences` | Update preferences (body: login?, time_zone?, notifications?, startup_view_code?, preferred_team_id?, secondary_email?, update_frequency?, unsubscribe_all?, slack_username?, day_plan_sorting? — int 0–4: 0=priority, 1=result, 2=due, 3=creator, 4=quadrant; day_plan_show_settings? — `everything`/`must`/`not deferred and completed`; today_index_view? — `#list_view`/`#quadrant_view`). Partial update — only sent fields change. Notification booleans represent the logical ON/OFF value (true=on); the API inverts from the raw DB `should_suppress` field. Returns full preferences envelope including all day-plan fields. | "update preferences", "change settings", "change timezone", "toggle notifications", "turn off digest", "turn on notifications", "change day plan sorting", "switch to quadrant view", "set planner view" | `/customize` |
+| PATCH | `/users/me/preferences` | Update preferences (body: login?, first_name?, last_name?, time_zone?, notifications?, startup_view_code?, preferred_team_id?, secondary_email?, update_frequency?, unsubscribe_all?, slack_username?, day_plan_sorting? — int 0–4: 0=priority, 1=result, 2=due, 3=creator, 4=quadrant; day_plan_show_settings? — `everything`/`must`/`not deferred and completed`; today_index_view? — `#list_view`/`#quadrant_view`). Partial update — only sent fields change. Notification booleans represent the logical ON/OFF value (true=on); the API inverts from the raw DB `should_suppress` field. Returns full preferences envelope including all day-plan fields. | "update preferences", "change settings", "change timezone", "toggle notifications", "turn off digest", "turn on notifications", "change day plan sorting", "switch to quadrant view", "set planner view" | `/customize` |
 | GET | `/users/me/progress` | Personal progress — strategy metrics, practice scorecard, streak totals (params: period? — week/month/quarter) | "my progress", "practice streak", "how am I doing", "scorecard" | — |
 | GET | `/users/me/integrations` | Get third-party integration selections (task_management, sales_revops, team_communication) | "my integrations", "connected apps", "integration settings" | `/customize` |
 | PATCH | `/users/me/integrations` | Update integration selections (body: task_management?, sales_revops?, team_communication?). Set to null to disconnect. | "update integrations", "connect app", "disconnect integration" | `/customize` |
@@ -724,16 +729,18 @@ UserIntegrations fields: `task_management` ({ selected, options }), `sales_revop
 
 ## Third-Party Integrations (Nango)
 
-User-scoped HubSpot / OAuth connection management. All routes require auth. Provider whitelist: `clickup`, `monday`, `hubspot`, `salesforce`, `notion`. Only HubSpot has a dedicated tickets reader; the other four providers use connect/status/disconnect only.
+User-scoped HubSpot / OAuth connection management. All routes require auth. Provider whitelist: `clickup`, `monday`, `hubspot`, `salesforce`, `notion`, `google-sheet`. **The Google slug is `google-sheet` — singular.** Nango's provider registry has no `google-sheets` key, and a wrong slug fails at OAuth time, not at request time. Only HubSpot has a dedicated tickets reader; the others use connect/status/disconnect only — `google-sheet` additionally backs the Measurable sheet binding (see **Team Scorecard Measures**).
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
 | `POST` | `/api/v2/nango/connect` | Persist a Nango connection_id after OAuth popup. Body: `provider`*, `connection_id`*. Idempotent — re-connecting returns 201 + `connected: true`. | "connect HubSpot", "link HubSpot account", "save nango connection" | — |
 | `GET` | `/api/v2/nango/status?provider={provider}` | Check if user is connected. Always 200 for authed callers — read `data.connected` and `data.error`. Safe to poll. | "is HubSpot connected", "check integration status", "HubSpot connection status" | — |
-| `DELETE` | `/api/v2/nango/disconnect?provider={provider}` | Remove cached connection for the (user, provider) pair. Local cache only — does not revoke remote. Idempotent. | "disconnect HubSpot", "unlink integration", "remove HubSpot connection" | — |
+| `DELETE` | `/api/v2/nango/disconnect?provider={provider}` | Disconnect the (user, provider) pair, and make it stick — the disconnect is recorded and honored until that same user reconnects, so every later `GET /nango/status` reports `connected: false`. The remote Nango grant is deliberately **not** revoked, which is why reconnecting needs no fresh OAuth popup. Idempotent; succeeds even when Nango is unreachable. | "disconnect HubSpot", "unlink integration", "remove HubSpot connection" | — |
 | `GET` | `/api/v2/nango/hubspot/tickets?limit&after` | Page the user's HubSpot CRM tickets. Returns `{ id, subject }` per ticket. Last page: `paging: null`. 401 = not connected; 502 = HubSpot unreachable. Lazy-evicts cached token on HubSpot 401/403. | "show HubSpot tickets", "list tickets", "HubSpot CRM tickets", "pick a ticket" | — |
 
-Connection envelope: `{ "data": { "provider": string, "connected": boolean, "error": string|null } }`. Tickets envelope: `{ "data": { "results": [{ "id": string, "subject": string }], "paging": { "next": { "after": string } } | null } }`. Status is always 200 — never 401/5xx for missing token; use `connected` + `error` fields. `POST /connect` validates `connection_id` contains the authenticated user's ID (mismatches → 400). No token ever appears in any response. `DELETE /disconnect` is local-cache only.
+Connection envelope: `{ "data": { "provider": string, "connected": boolean, "error": string|null } }`. Tickets envelope: `{ "data": { "results": [{ "id": string, "subject": string }], "paging": { "next": { "after": string } } | null } }`. Status is always 200 — never 401/5xx for missing token; use `connected` + `error` fields. `POST /connect` validates `connection_id` contains the authenticated user's ID (mismatches → 400). No token ever appears in any response.
+
+**Disconnect is durable.** While a user has an explicit disconnect on record, `GET /nango/status` returns `connected: false` with **`error: null`** — a disconnect is a normal state, not a failure, so don't render it as one — and the provider data endpoints behave exactly as they do for someone who never connected (`GET /nango/hubspot/tickets` → `401 { "error": "HubSpot integration not connected" }`). `POST /nango/connect` is the only thing that clears the record. **An expired credential is not a disconnect**: with no disconnect on record, a cache miss still falls back to Nango, so a stale token recovers with no user action. One exception — `google-sheet` holds its grant at the account level, so disconnect is still a silent no-op for it (200, `connected: false`, nothing changes).
 
 **Linking an Item to a HubSpot ticket**: PATCH `/items/{id}` with `{ "third_party_tracker": { "provider": "hubspot", "external_id": "12345", "name": "Ticket subject" } }`. Clear with `{ "third_party_tracker": null }`. Read back from `GET /items/{id}` — field always present (object or `null`).
 
@@ -794,7 +801,7 @@ DayPlanItem fields: Item fields + `completed` (boolean), `position` (integer), `
 
 Eisenhower quadrant values: `urgent_important` (Q1), `not_urgent_important` (Q2), `urgent_not_important` (Q3), `not_urgent_not_important` (Q4), `unassigned` (0).
 
-Day plan completion: regular items also get status=done. Recurring/daily items only toggle `completed` for that day — item stays active for tomorrow.
+Day plan completion: regular items also get status=done. Recurring/daily items only toggle `completed` for that day — item stays active for tomorrow. The reverse holds too: setting `status: done` via `PATCH /items/{id}` also checks the item off on today's day plan. Either route leaves the same state.
 
 ### Day Plan Columns (Custom Columns / Personal Planner Buckets)
 
@@ -811,7 +818,7 @@ Personal Planner custom column lanes. All endpoints require auth. Items embedded
 
 DayPlanColumn fields: `id`, `name`, `position` (0-indexed), `is_archived` (boolean), `created_at`, `updated_at`, `items` (DayPlanColumnItem[]).
 
-DayPlanColumnItem fields: `id`, `name`, `completed` (boolean), `due` (YYYY-MM-DD or null), `recur_daily` (boolean), `position` (0-indexed within column).
+DayPlanColumnItem fields: `id`, `name`, `completed` (boolean), `due` (YYYY-MM-DD or null), `recur_daily` (boolean), `position` (0-indexed within column), `is_top` (boolean), `assignees` (UserSimple[]), `custom_labels` (`[{ id, name, color }]` — always present, `[]` when nothing qualifies, ordered by label id ascending; carries the caller's own personal labels **plus** the team labels they are entitled to see, i.e. labels owned by a team they belong to, or shared down to them by an ancestor team. Never a sibling team's label, an unshared ancestor's label, another organization's, another user's personal label, a project label, or a quadrant label. No `tags` twin on this endpoint).
 
 ## Result Feed
 
@@ -823,7 +830,7 @@ The "90-second practice" — a daily check-in report where users record what the
 | POST | `/result-feed/{date}/{section}` | Create new item in section (body: name*) | "add done", "add next", "add blocked", "new done item", "got something done" | — |
 | PUT | `/result-feed/{date}/{section}/{item_id}` | Add existing item to section (idempotent) | "add item {id} to done", "put {id} in next", "attach {id} to blocked" | — |
 | DELETE | `/result-feed/{date}/{section}/{item_id}` | Remove item from section (keeps item, does not revert status) | "remove {id} from done", "take {id} off next", "drop {id} from blocked" | — |
-| POST | `/result-feed/{date}/submit` | Submit + share check-in (body: optional team_id, item_ids). Requires ≥1 item in both done and next. Idempotent. | "submit", "finalize", "done for the day", "submit check-in" | — |
+| POST | `/result-feed/{date}/submit` | Submit + share check-in (body: optional team_id; `item_ids` is deprecated, accepted and ignored). A share always covers the **whole** check-in. `team_id` is validated before anything is written, so a 404 (team not viewable) or 400 (team_id not a positive integer) means nothing was submitted and the call is safe to retry. Requires ≥1 item in both done and next. Idempotent. | "submit", "finalize", "done for the day", "submit check-in" | — |
 | GET | `/teams/{id}/result-feed` | List team's shared check-ins (params: page, per_page). Reverse chronological. Requires team membership. | "team check-ins", "team feed", "team result feed", "show team check-ins" | — |
 | PUT | `/result-feed/{date}/{section}` | Update section metadata (body: notes, attachment_ids). `notes: null` clears notes. `attachment_ids` replaces current list (filtered to IDs the user owns). Valid sections: `done`, `review`, `next`, `blocked`. | "add notes to done", "update notes", "set notes on done/next/blocked/review", "edit section notes", "attach files" | — |
 | POST | `/result-feed/{date}/push-to-slack` | Push check-in to team's Slack webhook (body: group_context_id*, exclude_item_ids[]). 422 if no webhook configured, 502 if webhook fails, 403 if not a team member. | "share to slack", "push to slack", "send check-in to slack" | — |
@@ -850,7 +857,7 @@ Comment fields: `id`, `comment` (text body), `user_id`, `created_at`.
 
 Reaction response fields: `reacted` (boolean — whether the requesting user has reacted), `count` (integer — total reaction count).
 
-Submit request body (all optional): `team_id` (integer — team to share with), `item_ids` (integer[] — items to highlight).
+Submit request body (all optional): `team_id` (integer — the team to share with; must be a positive integer, anything else is 400. `null` or omitted = submit without sharing), `item_ids` (integer[] — **deprecated: accepted and ignored**. A share records every item in the check-in across all four sections; it cannot be narrowed. For per-item control use `exclude_item_ids` on push-to-slack / push-to-discord).
 
 Section path parameter: `done`, `review`, `next`, `blocked`.
 
@@ -865,7 +872,8 @@ Behavioral notes:
 - PUT (add item) is idempotent — adding an already-present item returns 200.
 - DELETE (remove item) returns 404 if item is not in that section. Does NOT delete the item or revert its status.
 - Submit is idempotent — re-submitting a completed report returns 200.
-- Submit validation: requires ≥1 item in both `done` and `next` (422 otherwise).
+- Submit validation: requires ≥1 item in both `done` and `next` (422 otherwise). `team_id` is authorized before any write — a refused share submits nothing.
+- Submit share scope: the share records every item in the check-in, across all four sections. `item_ids` cannot narrow it and there is no narrowed state to be stuck in.
 - Submit side-effects (server-side, no skill action required): upserts ObjectMeta `last_status_provided` timestamp for the user, triggers daily recurrence item rollover (recurrent items due today roll to tomorrow).
 - Adding items triggers status side-effects: done→done, next→next, blocked→blocked.
 - Removing items does NOT revert status side-effects.
@@ -1099,17 +1107,30 @@ Team scorecard measures are KPIs tracked weekly on a team's scorecard. Each meas
 
 | Method | Path | Description | User Phrases | Web URL |
 |--------|------|-------------|--------------|---------|
-| GET | `/teams/{id}/measures` | List all measures for a team with weekly history (params: year?, include_archived?, owner_id?). Results sorted ascending by `position`. | "show scorecard", "list measures", "team KPIs", "team measurables", "scorecard measures", "weekly metrics", "what are our KPIs" | `/components?tab=data` |
+| GET | `/teams/{id}/measures` | List all measures for a team with weekly history (params: year?, include_archived?, owner_id?). Results sorted ascending by `position`. Resolves inherited scorecards: ask with the team's **own** id and, when that team is configured with a `parent_scoreboard_id`, the ancestor's measures come back (asking with the ancestor's id instead still requires direct membership of the ancestor and 403s for a child-team-only member). Every measure carries `can_edit` and `can_record_value` for the requesting user. | "show scorecard", "list measures", "team KPIs", "team measurables", "scorecard measures", "weekly metrics", "what are our KPIs" | `/components?tab=data` |
 | POST | `/teams/{id}/measures` | Create a new measure (body: measure wrapper with name*, unit?, direction?, target_value?, target_period? ("week"\|"month"\|"quarter"\|"year"; default "week"), aggregation_type? ("sum"\|"last"\|"average"; default "sum"), owner_id?, data_source_type? (default 0), roll_up_type? ("sum"\|"average"), roll_up_measure_ids? (integer[]), chart_type? (string — one of: `pie`, `progress_circle`, `progress_bar`, `trend`, `bar_chart`; omit or null for no preference)). Server auto-assigns `position = max(existing) + 1` (or 1 if first). | "add measure", "create KPI", "new measurable", "add scorecard item", "create metric", "set monthly target", "quarterly measure" | — |
 | PATCH | `/teams/{id}/measures/reorder` | Persist a new ordering for the team's active scorecard measures. Admin-only. Body: `{ "measure_ids": [int, ...] }` — must be the **complete** ordered list of every active (non-archived) measure ID for the team. Returns `{ "data": { "success": true, "count": N } }`. Statuses: 200 success, 403 non-admin, 422 incomplete/invalid list (missing IDs, duplicates, archived IDs, cross-team IDs, empty array). | "reorder measures", "reorder scorecard", "drag and drop measures", "change measure order", "rearrange KPIs", "sort scorecard measures" | — |
 | PATCH | `/measures/{id}` | Update measure fields (body: measure wrapper with name?, unit?, direction?, target_value?, target_period? ("week"\|"month"\|"quarter"\|"year"; omit to preserve, null rejected), aggregation_type? ("sum"\|"last"\|"average"; omit to preserve, null rejected), archived?, notes? (string\|null — sanitized HTML; omit to preserve, send null to clear), data_source_type?, roll_up_type? ("sum"\|"average"), roll_up_measure_ids? (integer[]), chart_type? (string — one of: `pie`, `progress_circle`, `progress_bar`, `trend`, `bar_chart`; omit key to preserve, send null to clear)). Use `archived: true` to soft-archive, `archived: false` to restore. | "update measure", "rename KPI", "change target", "edit measurable", "restore measure", "add measure notes", "set measure description notes", "clear measure notes", "set monthly target", "change measure period", "set aggregation", "make this a last-value measure" | — |
 | DELETE | `/measures/{id}` | Archive a measure (soft-delete, idempotent). Sets is_archived=true. | "archive measure", "delete KPI", "remove measurable", "hide measure" | — |
 | POST | `/measures/{id}/history` | Record a weekly or monthly value for a measure (body: date*, value*, period?). `period` is optional: `"week"` (default, date must be a Monday) or `"month"` (date as `YYYY-MM` or `YYYY-MM-01`, response normalises to `YYYY-MM-01`). Omitting `period` defaults to weekly — fully backward-compatible. Upserts by (measure_id, date). | "record value", "log KPI", "enter score", "record measurable", "update scorecard value", "fill in weekly number", "record monthly value", "log monthly score", "enter monthly measure", "monthly scorecard entry" | — |
 | POST | `/measures/{id}/history/note` | Record or clear a per-week text note on a history slot (body: date*, note — string ≤255 chars or null/empty to clear). Upserts; clearing a slot with no note is a no-op. | "add note", "record note", "annotate week", "note this week", "clear note", "remove note", "weekly note" | — |
+| PUT | `/measures/{id}/sheet-source` | Bind a measure to **one cell** of a Google Sheet (body: spreadsheet_id* — a bare ID or a pasted Google Sheets URL, tab*, cell* — a single cell such as `B2`; a range like `B2:B10` or `B:B` is 422). Sets `data_source_type=1` and performs an immediate first pull. A failed first pull is still a **200** — the binding is saved and the failure appears in `sync_state`, and the daily job retries. 422 when the caller has no live Google connection (connect provider `google-sheet` first). | "connect a sheet", "bind measure to Google Sheets", "pull this KPI from a spreadsheet", "set the sheet cell" | — |
+| POST | `/measures/{id}/sheet-source/preview` | Read the **saved** binding's cell without recording anything (empty body). Returns `{ "data": { "value": 47, "is_percent": true, "read_at": "..." } }`, or `{ "data": { "value": null, "empty": true, "read_at": "..." } }` for a blank cell — blank is success, not an error. 422 carries a `reason` from a closed set: `connection_lost`, `sheet_unreachable`, `cell_not_numeric`, `transient`. | "test the sheet", "preview the cell", "what value would this pull", "check the sheet connection" | — |
 
-Measure fields: `id`, `name`, `description` (string | null), `notes` (string | null — sanitized HTML, present on all measure responses; null if not set), `unit` (string, e.g. `"#"`, `"$"`, `"%"`), `direction` (`"higher"` | `"lower"`), `target_value` (numeric string | null), `target_period` (`"week"` | `"month"` | `"quarter"` | `"year"` — the time period that `target_value` applies to; default `"week"`), `aggregation_type` (`"sum"` | `"last"` | `"average"` — how weekly values combine when rolled up for display; `"sum"` adds, `"last"` takes the most recent, `"average"` takes the mean; default `"sum"`), `position` (integer — display order, ascending; use reorder endpoint to change), `owner` (UserSimple | null), `is_archived` (boolean), `chart_type` (string | null — one of: `pie`, `progress_circle`, `progress_bar`, `trend`, `bar_chart`; null = no preference), `histories` (MeasureHistory[]), `data_source_type` (integer, always present: 0=manual, 1=google_sheets, 2=other_api, 3=roll_up).
+Measure fields: `id`, `name`, `description` (string | null), `notes` (string | null — sanitized HTML, present on all measure responses; null if not set), `unit` (string, e.g. `"#"`, `"$"`, `"%"`), `direction` (`"higher"` | `"lower"`), `target_value` (numeric string | null), `target_period` (`"week"` | `"month"` | `"quarter"` | `"year"` — the time period that `target_value` applies to; default `"week"`), `aggregation_type` (`"sum"` | `"last"` | `"average"` — how weekly values combine when rolled up for display; `"sum"` adds, `"last"` takes the most recent, `"average"` takes the mean; default `"sum"`), `position` (integer — display order, ascending; use reorder endpoint to change), `owner` (UserSimple | null), `is_archived` (boolean), `chart_type` (string | null — one of: `pie`, `progress_circle`, `progress_bar`, `trend`, `bar_chart`; null = no preference), `histories` (MeasureHistory[]), `data_source_type` (integer, always present: 0=manual, 1=google_sheets, 2=other_api, 3=roll_up — type 2 is stored but unimplemented, so don't offer it as a working source), `can_edit` (boolean), `can_record_value` (boolean).
+
+**Rights fields** (`can_edit`, `can_record_value`) are on every measure returned by `GET /teams/{id}/measures` and `POST /teams/{id}/measures`. Both are always present, never null, and fail closed to `false`. They are computed per measurable **and per requesting user**, against the team that **owns** the measurable — so on an inherited scorecard the owner reads `true` while an admin of the merely inheriting team reads `false` (admin rights cascade downward, not upward). `can_edit` answers "would `PATCH /measures/{id}` be accepted" — the definition: name, goal, unit. `can_record_value` answers "would `POST /measures/{id}/history` be accepted". `can_edit` implies `can_record_value`, never the reverse; the gap between them is exactly one population — plain members of the owning team, who may enter values on their own scorecard but may not rename or re-goal a measurable. Gate value entry on `can_record_value`, never on `can_edit`.
+
+| Requester | `can_edit` | `can_record_value` |
+|---|---|---|
+| Owner / creator / admin of the owning team | `true` | `true` |
+| Plain member of the **owning** team | `false` | **`true`** |
+| Plain member of a **child** team that inherits the scorecard | `false` | `false` |
+| Team admin of the **child** team, not the owner | `false` | `false` |
 
 Roll-up fields (present in responses only when `data_source_type=3`): `roll_up_type` (`"sum"` | `"average"`), `roll_up_measure_ids` (integer[] — IDs of source measures on the same team).
+
+Google Sheets fields (present in responses only when `data_source_type=1`): `google_sheet` (`{ spreadsheet_id, tab, cell, connected_user_id }` — `connected_user_id` is an internal user id, **not a credential**; no Google token is ever returned by any endpoint), `sync_state` (`{ last_sync_at, last_sync_status: "success" | "error", last_sync_error, last_sync_error_message }` — absent until a first pull has been attempted; the two error fields are absent on success). Flag a measure whose `sync_state.last_sync_status` is `"error"` and show `last_sync_error_message`. Two traps worth stating: the Google connection is **per-user** — the sync reads with the credentials of whoever bound the measure, so if that person leaves or revokes access the team's measure stops updating and reports `connection_lost`; and a cell displaying `47%` is stored by Google as `0.47` but returned and recorded here as **47** with `is_percent: true` — already scaled, do not scale again. A failed pull leaves the week empty — no fabricated value, no carry-forward. Manual entry on a type-1 measure is still rejected (422).
 
 MeasureHistory fields: `id` (integer | null — null if no value recorded), `date` (YYYY-MM-DD, always a Monday), `value` (numeric string | null), `target_value` (numeric string | null), `note` (string | null — null if no note recorded for this slot).
 
@@ -1121,6 +1142,8 @@ MeasureHistory fields: `id` (integer | null — null if no value recorded), `dat
 - `DELETE /measures/{id}` → `{ "data": Measure }` (200, is_archived: true, no histories field)
 - `POST /measures/{id}/history` → `{ "data": { "id": int, "measure_id": int, "date": string, "value": string, "target_value": string | null, "period": "week" | "month" } }` (200, upsert; for monthly entries `date` is always normalised to `YYYY-MM-01`)
 - `POST /measures/{id}/history/note` → `{ "data": { "id": int|null, "measure_id": int, "date": string, "note": string|null } }` (200, upsert; id is null when note is cleared)
+- `PUT /measures/{id}/sheet-source` → `{ "data": { "id": int, "data_source_type": 1, "google_sheet": {...}, "sync_state": {...} } }` (200, including when the first pull failed)
+- `POST /measures/{id}/sheet-source/preview` → `{ "data": { "value": number|null, "is_percent": bool, "empty": true?, "read_at": string } }` (200; 422 with `reason` on failure)
 
 **Validation**: `name` must not be blank (422). `value` must be a numeric string (422). `date` must be a valid ISO date (Monday preferred). `direction` must be `"higher"` or `"lower"`. `target_period` must be one of `"week"`, `"month"`, `"quarter"`, `"year"` (422 for any other value, including null); omitting on PATCH preserves the stored value. `aggregation_type` must be one of `"sum"`, `"last"`, `"average"` (422 for any other value, including null); omitting on PATCH preserves the stored value. `data_source_type` must be 0–3 (422 otherwise). `chart_type` must be one of `pie`, `progress_circle`, `progress_bar`, `trend`, `bar_chart` or null if provided (422 otherwise); omitting the key on PATCH preserves the existing value. For roll-up measures (`data_source_type=3`): `roll_up_type` must be `"sum"` or `"average"` (422); `roll_up_measure_ids` must all belong to the same team (422 cross-team); a measure may not include itself in `roll_up_measure_ids` (422 self-reference); circular references (A→B→A) return 422.
 
@@ -1364,6 +1387,7 @@ The Vision/Traction Organizer (V/TO) covers six EOS components: core values, cor
     "teamId": 456,
     "isInheritingParentVision": false,
     "parentTeamId": null,
+    "canEdit": true,
     "coreValues": [{ "id": 1, "name": "Integrity", "description": "<p>Do the right thing</p>", "groupId": 456 }],
     "coreFocus": { "purpose": "<p>Our mission</p>", "niche": "<p>Our niche</p>" },
     "bhag": { "text": "<p>Be the best</p>" },
@@ -1381,7 +1405,8 @@ The Vision/Traction Organizer (V/TO) covers six EOS components: core values, cor
 - **Plan keys**: `{year}_{quarter}` format. Quarter 0 = annual, 1-4 = Q1-Q4. Values outside 0-4 return 400.
 - **HTML sanitization**: All string inputs sanitized before storage.
 - **Standalone core value routes**: PATCH/DELETE at `/core-values/{valueId}` — no team ID in URL. Team inferred from value's `group_id`.
-- **Auth**: All GET endpoints require Member role. All write endpoints (POST/PATCH/DELETE) require Admin role.
+- **Auth**: All GET endpoints require Member role. Writes are open to a **team admin** of that team **or** the accountability owner of that team's own unarchived **Visionary** or **Integrator** seat — that is: `PATCH /teams/{id}/eos-core-focus`, `/eos-bhag`, `/eos-marketing-strategy`, `/eos-three-year-picture`, `/eos-plans/{year}/{quarter}`, and `POST /teams/{id}/core-values` (and its `/teams/{id}/eos-core-values` alias). The seat must sit on the chart of the **team being edited** — a qualifying seat on another team's chart grants nothing, and no ancestor walk applies to seats (team-admin rights keep theirs). Only those two seat names qualify. `PATCH` / `DELETE /core-values/{valueId}` remain **team admin only**, so a seat holder who is not an admin can add a core value but not rename or delete it.
+- **Read `canEdit`, don't re-derive it**: `canEdit` on `GET /teams/{id}/eos-vision` already folds in the seat grant, the admin paths, and inheritance. Inheritance still wins — a team that inherits its vision reports `canEdit: false` and refuses every write, to seat holders exactly as to admins.
 
 ## EOS Tools Checklist
 
@@ -1481,12 +1506,12 @@ Labels that can be attached to Items and Goals. Labels support three scopes: **p
 
 | Method | Path | Description | User Phrases |
 |--------|------|-------------|--------------|
-| GET | `/api/v2/custom-labels` | List accessible custom labels including ancestor-team inherited labels (params: page, per_page, scope, team_id, project_id — omit scope for union of all accessible); each label includes `inherited` (bool) and `source_team_id` (int\|null) fields. **Access control**: `scope=team&team_id=N` returns 403 unless caller can view team N or an ancestor team; `scope=project&project_id=N` returns 404 if project doesn't exist or 403 if caller can't view it. | "list my labels", "show custom labels", "my tags", "my labels", "team labels", "project labels" |
+| GET | `/api/v2/custom-labels` | List accessible custom labels (params: page, per_page, scope, team_id, project_id — omit scope for union of all accessible). Ancestor-team labels appear **only** when the owning team has shared them down (`shared_with_descendants: true`, default `false`); an unshared ancestor label is simply absent. Each label includes `inherited` (bool), `source_team_id` (int\|null), and `source_team_name` (string\|null). The `shared_with_descendants` flag itself is **not** on these rows — read it from `GET /teams/{id}/labels`. **Access control**: `scope=team&team_id=N` returns 403 unless caller can view team N or an ancestor team; `scope=project&project_id=N` returns 404 if project doesn't exist or 403 if caller can't view it. | "list my labels", "show custom labels", "my tags", "my labels", "team labels", "project labels" |
 | POST | `/api/v2/custom-labels` | Create a custom label (body: name*, color?, scope?, scope_id? — scope defaults to personal; team/project scope requires admin) | "create label", "add label", "new label", "create tag" |
-| PATCH | `/api/v2/custom-labels/{id}` | Update label name and/or color — scope-aware auth (admin required for team/project labels); returns 403 if caller is a descendant-team admin but not admin of the label's owning team (body: name?, color?) | "rename label", "update label", "change label color" |
+| PATCH | `/api/v2/custom-labels/{id}` | Update label name and/or color — scope-aware auth (admin required for team/project labels); returns 403 if caller is a descendant-team admin but not admin of the label's owning team (body: name?, color?). Descendant sharing is toggled on the team route instead: `PATCH /teams/{id}/labels/{label_id}`. | "rename label", "update label", "change label color" |
 | DELETE | `/api/v2/custom-labels/{id}` | Delete label — scope-aware auth; returns 422 `reserved_label` for reserved labels; returns 403 if caller is a descendant-team admin but not admin of the label's owning team | "delete label", "remove label", "delete tag" |
-| POST | `/api/v2/custom-labels/manage` | Bulk sync labels on an Item or Goal — accepts label IDs from ancestor teams (body: labeled_type*, labeled_id*, custom_label_ids* — array of label IDs) | "set labels on item", "tag item", "apply labels", "sync labels", "label this item", "attach labels" |
-| GET | `/api/v2/custom-labels/content` | Get attached + creator labels for an Item or Goal — includes ancestor-team labels; each label has `inherited` and `source_team_id` fields (params: labeled_type*, labeled_id*) | "labels on this item", "show item labels", "label picker", "which labels are attached" |
+| POST | `/api/v2/custom-labels/manage` | Bulk sync labels on an Item or Goal — accepts label IDs from ancestor teams that share with descendants (body: labeled_type*, labeled_id*, custom_label_ids* — array of label IDs). Personal labels need only view access on the target; adding a team or project label needs **edit** permission on it (403 otherwise). | "set labels on item", "tag item", "apply labels", "sync labels", "label this item", "attach labels" |
+| GET | `/api/v2/custom-labels/content` | Get attached + creator labels for an Item or Goal — includes ancestor-team labels the owning team shares with descendants; each label has `inherited` and `source_team_id` fields (params: labeled_type*, labeled_id*) | "labels on this item", "show item labels", "label picker", "which labels are attached" |
 
 **BREAKING CHANGE**: `POST /api/v2/custom-labels/manage` body field changed from `custom_labels: string[]` (names) to `custom_label_ids: number[]` (IDs). Sending old `custom_labels` field returns 422 with migration guidance.
 
@@ -1516,15 +1541,16 @@ Manage individual role grants on a project. Requires **edit permission** on the 
 | POST | `/api/v2/projects/{id}/permissions` | Grant a role to a user on a project (body: role*, user_id*). Returns 201 (empty body). Errors: 400 (missing field), 401, 403, 404, 422 (invalid role, duplicate grant, non-existent user_id). | "grant project access", "give user project role", "add project permission", "share project with user" |
 | DELETE | `/api/v2/projects/{id}/permissions` | Revoke a role from a user (body: role*, user_id*); omit `role` to revoke all roles for that user. Returns 204 (idempotent — no-op if grant absent). Errors: 400 (missing user_id), 401, 403, 404. | "revoke project access", "remove user from project", "remove project permission", "remove all project roles for user" |
 
-Custom Label object fields: `id`, `name`, `color` (hex string or null), `scope` (personal/team/project), `scope_id` (null for personal), `template_code` (null for user-created), `group_id`, `item_id`, `is_inverted`.
+Custom Label object fields: `id`, `name`, `color` (hex string or null), `scope` (personal/team/project), `scope_id` (null for personal), `label_type`, `template_code` (null for user-created), `user_id`, `group_id`, `item_id`, `is_inverted`, `inherited` (boolean — `true` when the label belongs to an ancestor team), `source_team_id` (integer | null — the owning team; `null` when local), `source_team_name` (string | null). The `shared_with_descendants` flag lives on the team-label rows (`GET /teams/{id}/labels`), not here.
 
 Admin object fields: `user_id`, `login`, `email`, `role`, `is_owner`.
 
 - **Color**: hex string (`#fff` or `#ff00aa`) or null. Optional on create/update.
 - **Name**: required, max 255 chars, trimmed. Duplicate name per user returns `422 { name: ["already exists"] }`.
 - **Cascade delete**: `DELETE` removes all `custom_labelings` associations first, then the label.
-- **Scope-aware auth**: Personal labels — owner only. Team/project labels — team/project admin required for PATCH/DELETE.
-- **`/manage` semantics**: Diff-based sync by ID — adds missing associations, removes stale. Sending `[]` clears all. `labeled_type` must be `"Item"` or `"Goal"` (other values → `422`). User must have view access to the target.
+- **Scope-aware auth**: Personal labels — owner only. Team/project labels — team/project admin required for PATCH/DELETE; only an admin of the label's **owning** team, never a descendant team's admin.
+- **Team-label inheritance is opt-in**: a team label reaches descendant teams only while its owner sets `shared_with_descendants: true` (default `false`). Sharing covers descendants only — never siblings, ancestors, or another organization. Turning sharing off strips the label from descendant-team items; the owner team's items keep it. Check `GET /teams/{id}/labels/{label_id}/usage` before un-sharing or deleting so you can tell the user what will lose the label.
+- **`/manage` semantics**: Diff-based sync by ID. `labeled_type` must be `"Item"` or `"Goal"` (other values → `422`); a genuinely inaccessible label ID → `422`. Permission splits by scope: applying or removing a **personal** label needs only view access to the target, while adding a **team or project** label needs item edit permission — a non-editor gets `403 { "code": "forbidden" }` and the whole request is refused, nothing applied and nothing removed. A team or project label already on the item that the caller cannot edit is **preserved** across a full sync: omitting it neither removes it nor fails the request, and it is not listed in `removed`. Sending `[]` clears everything the caller is entitled to remove.
 - **`/content` response**: `{ data: { attached_labels: [...], creator_labels: [...] } }`. Returns scope metadata (`scope`, `scope_id`) on each label. Multi-scope visibility.
 - **Item response**: `GET /api/v2/items/{id}` now includes `custom_labels` array with scope-aware visibility. All item responses now emit **both** `tags` (deprecated) and `custom_labels` with identical content and order. Prefer `custom_labels` — `tags` will be removed in a future phase. `tags` removal will not happen until all consumers confirm migration.
 
@@ -1535,15 +1561,20 @@ Team-scoped hierarchical document pages. Pages form a tree via `parent_id`; the 
 | Method | Path | Auth | Description | User Phrases |
 |--------|------|------|-------------|--------------|
 | GET | `/api/v2/teams/{team_id}/pages` | Bearer / Token | List all pages for a team (flat list) | "list pages", "show team pages", "team wiki", "team docs", "team notes" |
-| POST | `/api/v2/teams/{team_id}/pages` | Bearer / Token | Create a page (team admin only) | "create page", "add page", "new page", "new doc", "new wiki page" |
-| GET | `/api/v2/teams/{team_id}/pages/{page_id}` | Bearer / Token | Get a single page | "show page", "get page", "view page", "open page" |
-| PATCH | `/api/v2/teams/{team_id}/pages/{page_id}` | Bearer / Token | Update a page (title, body, parent_id, position) | "edit page", "update page", "rename page", "move page", "reorder page" |
-| DELETE | `/api/v2/teams/{team_id}/pages/{page_id}` | Bearer / Token | Delete page + all descendants (author or team admin) | "delete page", "remove page", "archive page" |
-| GET | `/api/v2/pages/{page_id}/permissions` | Bearer / Token | List page role assignments (author only) | "list page permissions", "who can edit page", "page roles" |
-| POST | `/api/v2/pages/{page_id}/permissions` | Bearer / Token | Grant role to user on page (author only) | "grant page access", "add page editor", "share page", "give page permission" |
-| DELETE | `/api/v2/pages/{page_id}/permissions` | Bearer / Token | Revoke role from user on page (author only) | "revoke page access", "remove page editor", "remove page permission" |
+| POST | `/api/v2/teams/{team_id}/pages` | Bearer / Token | Create a page. Gated by the team's `pages_creatable_by` setting — `all_members` by default, so any member can create; read `can_create_pages` off `GET /teams/{id}/settings` rather than assuming admin. With `parent_id`, the new page copies its parent's audience. Accepts `?format=markdown`. | "create page", "add page", "new page", "new doc", "new wiki page" |
+| GET | `/api/v2/teams/{team_id}/pages/{page_id}` | Bearer / Token | Get a single page. Accepts `?format=markdown` to get `body` as markdown. 404 outside the page's audience. | "show page", "get page", "view page", "open page" |
+| PATCH | `/api/v2/teams/{team_id}/pages/{page_id}` | Bearer / Token | Update a page (title, body, parent_id, position). Accepts `?format=markdown`. | "edit page", "update page", "rename page", "move page", "reorder page" |
+| DELETE | `/api/v2/teams/{team_id}/pages/{page_id}` | Bearer / Token | **Soft**-delete a page (author or team admin). Returns 204. The page and its comments survive and can be restored; a soft-deleted page 404s from every page and page-comment read. | "delete page", "remove page" |
+| POST | `/api/v2/teams/{team_id}/pages/{page_id}/restore` | Bearer / Token | Restore a soft-deleted page — its comments come back intact | "restore page", "undelete page", "bring the page back" |
+| PATCH | `/api/v2/teams/{team_id}/pages/{page_id}/archive` | Bearer / Token | Archive or unarchive a page (body: `archived`*). An archived page stays readable; its comments become read-only (comment writes 403). | "archive page", "unarchive page", "put the page away" |
+| GET | `/api/v2/pages/{page_id}/audience` | Bearer / Token | Who can see this page — page author or team admin. Returns `{ data: { page_id, whole_team, people: [UserSimple] } }`. | "who can see this page", "page audience", "page visibility" |
+| PUT | `/api/v2/pages/{page_id}/audience` | Bearer / Token | Set the audience — page author or team admin. Replaces only the dimensions you name (body: `whole_team`?, `people`? — `[{ "user_id": 41 }]`); `{"whole_team": false, "people": []}` clears both ("Just you"). A named person must be a member of the page's team, else 422. | "share this page with", "restrict this page", "make this page private" |
+| POST | `/api/v2/pages/{page_id}/break-glass` | Bearer / Token | Restore a **team admin's** own access to a private page. No body; 201 + the page; idempotent; audited and notifies the author. Not the same gate as `POST /teams/{id}/break-glass`, which is org-owner-only. | "get me back into this page", "break glass on page" |
+| GET | `/api/v2/pages/{page_id}/permissions` | Bearer / Token | List page role assignments (page author or team admin) | "list page permissions", "who can edit page", "page roles" |
+| POST | `/api/v2/pages/{page_id}/permissions` | Bearer / Token | Grant role to user on page (page author or team admin) | "grant page access", "add page editor", "share page", "give page permission" |
+| DELETE | `/api/v2/pages/{page_id}/permissions` | Bearer / Token | Revoke role from user on page (page author or team admin) | "revoke page access", "remove page editor", "remove page permission" |
 
-**Page object shape**:
+**Page object shape** (every **read** — single, list, bare-id):
 ```json
 {
   "id": 1,
@@ -1555,10 +1586,24 @@ Team-scoped hierarchical document pages. Pages form a tree via `parent_id`; the 
   "user_id": 42,
   "can_edit": true,
   "can_delete": false,
+  "can_manage_permissions": true,
+  "has_markdown_source": false,
+  "locked": false,
+  "unlocked_for_me": false,
+  "is_archived": false,
+  "archived_at": null,
+  "archived_by": null,
+  "is_published": false,
   "created_at": "2026-04-18T12:00:00.000Z",
   "updated_at": "2026-04-18T12:00:00.000Z"
 }
 ```
+
+**Write confirmation shape** — a create (`201`) and an update (`200`) answer with the page's identity and **no `body` field at all**: not `null`, not an empty string, **absent**. Every other field above is unchanged and still present, `updated_at` included (still the copy of record for a subsequent conditional write). `?format=markdown` does not change a write's answer.
+
+> Confirm a write by the **`id`** the answer names — never by comparing an echoed body to what you sent. To show the saved page afterwards, `GET` it: that read is the supported way to get saved content back, and a save and a fresh read never disagree about what the page says.
+
+**Markdown**: `?format=markdown` on page create, update, and read makes the existing `body` field markdown in that direction — a write's `body` is interpreted as markdown (converted to sanitized HTML for rendering, with the markdown source stored), and a read returns `body` as markdown. A markdown-authored page round-trips **byte-perfect**; an HTML-authored page is converted to markdown on read. An HTML update clears the stored markdown source. Default (no `format`, or `?format=html`) is HTML in both directions, exactly as before. The **list** endpoint ignores `format` — read a single page to get markdown. Safety is identical either way: script tags and other disallowed raw HTML are stripped from both the rendered HTML and the stored markdown source. There is no new response field — markdown always arrives in `body`.
 
 **Page permission object shape**:
 ```json
@@ -1571,11 +1616,13 @@ Team-scoped hierarchical document pages. Pages form a tree via `parent_id`; the 
 ```
 
 **Permission model**:
-- **View** (`GET`): any team member
-- **Create** (`POST`): team admin only; creator automatically receives `author` role on the new page
+- **View** (`GET`): team membership **and** the page's audience. A page carries its own audience — a whole-team grant plus named people, additive and independent — and every read path consults it. Outside the audience a page is simply **absent** from a list, or a `404` on a direct read: no stub, no redacted title, no count.
+- **Create** (`POST`): governed per team by the `pages_creatable_by` setting (`all_members` by default, so a plain member can create; `admins_only` restricts it). Read `can_create_pages` off `GET /teams/{id}/settings` rather than re-deriving admin status. Creator automatically receives `author` role on the new page; a sub-page copies its parent's audience at creation, with no cascade afterwards in either direction.
 - **Edit** (`PATCH`): team admin OR user with `author`, `editor`, or `contributor` role on the page
-- **Delete** (`DELETE`): team admin OR user with `author` role (cascades to all descendants)
-- **Manage permissions** (`/permissions`): `author` role on the page only
+- **Delete** (`DELETE`): team admin OR user with `author` role. Soft delete — restorable via `POST .../restore`.
+- **Manage permissions** (`/permissions`, `/audience`): page `author` **OR** team admin. Gate the affordance on `can_manage_permissions` on the page object.
+
+A page can be hidden from a team admin, and sight is a precondition for every page operation — `POST /pages/{id}/break-glass` is the audited, author-notifying route back. Note also that `parent_id` may be `null` on a page whose real parent exists but is hidden from the caller: render it top-level, it is not corruption.
 
 Role hierarchy on pages: `author` > `editor` > `contributor` > `viewer`
 
@@ -1583,13 +1630,13 @@ Role hierarchy on pages: `author` > `editor` > `contributor` > `viewer`
 ```json
 { "title": "Onboarding", "body": "<p>Welcome!</p>", "parent_id": null }
 ```
-Response: `201` with `{ "data": { ...page } }`.
+Response: `201` with `{ "data": { ...page } }` — the write confirmation shape above, **without `body`**.
 
 **Update request** — all fields optional; send `parent_id` to move, `position` to reorder among siblings:
 ```json
 { "title": "New Title", "body": "<p>...</p>", "parent_id": 3, "position": 1 }
 ```
-Cycle detection prevents moving a page to one of its own descendants (returns `400`).
+Response: `200` with `{ "data": { ...page } }` — again **without `body`**. Cycle detection prevents moving a page to one of its own descendants (returns `400`).
 
 **Grant permission request** (body: `role`*, `user_id`*):
 ```json
@@ -1607,9 +1654,9 @@ Cycle detection prevents moving a page to one of its own descendants (returns `4
 | `400` | Missing/empty title, title > 255 chars, body > 100KB, parent_id from different team, cycle detected, invalid role |
 | `401` | Missing or invalid token |
 | `403` | Insufficient permission (not admin, not author/editor, etc.) |
-| `404` | Team or page not found |
+| `404` | Team or page not found — also what a caller outside the page's audience gets, and what every read of a soft-deleted page gets |
 
-Use `can_edit` / `can_delete` flags on each page object to gate write suggestions. The list endpoint returns a flat array — build the tree client-side from `parent_id`. Position is 0-based ordering among siblings, auto-maintained on create/move/delete.
+Use `can_edit` / `can_delete` / `can_manage_permissions` flags on each page object to gate write suggestions. The list endpoint returns a flat array — build the tree client-side from `parent_id`. Position is 0-based ordering among siblings, auto-maintained on create/move/delete.
 
 ## Framework Articles
 
@@ -1925,7 +1972,7 @@ Delete responses vary by resource: strategy objects (goals, rocks, milestones) r
 |-----------|-----------|------------|
 | Creator (`creator` field) | Assignee (`assignees` array) | Creator = who created the item. Assignees = who's responsible for it. One creator, many assignees. Accountability ownership = assignees if any, otherwise creator. |
 | Archive (`DELETE /items/{id}`) | Delete (`DELETE /teams/{id}`) | Items are soft-deleted (status→archived). Teams are permanently deleted. |
-| Completed (day plan) | Done (item status) | Day plan `completed: true` checks off for that day. Item status `done` marks it globally done. For recurring items only the day plan toggles. |
+| Completed (day plan) | Done (item status) | Both routes now produce the same state — `completed: true` on the day plan and `status: done` on the item each set the other. The distinction that remains is recurring items: for those, only the day plan toggles and the item stays active for tomorrow. |
 | on_weekly (item field) | status (item field) | `on_weekly` controls board visibility. `status` controls the column. An item can be `status: next` but `on_weekly: false`. |
 | One-on-one meeting | Project meeting | One-on-ones use `/1-on-1` endpoints; persons nested under `persons.person1`/`persons.person2`. Project meetings are out of scope for rkit:1on1 and will get a separate skill. |
 | Team projects (`/teams/{id}/projects`) | Standalone projects (`/projects`) | Team projects are scoped to a team. Standalone are user-level. Same underlying data (type=TodoList). |

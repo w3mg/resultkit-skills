@@ -156,7 +156,9 @@ Triggered by: `prefs set {field} {value}`
 
 ### Known preference fields
 
-Valid top-level fields: `login`, `time_zone`, `preferred_team_id`, `secondary_email`, `update_frequency`, `unsubscribe_all`, `startup_view_code`, `slack_username`
+Valid top-level fields: `login`, `first_name`, `last_name`, `time_zone`, `preferred_team_id`, `secondary_email`, `update_frequency`, `unsubscribe_all`, `startup_view_code`, `slack_username`
+
+`first_name` / `last_name` are how a person corrects their own name; they apply only to the caller. Sending `""` (or whitespace) **clears** the field — omit the key to leave it alone. Max 100 chars, refused rather than truncated.
 
 Valid notification fields: `notifications.morning_day_ahead`, `notifications.end_of_day_digest`, `notifications.weekly_digest_friday`, `notifications.week_ahead_sunday`
 

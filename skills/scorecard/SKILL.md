@@ -336,7 +336,7 @@ CONFIRMED_DATE=$(echo "$RESPONSE" | jq -r '.body.data.date // "$RECORD_DATE"')
   - Weekly: "Recorded: {MEASURE_NAME} (ID: {MEASURE_ID}) — {VALUE} for week of {CONFIRMED_DATE} (history ID: {HISTORY_ID})."
   - Monthly: "Recorded: {MEASURE_NAME} (ID: {MEASURE_ID}) — {VALUE} for month of {CONFIRMED_DATE} (history ID: {HISTORY_ID})."
 - **422**: Show API error message: `$(echo "$RESPONSE" | jq -r '.body.error.message // .body // "Validation error"')`
-- **403**: "You don't have permission to record values for this measure. Admin access is required."
+- **403**: "You can't record values for this measure — its `can_record_value` is `false` for you." Rights come back on every measure from `GET /teams/{id}/measures`: `can_record_value` says whether this call would be accepted, `can_edit` whether the definition can be changed, and both are computed against the team that **owns** the measure. A plain member of the owning team can record values; an admin of a child team that merely inherits the scorecard cannot. Never gate value entry on `can_edit` — that would take entry away from plain members who have it.
 - **404**: "Measure ID {MEASURE_ID} not found."
 - Other: "API error ($STATUS): $(echo "$RESPONSE" | jq -r '.body.error.message // ""')"
 

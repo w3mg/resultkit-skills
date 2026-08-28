@@ -17,11 +17,11 @@ Team-scoped hierarchical document pages ("team wiki"). Pages form a tree via `pa
 ## Rules
 
 - **Confirm writes.** Before any POST/PATCH/DELETE, summarize all planned changes in a single prompt and ask for confirmation. Batch related mutations under one confirmation. GET requests execute immediately.
-- **Body is HTML, not markdown.** The API stores sanitized HTML. Raw markdown (`# H1`, `**bold**`) is saved as literal text and renders literally in the app. Convert markdown to HTML before any create/update that includes a body (see Flow: Write Body Content). Images (`img`) are stripped by the sanitizer; links keep only `href`/`target`.
+- **Body is markdown by default.** Send the user's markdown as written with `?format=markdown` on create/update — the API converts it and stores the markdown source, so a markdown read gives back exactly what was written. Never convert locally. Say which format you used and name the alternative: markdown is the default (it uses fewer tokens and reads back unchanged); HTML is there for finer control of formatting. If the user says "use HTML", send their HTML unchanged with no `format` param. Never make them guess.
 - **Show IDs.** Always include page IDs (and parent IDs) in output.
 - **Concise output.** Trees and short summaries. No filler.
 - **Direct execution.** Use Bash with api.sh for all API calls. Never use Task agents.
-- **Respect the flags.** Use each page's `can_edit` / `can_delete` to gate write suggestions — creating pages needs team admin; editing needs admin or an author/editor/contributor role on that page.
+- **Respect the flags.** Use each page's `can_edit` / `can_delete` / `can_manage_permissions` to gate write suggestions, and `can_create_pages` from `GET /teams/{id}/settings` to gate create — never re-derive any of them from admin status.
 
 ## Argument Parsing
 
@@ -36,9 +36,10 @@ Team-scoped hierarchical document pages ("team wiki"). Pages form a tree via `pa
 | `rename {page_id} "new title"` | Update the title |
 | `move {page_id} under {parent_id}` | Re-parent a page (`under top` → `parent_id: null`) |
 | `reorder {page_id} to {position}` | Change position among siblings (0-based) |
-| `delete {page_id}` | Delete a page **and all its descendants** |
+| `delete {page_id}` | Soft-delete a page (restorable) |
+| `restore {page_id}` | Restore a soft-deleted page |
 
-Permissions (share page, grant/revoke editor, list roles) are also available — see the **Pages** section of `references/api-reference.md` for `/pages/{id}/permissions`; author-only.
+Permissions (share page, grant/revoke editor, list roles) are also available — see the **Pages** section of `references/api-reference.md` for `/pages/{id}/permissions`; page author or team admin.
 
 ---
 
@@ -82,41 +83,49 @@ Tip: `/rkit:pages read {id}` to open · `/rkit:pages create "title" under {id}` 
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/pages/PAGE_ID")
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/pages/PAGE_ID?format=markdown")
 echo "$RESPONSE"
 ```
 
-Success: show title, id, parent (title if known), and the body converted to readable markdown/plain text (strip tags sensibly). Note `can_edit`/`can_delete` if the user is about to modify.
+`?format=markdown` returns `body` as markdown — the stored source, byte-for-byte, for a page that was written as markdown; converted from HTML for one that wasn't. Drop the param to see the raw HTML instead.
+
+Success: show title, id, parent (title if known), and the body as returned. Note `can_edit`/`can_delete` if the user is about to modify.
 
 ## Flow: Create a Page
 
-**Needs team admin** (403 otherwise — creator automatically gets the `author` role).
+Creation is governed by the team's `pages_creatable_by` setting — `all_members` by default, so a plain member can usually create; `admins_only` restricts it (403 otherwise). Check `can_create_pages` on `GET /teams/TEAM_ID/settings` if you need to know before asking. The creator automatically gets the `author` role, and a sub-page copies its parent's audience.
 
 Confirm: "Create page **{title}** in team {team_id}{ under **{parent title}** ({parent_id})}?"
 
 ```bash
 API_SH="<api.sh path>"
-PAYLOAD=$(jq -n --arg title "TITLE" --arg body "HTML_BODY" '{title: $title, body: $body}')
+PAYLOAD=$(jq -n --arg title "TITLE" --arg body "MARKDOWN_BODY" '{title: $title, body: $body}')
 # nested: add  --argjson parent PARENT_ID  and  parent_id: $parent
-RESPONSE=$("$API_SH" POST "/teams/TEAM_ID/pages" "$PAYLOAD")
+RESPONSE=$("$API_SH" POST "/teams/TEAM_ID/pages?format=markdown" "$PAYLOAD")
 echo "$RESPONSE"
 ```
 
 - Omit `body` for an empty page; omit `parent_id` for top-level.
-- **Status 201**: "Created page **{id}**: {title}" (+ parent if nested).
+- Drop `?format=markdown` when the user asked for HTML.
+- **Status 201**: "Created page **{id}**: {title} (saved as markdown)" (+ parent if nested).
 
 ## Flow: Write Body Content
 
-For `write {page_id} <file>` or any create with content — convert markdown to HTML first:
+For `write {page_id} <file>` or any create with content — send the markdown as-is:
 
 ```bash
-BODY=$(pandoc -f gfm -t html "FILE.md")        # preferred
-# fallback if pandoc missing: BODY=$(npx --yes marked "FILE.md")
+BODY=$(cat "FILE.md")
 PAYLOAD=$(jq -n --arg body "$BODY" '{body: $body}')
-RESPONSE=$("$API_SH" PATCH "/teams/TEAM_ID/pages/PAGE_ID" "$PAYLOAD")
+RESPONSE=$("$API_SH" PATCH "/teams/TEAM_ID/pages/PAGE_ID?format=markdown" "$PAYLOAD")
 ```
 
-Limits: body ≤ 100KB after conversion; title ≤ 255 chars. If the source exceeds 100KB, tell the user and suggest splitting into child pages.
+No local conversion, and no converter needed — the API does it. For HTML, send the user's HTML unchanged and drop the `?format=markdown` param.
+
+Say which format was used and what the other one buys: markdown is the default (fewer tokens, and it reads back as the same markdown); HTML gives finer control of formatting. If the user then says "use HTML", re-send as HTML.
+
+Limits: body ≤ 100KB; title ≤ 255 chars. If the source exceeds 100KB, tell the user and suggest splitting into child pages.
+
+A write's response carries the page's identity but **no `body`** — confirm by the `id` it names, never by comparing an echoed body to what you sent. To show the saved page, `GET` it back.
 
 ## Flow: Rename / Move / Reorder
 
@@ -133,15 +142,23 @@ All are PATCH with only the changed fields:
 
 ## Flow: Delete a Page
 
-**Cascades to all descendants.** Before confirming, fetch the list and count the page's descendants; the confirmation must state it:
+**Soft delete — restorable.** The page and its comments survive; they just stop appearing in reads. Before confirming, fetch the list and count the page's descendants so the user knows what goes with it:
 
-> Delete page **{title}** ({id}) **and its {n} descendant pages**? This cannot be undone.
+> Delete page **{title}** ({id}){ and its {n} descendant pages}? Restore it later with `/rkit:pages restore {id}`.
 
 ```bash
 "$API_SH" DELETE "/teams/TEAM_ID/pages/PAGE_ID"
 ```
 
-Allowed for team admin or the page's author (403 otherwise).
+Status 204. Allowed for team admin or the page's author (403 otherwise). A deleted page 404s from every page read until restored.
+
+## Flow: Restore a Page
+
+```bash
+"$API_SH" POST "/teams/TEAM_ID/pages/PAGE_ID/restore"
+```
+
+Brings back a soft-deleted page with its comments intact. Report: "Restored page **{id}**: {title}."
 
 ## Error Handling
 
@@ -151,15 +168,16 @@ api.sh wraps every response as `{"status": N, "body": {...}}` — always read fi
 - `"error": "CURL_FAILED"` → "Network error. Check your connection."
 - `status: 400` → show the validation message (empty title, title > 255, body > 100KB, cross-team parent, cycle).
 - `status: 401` → "Unauthorized (401). Run `/rkit:setup` to update your token."
-- `status: 403` → "You don't have permission — creating pages needs team admin; editing needs an author/editor/contributor role on the page."
-- `status: 404` → "Team or page not found (404)."
+- `status: 403` → "You don't have permission — editing needs an author/editor/contributor role on the page, or team admin. If it was a create, this team is set to `admins_only`."
+- `status: 404` → "Team or page not found (404)." — also what you get for a page outside your audience, or one that's been deleted.
 
 ## Edge Cases
 
 - **api.sh not found**: "api.sh not found. Install via: `/plugin marketplace add w3mg/resultkit-skills` then `/plugin install rkit@resultkit`"
 - **Empty team**: "No pages for team {team_id} yet. `/rkit:pages create \"title\"` to start."
 - **Untitled pages**: display as *(untitled)* with the ID so they're still addressable.
-- **pandoc and npx both missing**: ask the user before storing raw text as a single `<p>`-wrapped block — never store raw markdown silently.
+- **No converter installed**: irrelevant — markdown goes to the API as-is. Never refuse a write for a missing pandoc or npx.
+- **Missing parent**: `parent_id: null` on a page whose real parent exists but is hidden from the caller. Render it top-level; it isn't corruption.
 
 ## References
 

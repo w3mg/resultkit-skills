@@ -55,11 +55,11 @@ Pasted text and local files need no API call — read them as-is. For a ResultKi
 
 ```bash
 API_SH="<api.sh path>"
-RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/pages/PAGE_ID")   # unknown ID → GET /teams/TEAM_ID/pages first
+RESPONSE=$("$API_SH" GET "/teams/TEAM_ID/pages/PAGE_ID?format=markdown")   # unknown ID → GET /teams/TEAM_ID/pages first
 echo "$RESPONSE"
 ```
 
-`body.data.body` is sanitized HTML. Take the Success section — the heading matching "Success", "Results Look Like", or "Definition of Done", plus the list beneath it — and note `can_edit` before offering to apply anything. No Success section anywhere → say so and offer to draft one from the checklist.
+`?format=markdown` returns `body.data.body` as markdown — the stored source for a markdown-authored page, converted from HTML otherwise. Take the Success section — the heading matching "Success", "Results Look Like", or "Definition of Done", plus the list beneath it — and note `can_edit` before offering to apply anything. No Success section anywhere → say so and offer to draft one from the checklist.
 
 ## Flow: Grade
 
@@ -105,20 +105,22 @@ Only on explicit request. Two writes, one confirmation.
 
 ```bash
 DATE=$(date +%F)
-PAYLOAD=$(jq -n --arg t "TITLE — $DATE" --arg b "CURRENT_HTML_BODY" --argjson p ARCHIVE_PAGE_ID \
+PAYLOAD=$(jq -n --arg t "TITLE — $DATE" --arg b "CURRENT_MARKDOWN_BODY" --argjson p ARCHIVE_PAGE_ID \
   '{title: $t, body: $b, parent_id: $p}')
-"$API_SH" POST "/teams/TEAM_ID/pages" "$PAYLOAD"
+"$API_SH" POST "/teams/TEAM_ID/pages?format=markdown" "$PAYLOAD"
 ```
 
 A 201 is required before Step 3 — if the archive write fails, stop and report; never PATCH an unarchived page.
 
-**Step 3 — Patch.** Body is HTML, not markdown — convert first, and splice the new section into the existing body rather than replacing the page.
+**Step 3 — Patch.** Send markdown as-is with `?format=markdown` — no local conversion — and splice the new section into the existing body rather than replacing the page.
 
 ```bash
-BODY=$(pandoc -f gfm -t html "REWRITTEN_FULL_PAGE.md")   # fallback: npx --yes marked
+BODY=$(cat "REWRITTEN_FULL_PAGE.md")
 PAYLOAD=$(jq -n --arg body "$BODY" '{body: $body}')
-"$API_SH" PATCH "/teams/TEAM_ID/pages/PAGE_ID" "$PAYLOAD"
+"$API_SH" PATCH "/teams/TEAM_ID/pages/PAGE_ID?format=markdown" "$PAYLOAD"
 ```
+
+Read the current body back with `GET "/teams/TEAM_ID/pages/PAGE_ID?format=markdown"` so you are splicing into markdown, not HTML. A write's response carries no `body` — confirm by the `id` it names.
 
 Report: "Updated **{title}** ({page_id}). Archived as {archive_id}."
 
@@ -140,7 +142,7 @@ api.sh wraps every response as `{"status": N, "body": {...}}` — always read fi
 - **One criterion**: not a failure on its own, but ask what the next seat receives; rule 5 almost always surfaces a second.
 - **Policy dressed as a criterion** ("we always double-check"): ask what artifact proves it, then rewrite around that artifact.
 - **`can_edit: false`**: grade and hand back the rewrite as text; don't offer to apply it.
-- **pandoc and npx both missing**: hand back markdown and say the page was not updated — never store raw markdown in a page body.
+- **No converter installed**: irrelevant — markdown goes to the API as-is. Never hand the rewrite back and refuse the write for a missing pandoc or npx.
 
 ## References
 

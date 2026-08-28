@@ -1,3 +1,0 @@
-## Next Issue (ResultKit)
-
-Next Issue runs on the ResultKit Level 10 To Do column (team 345), not GitHub issues. Source of truth: https://resultkit.ai/pages/635. Every runnable item's description opens with `Repo: <owner>/<name>`; the BDD lives on a ResultKit page with a synced copy in the repo. From ~/Development the root `/next-issue` command routes by the Repo line (canonical copy versioned in resultkit-internal-superpm at `.claude/commands/next-issue-root.md`); inside a repo with an `rk-next-issue` skill, that skill runs and takes only this repo's items. Repos without the skill still use GitHub `/next-issue` until cut over.
